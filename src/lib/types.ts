@@ -60,8 +60,12 @@ export type FullConversation = Prisma.ConversationGetPayload<{
                 createdAt: 'asc'
             }
         };
-        initiator: Pick<User, 'id' | 'name'>;
-        receiver: Pick<User, 'id' | 'name'>;
+        initiator: { 
+            select: { id: true, name: true }
+        };
+        receiver: { 
+            select: { id: true, name: true }
+        };
     }
 }>
 
