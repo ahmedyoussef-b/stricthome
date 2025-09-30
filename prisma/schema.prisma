@@ -1,0 +1,143 @@
+// prisma/schema.prisma
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String         @id @default(cuid())
+  name                String?
+  email               String?        @unique
+  emailVerified       DateTime?
+  image               String?
+  role                Role           @default(ELEVE)
+  ambition            String?
+  classeId            String?
+  classe              Classe?        @relation(fields: [classeId], references: [id])
+  classesEnseignees   Classe[]       @relation("ProfesseurToClasse")
+  sentMessages        Message[]      @relation("Sender")
+  reactions           Reaction[]
+  // CHANGEMENT: Renommer sessions -> coursSessions
+  coursSessions       CoursSession[] @relation("ProfesseurToCoursSession")
+  sessionsParticipees CoursSession[] @relation("Participants")
+  etat                EtatEleve?     @relation("EleveToEtat")
+  
+  // Relations pour NextAuth
+  accounts Account[]
+  sessions AuthSession[]
+}
+
+model Classe {
+  id           String    @id @default(cuid())
+  nom          String
+  professeurId String
+  professeur   User      @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
+  eleves       User[]
+  chatroomId   String?   @unique
+  chatroom     Chatroom? @relation(fields: [chatroomId], references: [id])
+}
+
+model Metier {
+  id          String      @id @default(cuid())
+  nom         String
+  description String
+  icon        String?
+  theme       Json
+  eleves      EtatEleve[]
+}
+
+model EtatEleve {
+  id         String  @id @default(cuid())
+  eleveId    String  @unique
+  eleve      User    @relation("EleveToEtat", fields: [eleveId], references: [id])
+  isPunished Boolean @default(false)
+  metierId   String?
+  metier     Metier? @relation(fields: [metierId], references: [id])
+}
+
+// CHANGEMENT: Session -> CoursSession
+model CoursSession {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  endedAt       DateTime?
+  professeurId  String
+  professeur    User     @relation("ProfesseurToCoursSession", fields: [professeurId], references: [id])
+  participants  User[]   @relation("Participants")
+}
+
+model Chatroom {
+  id        String    @id @default(cuid())
+  messages  Message[]
+  classes   Classe[]
+}
+
+model Message {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  message     String
+  senderId    String
+  sender      User       @relation("Sender", fields: [senderId], references: [id])
+  senderName  String
+  chatroomId  String
+  chatroom    Chatroom   @relation(fields: [chatroomId], references: [id])
+  reactions   Reaction[]
+}
+
+model Reaction {
+  id        String  @id @default(cuid())
+  emoji     String
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id])
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, emoji, userId])
+}
+
+enum Role {
+  ELEVE
+  PROFESSEUR
+}
+
+// MODÈLES NEXT-AUTH (sans conflit)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// CHANGEMENT: Session -> AuthSession pour éviter le conflit
+model AuthSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
