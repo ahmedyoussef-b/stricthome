@@ -31,7 +31,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
                 console.log(`[Cache] HIT pour ${cacheKey}`);
                 student = JSON.parse(cachedStudent as string);
             }
-        } catch (error) => {
+        } catch (error) {
             console.error('[Cache] Erreur de lecture Redis:', error);
         }
     }
