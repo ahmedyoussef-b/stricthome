@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { ArrowLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
-import { Workspace } from '@/components/Workspace';
+import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VideoControls } from '@/components/VideoControls';
 
@@ -36,7 +36,7 @@ function SessionPageContent() {
                     </CardContent>
                 </Card>
                 <div className="flex-grow">
-                   <Workspace />
+                   <Whiteboard sessionId={sessionId} />
                 </div>
             </div>
 
@@ -77,7 +77,7 @@ function SessionPageContent() {
                     </CardContent>
                 </Card>
                  <div className="flex-grow">
-                   <Workspace />
+                   <Whiteboard sessionId={sessionId} />
                 </div>
             </div>
             <div className="flex flex-col">
