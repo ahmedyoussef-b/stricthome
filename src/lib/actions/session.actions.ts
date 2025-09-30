@@ -3,6 +3,8 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { getAuthSession } from '../session';
+import { pusherServer } from '../pusher/server';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
     if (!professeurId || studentIds.length === 0) {
@@ -26,4 +28,47 @@ export async function createCoursSession(professeurId: string, studentIds: strin
     });
 
     return session;
+}
+
+
+export async function getSessionDetails(sessionId: string) {
+    const session = await getAuthSession();
+    if (!session?.user) throw new Error("Unauthorized");
+
+    return prisma.coursSession.findUnique({
+        where: { id: sessionId },
+        include: {
+            participants: true,
+            professeur: true,
+        }
+    });
+}
+
+export async function spotlightParticipant(sessionId: string, participantSid: string) {
+    const session = await getAuthSession();
+    if (session?.user.role !== 'PROFESSEUR') {
+        throw new Error("Unauthorized: Only teachers can spotlight participants.");
+    }
+
+    // Verify the teacher is the host of this session
+    const coursSession = await prisma.coursSession.findFirst({
+        where: {
+            id: sessionId,
+            professeurId: session.user.id
+        }
+    });
+
+    if (!coursSession) {
+        throw new Error("Session not found or you are not the host.");
+    }
+    
+    await prisma.coursSession.update({
+        where: { id: sessionId },
+        data: { spotlightedParticipantSid: participantSid }
+    });
+
+    const channelName = `presence-session-${sessionId}`;
+    await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
+
+    revalidatePath(`/session/${sessionId}`);
 }

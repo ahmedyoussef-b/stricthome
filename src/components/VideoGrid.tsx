@@ -5,12 +5,13 @@ import { LocalParticipant, RemoteParticipant } from "twilio-video";
 import { Participant } from "./Participant";
 
 interface VideoGridProps {
+    sessionId: string;
     localParticipant: LocalParticipant | null;
     participants: RemoteParticipant[];
+    spotlightedParticipantSid?: string | null;
 }
 
-export function VideoGrid({ localParticipant, participants }: VideoGridProps) {
-    const allParticipants = [localParticipant, ...participants].filter(p => p !== null);
+export function VideoGrid({ sessionId, localParticipant, participants, spotlightedParticipantSid }: VideoGridProps) {
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -19,6 +20,8 @@ export function VideoGrid({ localParticipant, participants }: VideoGridProps) {
                     key={localParticipant.sid}
                     participant={localParticipant}
                     isLocal={true}
+                    sessionId={sessionId}
+                    isSpotlighted={localParticipant.sid === spotlightedParticipantSid}
                 />
             )}
             {participants.map(p => (
@@ -26,6 +29,8 @@ export function VideoGrid({ localParticipant, participants }: VideoGridProps) {
                     key={p.sid}
                     participant={p}
                     isLocal={false}
+                    sessionId={sessionId}
+                    isSpotlighted={p.sid === spotlightedParticipantSid}
                 />
             ))}
         </div>

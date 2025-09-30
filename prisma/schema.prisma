@@ -11,53 +11,57 @@ datasource db {
 }
 
 model User {
-  id                  String           @id @default(cuid())
-  name                String?
-  email               String?          @unique
-  emailVerified       DateTime?
-  image               String?
-  role                Role             @default(ELEVE)
-  ambition            String?
-  points              Int              @default(0)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  classeId            String?
-  classe              Classe?          @relation(fields: [classeId], references: [id])
-  classesEnseignees   Classe[]
-  sessionsParticipees CoursSession[]
-  etat                EtatEleve?
-  messagesEnvoyes     Message[]
-  reactions           Reaction[]
-  taskCompletions     TaskCompletion[]
-  initiatedDm         Conversation[]   @relation("Initiator")
-  receivedDm          Conversation[]   @relation("Receiver")
-  announcements       Annonce[]
-
-  @@index([classeId])
+  id                    String                @id @default(cuid())
+  name                  String?
+  email                 String?               @unique
+  emailVerified         DateTime?
+  image                 String?
+  role                  Role                  @default(ELEVE)
+  ambition              String?
+  points                Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  classeId              String?
+  classe                Classe?               @relation("Eleves", fields: [classeId], references: [id], onDelete: Cascade)
+  classesEnseignees     Classe[]              @relation("Professeur")
+  etat                  EtatEleve?
+  sessionsParticipees   CoursSession[]        @relation("SessionParticipants")
+  sessionsEnseignees    CoursSession[]        @relation("SessionProfesseur")
+  messages              Message[]             @relation("Sender")
+  reactions             Reaction[]
+  conversationsInitiated Conversation[]       @relation("Initiator")
+  conversationsReceived  Conversation[]       @relation("Receiver")
+  annonces              Annonce[]             @relation("Author")
+  taskCompletions       TaskCompletion[]
 }
 
 model EtatEleve {
   id         String  @id @default(cuid())
-  isPunished Boolean @default(false)
   eleveId    String  @unique
   eleve      User    @relation(fields: [eleveId], references: [id], onDelete: Cascade)
+  isPunished Boolean @default(false)
   metierId   String?
   metier     Metier? @relation(fields: [metierId], references: [id])
+}
 
-  @@index([metierId])
+model Metier {
+  id          String      @id @default(cuid())
+  nom         String
+  description String
+  icon        String?
+  theme       Json
+  eleves      EtatEleve[]
 }
 
 model Classe {
-  id           String         @id @default(cuid())
+  id           String       @id @default(cuid())
   nom          String
   professeurId String
-  professeur   User           @relation(fields: [professeurId], references: [id])
-  eleves       User[]
-  chatroomId   String         @unique
-  chatroom     Chatroom       @relation(fields: [chatroomId], references: [id])
+  professeur   User         @relation("Professeur", fields: [professeurId], references: [id])
+  eleves       User[]       @relation("Eleves")
+  chatroomId   String       @unique
+  chatroom     Chatroom     @relation(fields: [chatroomId], references: [id])
   annonces     Annonce[]
-
-  @@index([professeurId])
 }
 
 model Chatroom {
@@ -71,32 +75,14 @@ model Message {
   message        String
   senderId       String
   senderName     String
+  sender         User           @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
   createdAt      DateTime       @default(now())
   chatroomId     String?
-  chatroom       Chatroom?      @relation(fields: [chatroomId], references: [id])
-  reactions      Reaction[]
+  chatroom       Chatroom?      @relation(fields: [chatroomId], references: [id], onDelete: Cascade)
   conversationId String?
-  conversation   Conversation?  @relation(fields: [conversationId], references: [id])
-
-  @@index([chatroomId])
-  @@index([conversationId])
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reactions      Reaction[]
 }
-
-model Conversation {
-  id          String    @id @default(cuid())
-  initiatorId String
-  receiverId  String
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
-  messages    Message[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@unique([initiatorId, receiverId])
-  @@index([initiatorId])
-  @@index([receiverId])
-}
-
 
 model Reaction {
   id        String   @id @default(cuid())
@@ -108,65 +94,61 @@ model Reaction {
   createdAt DateTime @default(now())
 
   @@unique([userId, messageId, emoji])
-  @@index([messageId])
-}
-
-
-model Metier {
-  id          String      @id @default(cuid())
-  nom         String      @unique
-  description String
-  icon        String?
-  theme       Json
-  etatsEleve  EtatEleve[]
 }
 
 model CoursSession {
   id           String   @id @default(cuid())
   professeurId String
-  professeur   User     @relation(fields: [professeurId], references: [id])
-  participants User[]
+  professeur   User     @relation("SessionProfesseur", fields: [professeurId], references: [id])
+  participants User[]   @relation("SessionParticipants")
   createdAt    DateTime @default(now())
   endedAt      DateTime?
+  spotlightedParticipantSid String?
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  initiatorId String
+  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User      @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([initiatorId, receiverId])
+}
+
+model Annonce {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  authorId   String
+  author     User     @relation("Author", fields: [authorId], references: [id])
+  classeId   String?
+  classe     Classe?  @relation(fields: [classeId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Task {
-  id            String           @id @default(cuid())
-  title         String
-  description   String
-  points        Int
-  type          TaskType
-  completions   TaskCompletion[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  title           String
+  description     String
+  points          Int
+  type            TaskType
+  completions     TaskCompletion[]
 }
 
 model TaskCompletion {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
   taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task        Task     @relation(fields: [taskId], references: [id])
   completedAt DateTime @default(now())
 
   @@unique([userId, taskId, completedAt])
-  @@index([userId])
-  @@index([taskId])
-}
-
-model Annonce {
-  id          String    @id @default(cuid())
-  title       String
-  content     String
-  authorId    String
-  author      User      @relation(fields: [authorId], references: [id])
-  classeId    String?
-  classe      Classe?   @relation(fields: [classeId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([authorId])
-  @@index([classeId])
 }
 
 enum Role {

@@ -1,15 +1,18 @@
 // src/app/session/[id]/page.tsx
 'use client';
-import { Suspense, useState }s from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, ScreenShare } from 'lucide-react';
+import { ArrowLeft, Users, Timer, Star, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { VideoPlayer } from '@/components/VideoPlayer';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { RemoteParticipant, LocalParticipant } from 'twilio-video';
 import { Badge } from '@/components/ui/badge';
 import { VideoGrid } from '@/components/VideoGrid';
+import { Participant } from '@/components/Participant';
+import { pusherClient } from '@/lib/pusher/client';
+import { getSessionDetails } from '@/lib/actions';
+import { Loader2 } from 'lucide-react';
 
 function SessionPageContent() {
     const router = useRouter();
@@ -19,33 +22,70 @@ function SessionPageContent() {
     const sessionId = typeof params.id === 'string' ? params.id : '';
     const role = searchParams.get('role');
 
-    const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
+    const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
     const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
+    const [room, setRoom] = useState<any>(null);
+    const [spotlightedParticipant, setSpotlightedParticipant] = useState<RemoteParticipant | LocalParticipant | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+     useEffect(() => {
+        if (!sessionId) return;
+        
+        const fetchSessionDetails = async () => {
+            const details = await getSessionDetails(sessionId);
+            if (details?.spotlightedParticipantSid) {
+                // Initial spotlight will be set once participants are loaded
+            }
+            setIsLoading(false);
+        };
+        fetchSessionDetails();
+
+        const channelName = `presence-session-${sessionId}`;
+        const channel = pusherClient.subscribe(channelName);
+        
+        const handleSpotlight = (data: { participantSid: string }) => {
+            if (data.participantSid === localParticipant?.sid) {
+                setSpotlightedParticipant(localParticipant);
+            } else {
+                setSpotlightedParticipant(participants.get(data.participantSid) || null);
+            }
+        };
+
+        channel.bind('participant-spotlighted', handleSpotlight);
+
+        return () => {
+            channel.unbind('participant-spotlighted', handleSpotlight);
+            pusherClient.unsubscribe(channelName);
+        };
+
+    }, [sessionId, localParticipant, participants]);
+
 
     const handleGoBack = () => {
+        room?.disconnect();
         router.back();
     };
 
     const teacherView = (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
-            {/* Colonne principale avec l'espace de travail */}
             <div className="xl:col-span-2 flex flex-col gap-6">
                 <Whiteboard sessionId={sessionId} />
             </div>
 
-            {/* Colonne latérale de gestion vidéo */}
             <div className="flex flex-col gap-6">
                 <Card className="flex-1 flex flex-col">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
-                            Participants ({participants.length + 1})
+                            Participants ({participants.size + 1})
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-y-auto">
                         <VideoGrid 
+                           sessionId={sessionId}
                            localParticipant={localParticipant}
-                           participants={participants}
+                           participants={Array.from(participants.values())}
+                           spotlightedParticipantSid={spotlightedParticipant?.sid}
                         />
                     </CardContent>
                 </Card>
@@ -65,43 +105,86 @@ function SessionPageContent() {
                     </CardContent>
                 </Card>
             </div>
-             <VideoPlayer 
-                sessionId={sessionId} 
-                role="teacher" 
-                onParticipantsChanged={setParticipants}
-                onLocalParticipantChanged={setLocalParticipant}
-            />
         </div>
     );
 
     const studentView = (
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             <div className="lg:col-span-2 flex flex-col gap-6">
-                <Card className="flex-grow flex flex-col">
-                    <CardHeader>
-                        <CardTitle>Session Vidéo</CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative flex-grow">
-                         <VideoPlayer 
-                            sessionId={sessionId} 
-                            role="student" 
-                            onParticipantsChanged={() => {}}
-                            onLocalParticipantChanged={() => {}}
-                         />
-                    </CardContent>
-                </Card>
+                 {spotlightedParticipant ? (
+                    <Participant 
+                        key={spotlightedParticipant.sid}
+                        participant={spotlightedParticipant}
+                        isLocal={spotlightedParticipant === localParticipant}
+                        isSpotlighted={true}
+                    />
+                ) : (
+                    <Card className="aspect-video flex items-center justify-center bg-muted">
+                        <div className="text-center">
+                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                            <p className="mt-2 text-muted-foreground">En attente du participant en vedette...</p>
+                        </div>
+                    </Card>
+                )}
                  <div className="flex-grow">
                    <Whiteboard sessionId={sessionId} />
                 </div>
             </div>
-            <div className="flex flex-col gap-4 p-4 bg-muted rounded-lg">
-                 <h3 className="font-bold">Participants</h3>
-                 <p className="text-muted-foreground text-sm text-center">
-                    La vue du professeur et votre propre vidéo apparaîtront dans la fenêtre principale.
-                </p>
-            </div>
+             <div className="space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Users /> Participants</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {localParticipant && (
+                           <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
+                                <Star className="h-4 w-4 text-amber-500" />
+                                <span className="font-semibold">{localParticipant.identity} (Vous)</span>
+                           </div>
+                        )}
+                        {Array.from(participants.values()).map(p => (
+                            <div key={p.sid} className="flex items-center gap-2 p-2 rounded-md">
+                                <Pin className="h-4 w-4 text-muted-foreground" />
+                                <span>{p.identity}</span>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+             </div>
         </div>
     );
+     const onConnected = useCallback((room: any) => {
+        setRoom(room);
+        setLocalParticipant(room.localParticipant);
+        const remoteParticipants = new Map(room.participants);
+        setParticipants(remoteParticipants);
+        
+        // Default spotlight to teacher (first participant)
+        if (room.participants.size > 0) {
+            const firstParticipant = room.participants.values().next().value;
+             if (role === 'student' && !spotlightedParticipant) {
+                setSpotlightedParticipant(firstParticipant);
+             }
+        } else if (role === 'student') {
+             setSpotlightedParticipant(room.localParticipant);
+        }
+
+        room.on('participantConnected', (participant: RemoteParticipant) => {
+            setParticipants(prev => new Map(prev).set(participant.sid, participant));
+        });
+
+        room.on('participantDisconnected', (participant: RemoteParticipant) => {
+            setParticipants(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(participant.sid);
+                return newMap;
+            });
+            if (spotlightedParticipant?.sid === participant.sid) {
+                setSpotlightedParticipant(room.localParticipant); // Or default to teacher
+            }
+        });
+    }, [role, spotlightedParticipant]);
+
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -115,7 +198,13 @@ function SessionPageContent() {
                 </div>
             </header>
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {role === 'teacher' ? teacherView : studentView}
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <Loader2 className="animate-spin h-8 w-8 text-primary" />
+                    </div>
+                ) : (
+                    role === 'teacher' ? teacherView : studentView
+                )}
             </main>
         </div>
     );
