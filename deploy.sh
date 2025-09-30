@@ -21,6 +21,6 @@ git commit -m "Commit initial" || echo "ℹ️ Aucun nouveau changement à comme
 
 # 4. Pousse les changements vers la branche master en forçant et en configurant l'upstream
 echo "📤 Pousse des changements vers la branche 'master' de origin..."
-git push -u origin master
+git push -u -f origin master
 
 echo "✅ Push initial terminé avec succès !"
