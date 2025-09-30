@@ -8,7 +8,14 @@ import { FileText, HelpCircle, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const templates = [
+export type Template = {
+  id: 'standard' | 'quiz' | 'poll';
+  title: string;
+  description: string;
+  icon: React.ElementType;
+};
+
+const templates: Template[] = [
   {
     id: 'standard',
     title: 'Leçon Standard',
@@ -29,27 +36,25 @@ const templates = [
   },
 ];
 
-export function SessionTemplateSelector() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { toast } = useToast();
+interface SessionTemplateSelectorProps {
+    onSelect: (template: Template) => void;
+}
 
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    // Pour l'instant, nous affichons simplement un toast.
-    // La logique de navigation vers l'étape suivante sera ajoutée ici.
-    toast({
-      title: 'Modèle sélectionné !',
-      description: `Vous avez choisi le modèle "${templates.find(t => t.id === id)?.title}". La prochaine étape arrive bientôt !`,
-    });
+export function SessionTemplateSelector({ onSelect }: SessionTemplateSelectorProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const handleSelect = (template: Template) => {
+    setSelectedId(template.id);
+    onSelect(template);
   };
 
   return (
-    <div className="p-6">
+    <div className="p-2">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {templates.map((template) => (
           <Card
             key={template.id}
-            onClick={() => handleSelect(template.id)}
+            onClick={() => handleSelect(template)}
             className={cn(
               'cursor-pointer transition-all duration-200 hover:shadow-lg',
               selectedId === template.id ? 'ring-2 ring-primary' : 'hover:border-primary/50'
@@ -64,11 +69,6 @@ export function SessionTemplateSelector() {
             </CardContent>
           </Card>
         ))}
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button disabled={!selectedId}>
-            Continuer vers la sélection des élèves
-        </Button>
       </div>
     </div>
   );

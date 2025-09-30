@@ -91,7 +91,7 @@ export default async function TeacherPage() {
              <Button asChild>
                 <Link href="/teacher/session/create">
                     <Video className="mr-2" />
-                    Démarrer une session
+                    Créer une session
                 </Link>
             </Button>
           </div>

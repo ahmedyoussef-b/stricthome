@@ -34,27 +34,37 @@ export function StudentCard({
   const [isPending] = useTransition();
   
   const state = student.etat;
+  const isEffectivelySelectable = isSelectable && isConnected;
+
+  const handleCardClick = () => {
+    if (isEffectivelySelectable) {
+      onSelectionChange(student.id, !isSelected);
+    }
+  };
 
   return (
-    <Card className={cn(
-      "flex flex-col transition-all duration-300 relative",
-      isSelected && isSelectable && "ring-2 ring-primary",
-      state?.isPunished && "bg-destructive/10 border-destructive",
-      (isPending || (!isConnected && isSelectable)) && "opacity-50",
-      (!isConnected && isSelectable) && "bg-muted/50"
-    )}>
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-             <div className={cn("h-2.5 w-2.5 rounded-full", isConnected ? 'bg-green-500' : 'bg-gray-400')} title={isConnected ? 'Connecté' : 'Déconnecté'}></div>
-             {isSelectable && (
-                <Checkbox
-                    id={`select-${student.id}`}
-                    checked={isSelected}
-                    onCheckedChange={(checked) => onSelectionChange(student.id, !!checked)}
-                    aria-label={`Sélectionner ${student.name}`}
-                    disabled={!isConnected}
-                />
-             )}
-        </div>
+    <Card 
+      onClick={handleCardClick}
+      className={cn(
+        "flex flex-col transition-all duration-300 relative",
+        state?.isPunished && "bg-destructive/10 border-destructive",
+        isSelectable && "cursor-pointer",
+        isSelected && isSelectable && "ring-2 ring-primary",
+        !isEffectivelySelectable && isSelectable && "opacity-60 bg-muted/50 cursor-not-allowed"
+      )}
+    >
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+        <div className={cn("h-2.5 w-2.5 rounded-full", isConnected ? 'bg-green-500' : 'bg-gray-400')} title={isConnected ? 'Connecté' : 'Déconnecté'}></div>
+        {isSelectable && (
+          <Checkbox
+            id={`select-${student.id}`}
+            checked={isSelected}
+            onCheckedChange={(checked) => onSelectionChange(student.id, !!checked)}
+            aria-label={`Sélectionner ${student.name}`}
+            disabled={!isEffectivelySelectable}
+          />
+        )}
+      </div>
 
       <CardHeader className="pb-2">
         <div className="flex items-center gap-4">
@@ -67,12 +77,12 @@ export function StudentCard({
         </div>
       </CardHeader>
       <CardContent className="flex-grow justify-center flex items-center">
-         {!isConnected && isSelectable && (
-             <p className="text-xs text-center text-muted-foreground font-semibold">Cet élève est hors ligne.</p>
+        {!isConnected && isSelectable && (
+          <p className="text-xs text-center text-muted-foreground font-semibold">Cet élève est hors ligne et ne peut pas être invité.</p>
         )}
       </CardContent>
       <CardFooter className="flex flex-col gap-2">
-         <Button asChild className="w-full" variant="secondary">
+         <Button asChild className="w-full" variant="secondary" onClick={(e) => e.stopPropagation()}>
             <Link href={`/student/${student.id}?viewAs=teacher`}>Voir la page de l'élève</Link>
         </Button>
       </CardFooter>

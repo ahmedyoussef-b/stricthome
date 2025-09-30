@@ -90,48 +90,13 @@ export default function ClassPageClient({ classe, teacher }: ClassPageClientProp
 
 
   const handleSelectionChange = (studentId: string, isSelected: boolean) => {
-    setSelectedStudents(prev => {
-      const newSelection = new Set(prev);
-      if (isSelected) {
-        newSelection.add(studentId);
-      } else {
-        newSelection.delete(studentId);
-      }
-      return newSelection;
-    });
+    // La sélection est maintenant gérée dans le flux de création de session
   };
 
   const selectedCount = selectedStudents.size;
 
   const handleStartSession = () => {
-    if (selectedCount === 0 || !teacher.id) return;
-    
-    startSessionTransition(async () => {
-        if (!teacher.id) {
-             toast({
-              variant: 'destructive',
-              title: 'Erreur',
-              description: 'Impossible de récupérer l\'identifiant du professeur.',
-            });
-            return;
-        }
-
-      try {
-        const studentIds = Array.from(selectedStudents);
-        const session = await createCoursSession(teacher.id, studentIds);
-        toast({
-          title: "Session créée !",
-          description: `La session a été démarrée avec ${selectedCount} élève(s).`,
-        });
-        router.push(`/session/${session.id}?role=teacher&students=${studentIds.join(',')}`);
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: 'Impossible de démarrer la session.',
-        });
-      }
-    });
+    // Cette fonction est maintenant obsolète ici
   };
 
   return (
@@ -161,7 +126,12 @@ export default function ClassPageClient({ classe, teacher }: ClassPageClientProp
                         classeId={classe.id}
                     />
                  )}
-                {/* Le bouton de démarrage de session est maintenant géré via un flux centralisé */}
+                 <Button asChild>
+                     <Link href="/teacher/session/create">
+                        <Video className="mr-2 h-4 w-4" />
+                        Créer une session
+                    </Link>
+                 </Button>
           </div>
         </div>
 
@@ -170,33 +140,13 @@ export default function ClassPageClient({ classe, teacher }: ClassPageClientProp
             <StudentCard 
                 key={student.id} 
                 student={student} 
-                isSelected={selectedStudents.has(student.id)}
-                onSelectionChange={handleSelectionChange}
+                isSelected={false} // La sélection n'est plus active ici
+                onSelectionChange={() => {}} // La sélection n'est plus active ici
                 isConnected={!!student.email && onlineUserEmails.has(student.email)}
-                isSelectable={false} // Désactiver la sélection directe ici
+                isSelectable={false} // Désactiver la sélection directe
              />
           ))}
         </div>
-         {/* L'ancienne UI de sélection est conservée pour référence mais n'est plus fonctionnelle pour le démarrage */}
-        {/*
-        {selectedCount > 0 && (
-            <div className="fixed bottom-4 right-4 z-50">
-                <Button 
-                  onClick={handleStartSession} 
-                  disabled={isStartingSession}
-                  size="lg"
-                  className="transition-all animate-in fade-in zoom-in-95 shadow-lg"
-                >
-                  {isStartingSession ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Video className="mr-2 h-4 w-4" />
-                  )}
-                  Démarrer une session ({selectedCount})
-                </Button>
-            </div>
-        )}
-        */}
       </main>
     </>
   );
