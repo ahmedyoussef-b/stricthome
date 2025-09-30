@@ -4,39 +4,36 @@ import { useEffect, useState } from 'react';
 import { pusherClient } from '@/lib/pusher/client';
 import { Users } from 'lucide-react';
 
-export function OnlineUsers({ chatroomId }: { chatroomId: string }) {
+interface OnlineUsersProps {
+  channelType: 'classe' | 'session';
+  channelId: string;
+}
+
+export function OnlineUsers({ channelType, channelId }: OnlineUsersProps) {
   const [onlineUsers, setOnlineUsers] = useState<Array<{id: string, name: string}>>([]);
 
   useEffect(() => {
-    if (!chatroomId) return;
+    if (!channelId) return;
     
-    const channelName = `presence-chatroom-${chatroomId}`;
+    const channelName = `presence-${channelType}-${channelId}`;
     const channel = pusherClient.subscribe(channelName);
     
-    channel.bind('pusher:subscription_succeeded', (members: any) => {
-      const users = Object.keys(members.members).map((id) => ({
-        id: id,
-        name: members.members[id].name
-      }));
-      setOnlineUsers(users);
-    });
+    const updateUsers = (members: any) => {
+        const users = Object.keys(members.members).map((id) => ({
+            id: id,
+            name: members.members[id].name
+        }));
+        setOnlineUsers(users);
+    }
 
-    channel.bind('pusher:member_added', (member: any) => {
-      setOnlineUsers(prev => [...prev, {
-        id: member.id,
-        name: member.info.name
-      }]);
-    });
-
-    channel.bind('pusher:member_removed', (member: any) => {
-      setOnlineUsers(prev => prev.filter(user => user.id !== member.id));
-    });
+    channel.bind('pusher:subscription_succeeded', updateUsers);
+    channel.bind('pusher:member_added', () => updateUsers(channel.members));
+    channel.bind('pusher:member_removed', () => updateUsers(channel.members));
 
     return () => {
-      channel.unbind_all();
       pusherClient.unsubscribe(channelName);
     };
-  }, [chatroomId]);
+  }, [channelId, channelType]);
 
   return (
     <div className="bg-muted p-3 rounded-lg border">

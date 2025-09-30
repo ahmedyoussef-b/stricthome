@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import CreateSessionPage from './page';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { ClasseWithDetails } from '@/lib/types';
 
 // This is a new Server Component to fetch data and pass it to the Client Component.
 export default async function CreateSessionServerPage() {
@@ -15,7 +16,7 @@ export default async function CreateSessionServerPage() {
   
   const teacherId = session.user.id;
   const cacheKey = `teacher-classes:${teacherId}`;
-  let classesData = null;
+  let classesData: ClasseWithDetails[] = [];
 
   if (redis) {
       try {
@@ -29,9 +30,9 @@ export default async function CreateSessionServerPage() {
       }
   }
 
-  if (!classesData) {
+  if (classesData.length === 0) {
       console.log(`[Cache] MISS pour ${cacheKey}. Récupération depuis la DB.`);
-      classesData = await prisma.classe.findMany({
+      const rawClassesData = await prisma.classe.findMany({
         where: { professeurId: teacherId },
         include: {
           eleves: {
@@ -45,6 +46,16 @@ export default async function CreateSessionServerPage() {
         },
         orderBy: { nom: 'asc' },
       });
+
+      classesData = rawClassesData.map(c => ({
+        ...c,
+        eleves: c.eleves.map(e => ({
+          id: e.id,
+          name: e.name,
+          email: e.email,
+          etat: e.etat ? { isPunished: e.etat.isPunished } : null,
+        }))
+      }))
       
       if (redis) {
           try {
@@ -56,21 +67,5 @@ export default async function CreateSessionServerPage() {
       }
   }
 
-
-  const clientProps = {
-    user: session.user,
-    classes: classesData.map((c: any) => ({
-      id: c.id,
-      nom: c.nom,
-      chatroomId: c.chatroomId,
-      eleves: c.eleves.map((e: any) => ({
-        id: e.id,
-        name: e.name,
-        email: e.email,
-        etat: e.etat ? { isPunished: e.etat.isPunished } : null,
-      })),
-    })),
-  };
-
-  return <CreateSessionPage {...clientProps} />;
+  return <CreateSessionPage user={session.user} classes={classesData} />;
 }

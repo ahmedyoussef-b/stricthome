@@ -46,11 +46,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
                 metier: true
               }
             },
-            classe: {
-              include: {
-                chatroom: true
-              }
-            },
+            classe: true,
             sessionsParticipees: {
               where: {
                 endedAt: null
@@ -130,7 +126,7 @@ export default async function StudentPage({
   const ambitionIcon = career ? <GraduationCap className="h-5 w-5 text-primary" /> : <Lightbulb className="h-5 w-5 text-accent" />;
   
   const activeSession = student.sessionsParticipees?.[0];
-  const chatroomId = student.classe?.chatroomId;
+  const classeId = student.classeId;
   const tasks = await prisma.task.findMany();
   const announcements = await getStudentAnnouncements(student.id);
 
@@ -138,8 +134,8 @@ export default async function StudentPage({
     <CareerThemeWrapper career={career ?? undefined}>
       <div className="flex flex-col min-h-screen">
         <Header user={session.user}>
-            {chatroomId && !isTeacherView && (
-                <ChatSheet chatroomId={chatroomId} userId={session.user.id} userRole={session.user.role} />
+            {classeId && !isTeacherView && (
+                <ChatSheet classeId={classeId} userId={session.user.id} userRole={session.user.role} />
             )}
         </Header>
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">

@@ -17,23 +17,12 @@ import {
 import { Clock, Users, CheckCircle } from 'lucide-react';
 import { ClassParticipantSelector } from '@/components/ClassParticipantSelector';
 import type { User as AuthUser } from 'next-auth';
+import { ClasseWithDetails } from '@/lib/types';
 
 
 interface CreateSessionPageProps {
   user: AuthUser;
-  classes: {
-    id: string;
-    nom: string;
-    eleves: {
-      id: string;
-      name: string | null;
-      email: string | null;
-      etat: {
-        isPunished: boolean;
-      } | null;
-    }[];
-    chatroomId: string | null;
-  }[];
+  classes: ClasseWithDetails[];
 }
 
 // This is a client component now

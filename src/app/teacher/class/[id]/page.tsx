@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import ClassPageClient from './ClassPageClient';
 import { getAuthSession } from '@/lib/session';
 import { getClassAnnouncements } from '@/lib/actions/announcement.actions';
+import { ClasseWithDetails } from '@/lib/types';
 
 export default async function ClassPage({ params }: { params: { id: string } }) {
   const classeId = params.id;
@@ -17,38 +18,35 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       where: { id: classeId, professeurId: session.user.id },
       include: {
         eleves: {
-          include: {
-            etat: true,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            etat: {
+              select: {
+                isPunished: true,
+              }
+            }
           },
           orderBy: { name: 'asc' }
         },
       },
     });
 
-  if (!classe || !classe.chatroomId) {
+  if (!classe) {
     notFound();
   }
 
   const announcements = await getClassAnnouncements(classe.id);
   
-  const clientProps = {
-    classe: {
-      id: classe.id,
-      nom: classe.nom,
-      chatroomId: classe.chatroomId,
-      eleves: classe.eleves.map(e => ({
-          id: e.id,
-          name: e.name,
-          email: e.email,
-          etat: e.etat ? {
-              isPunished: e.etat.isPunished
-          } : null,
-      })),
-    },
-    teacher: session.user,
-    announcements,
+  // Cast the fetched data to our specific client-side type
+  const clientClasse: ClasseWithDetails = {
+    ...classe,
+    eleves: classe.eleves.map(e => ({
+      ...e,
+      etat: e.etat // 'etat' can be null, which is fine
+    }))
   };
 
-
-  return <ClassPageClient {...clientProps} />;
+  return <ClassPageClient classe={clientClasse} teacher={session.user} announcements={announcements} />;
 }

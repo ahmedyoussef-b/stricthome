@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    // Autorisation pour les canaux de présence (classe, tableau blanc)
+    // Generic authorization for any presence channel
     if (channelName.startsWith('presence-')) {
        const userData = {
         user_id: session.user.id,
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
           email: session.user.email || 'user@example.com',
         },
       };
+      // TODO: Add verification logic to ensure the user is allowed in this specific channel
+      // e.g., for presence-classe-xyz, check if user is in classe xyz.
       const authResponse = pusherServer.authorizeChannel(socketId, channelName, userData);
       return new Response(JSON.stringify(authResponse), {
         headers: { 'Content-Type': 'application/json' }

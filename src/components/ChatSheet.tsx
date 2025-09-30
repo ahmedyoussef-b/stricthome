@@ -138,7 +138,7 @@ function SubmitButton() {
 }
 
 
-export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroomId: string, userId: string, userRole: Role, classeId?: string }) {
+export function ChatSheet({ classeId, userId, userRole }: { classeId: string, userId: string, userRole: Role }) {
   const [messages, setMessages] = useState<MessageWithStatus[]>([]);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -156,12 +156,12 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
   }, []);
 
   useEffect(() => {
-    if (!chatroomId) return;
+    if (!classeId) return;
     
     const fetchMessages = () => {
       startTransition(async () => {
         try {
-          const res = await getMessages(chatroomId);
+          const res = await getMessages(classeId);
           setMessages(res || []);
           scrollToBottom('auto');
         } catch (error) {
@@ -174,7 +174,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
       });
     };
     fetchMessages();
-  }, [chatroomId, toast, scrollToBottom]);
+  }, [classeId, toast, scrollToBottom]);
   
   const handleNewMessage = useCallback((newMessage: MessageWithReactions) => {
     setMessages(prev => {
@@ -225,9 +225,9 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
 
 
   useEffect(() => {
-    if (!chatroomId) return;
+    if (!classeId) return;
 
-    const channelName = `presence-chatroom-${chatroomId}`;
+    const channelName = `presence-classe-${classeId}`;
     try {
         const channel = pusherClient.subscribe(channelName);
         
@@ -253,7 +253,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
         });
     }
 
-  }, [chatroomId, handleNewMessage, handleReactionUpdate, handleHistoryCleared, toast]);
+  }, [classeId, handleNewMessage, handleReactionUpdate, handleHistoryCleared, toast]);
 
   const handleReaction = (messageId: string, emoji: string) => {
     if (messageId.startsWith('temp-')) {
@@ -288,10 +288,10 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
         message: messageContent,
         senderId: session.user.id,
         senderName: session.user.name ?? 'Moi',
-        chatroomId: chatroomId,
         createdAt: new Date(),
         reactions: [],
         status: 'pending',
+        classeId: classeId,
     };
     
     setMessages(prev => [...prev, optimisticMessage]);
@@ -314,7 +314,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
     
     const formData = new FormData();
     formData.append('message', msg.message);
-    formData.append('chatroomId', msg.chatroomId);
+    formData.append('classeId', msg.classeId!);
 
     sendMessage(formData).catch((error) => {
         console.error("💥 Échec de la nouvelle tentative d'envoi:", error);
@@ -346,7 +346,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
               <SheetTitle>Chat de la classe</SheetTitle>
               <SheetDescription>{descriptionText}</SheetDescription>
             </div>
-            {userRole === Role.PROFESSEUR && classeId && (
+            {userRole === Role.PROFESSEUR && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="icon">
@@ -363,7 +363,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <form action={deleteChatHistory.bind(null, chatroomId, classeId)}>
+                    <form action={deleteChatHistory.bind(null, classeId)}>
                         <AlertDialogAction asChild>
                             <Button type="submit">Supprimer</Button>
                         </AlertDialogAction>
@@ -375,7 +375,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
           </div>
         </SheetHeader>
         <div className="flex-1 flex flex-col min-h-0">
-          {chatroomId && <OnlineUsers chatroomId={chatroomId} />}
+          {classeId && <OnlineUsers channelType='classe' channelId={classeId} />}
           <ScrollArea className="flex-1 pr-4 -mr-4 mt-4" ref={scrollAreaRef}>
             <div className="space-y-6 py-4">
               {messages.map((msg) => (
@@ -399,7 +399,7 @@ export function ChatSheet({ chatroomId, userId, userRole, classeId }: { chatroom
             action={sendMessageAction}
             className="flex gap-2 border-t pt-4"
           >
-            <input type="hidden" name="chatroomId" value={chatroomId} />
+            <input type="hidden" name="classeId" value={classeId} />
             <Input
               name="message"
               placeholder="Écrivez un message..."

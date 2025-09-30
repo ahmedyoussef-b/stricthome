@@ -5,7 +5,7 @@ import { Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { AddClassForm } from '@/components/AddClassForm';
-import { User, Classe, Chatroom } from '@prisma/client';
+import { User, Classe } from '@prisma/client';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
@@ -18,7 +18,6 @@ type TeacherWithClasses = User & {
     _count: {
       eleves: number;
     };
-    chatroom: Chatroom | null;
   })[];
 };
 
@@ -49,7 +48,6 @@ async function getTeacherData(teacherId: string): Promise<TeacherWithClasses | n
           _count: {
             select: { eleves: true },
           },
-          chatroom: true,
         },
       },
     },

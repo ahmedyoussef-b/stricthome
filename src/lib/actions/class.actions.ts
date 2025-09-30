@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { redis } from '../redis';
 
 export async function createClass(formData: FormData) {
     const nom = formData.get('nom') as string;
@@ -12,19 +13,17 @@ export async function createClass(formData: FormData) {
         throw new Error('Nom de la classe et ID du professeur sont requis.');
     }
     
-    // 1. Créer un nouveau chatroom
-    const newChatroom = await prisma.chatroom.create({
-        data: {},
-    });
-
-    // 2. Créer la nouvelle classe en liant le chatroom
     const newClass = await prisma.classe.create({
         data: {
             nom,
             professeurId,
-            chatroomId: newChatroom.id,
         },
     });
+
+    if (redis) {
+      await redis.del(`teacher:${professeurId}`);
+      await redis.del(`teacher-classes:${professeurId}`);
+    }
 
     revalidatePath('/teacher');
 
@@ -41,6 +40,9 @@ export async function addStudentToClass(formData: FormData) {
         throw new Error('Nom, email et ID de classe sont requis.');
     }
     
+    const classe = await prisma.classe.findUnique({ where: { id: classeId } });
+    if (!classe) throw new Error('Classe non trouvée.');
+
     // Optional: Check if user with this email already exists
     let user = await prisma.user.findUnique({ where: { email } });
 
@@ -69,6 +71,10 @@ export async function addStudentToClass(formData: FormData) {
                 isPunished: false,
             },
         });
+    }
+
+    if (redis) {
+      await redis.del(`teacher-classes:${classe.professeurId}`);
     }
 
     revalidatePath(`/teacher/class/${classeId}`);

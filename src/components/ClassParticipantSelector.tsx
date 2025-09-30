@@ -19,26 +19,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Video } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Users } from 'lucide-react';
+import { ClasseWithDetails, StudentForCard } from '@/lib/types';
 
-type SimpleStudent = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  etat: {
-    isPunished: boolean;
-  } | null;
-};
-
-type ClassInfo = {
-  id: string;
-  nom: string;
-  eleves: SimpleStudent[];
-  chatroomId: string | null;
-};
 
 interface ClassParticipantSelectorProps {
   teacherId: string;
-  classes: ClassInfo[];
+  classes: ClasseWithDetails[];
 }
 
 export function ClassParticipantSelector({ teacherId, classes }: ClassParticipantSelectorProps) {
@@ -52,12 +38,12 @@ export function ClassParticipantSelector({ teacherId, classes }: ClassParticipan
   const selectedClass = classes.find(c => c.id === selectedClassId);
 
   useEffect(() => {
-    if (!selectedClass?.chatroomId) {
+    if (!selectedClass?.id) {
         setOnlineUserEmails(new Set());
         return;
     };
 
-    const channelName = `presence-chatroom-${selectedClass.chatroomId}`;
+    const channelName = `presence-classe-${selectedClass.id}`;
     const channel = pusherClient.subscribe(channelName);
 
     const updateOnlineMembers = (members: any) => {

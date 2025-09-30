@@ -15,13 +15,14 @@ async function main() {
   await prisma.coursSession.deleteMany();
   await prisma.reaction.deleteMany();
   await prisma.message.deleteMany();
-  await prisma.classe.deleteMany();
   await prisma.taskCompletion.deleteMany();
+  await prisma.conversation.deleteMany();
+  await prisma.annonce.deleteMany();
+  await prisma.classe.deleteMany();
   
   // Then delete main entities
   await prisma.user.deleteMany();
   await prisma.metier.deleteMany();
-  await prisma.chatroom.deleteMany();
   await prisma.task.deleteMany();
   console.log('✅ Données nettoyées.');
 
@@ -100,20 +101,12 @@ async function main() {
   });
   console.log('✅ Professeur créé.');
 
-  // Create a chatroom
-  console.log('💬 Création du salon de discussion...');
-  const chatroom = await prisma.chatroom.create({
-    data: {},
-  });
-  console.log('✅ Salon de discussion créé.');
-
   // Create a class
   console.log('🏫 Création de la classe...');
   const classeA = await prisma.classe.create({
     data: {
       nom: 'Classe A',
       professeurId: teacher.id,
-      chatroomId: chatroom.id,
     },
   });
   console.log('✅ Classe créée.');
@@ -164,7 +157,7 @@ async function main() {
         message: "Bonjour la classe! N'oubliez pas vos devoirs pour demain.",
         senderId: teacher.id,
         senderName: teacher.name!,
-        chatroomId: chatroom.id,
+        classeId: classeA.id,
     }
   });
 
@@ -173,7 +166,7 @@ async function main() {
         message: "Bonjour Monsieur, j'ai une question sur l'exercice 3.",
         senderId: createdStudents[0].id,
         senderName: createdStudents[0].name!,
-        chatroomId: chatroom.id,
+        classeId: classeA.id,
     }
   });
   console.log('✅ Messages créés.');

@@ -12,24 +12,11 @@ import { MessageSquare } from 'lucide-react';
 import { getOrCreateConversation } from '@/lib/actions/conversation.actions';
 import { useSession } from 'next-auth/react';
 import { DirectMessage } from './DirectMessage';
-import type { Conversation, Message, User } from '@prisma/client';
-
-type FullConversation = Conversation & {
-    messages: Message[];
-    initiator: Pick<User, 'id' | 'name'>;
-    receiver: Pick<User, 'id' | 'name'>;
-};
+import type { FullConversation, StudentForCard } from '@/lib/types';
 
 
-// Utiliser un type simple pour les props de l'élève
 interface StudentCardProps {
-  student: {
-    id: string;
-    name: string | null;
-    etat: {
-      isPunished: boolean;
-    } | null;
-  };
+  student: StudentForCard;
   isSelected: boolean;
   onSelectionChange: (studentId: string, isSelected: boolean) => void;
   isConnected: boolean;

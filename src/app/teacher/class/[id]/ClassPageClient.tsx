@@ -16,25 +16,11 @@ import { ChatSheet } from '@/components/ChatSheet';
 import { pusherClient } from '@/lib/pusher/client';
 import { Role } from '@prisma/client';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
-import { AnnouncementWithAuthor } from '@/lib/types';
+import { AnnouncementWithAuthor, ClasseWithDetails } from '@/lib/types';
 
-// Définir un type simple et sérialisable pour les élèves
-type SimpleStudent = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  etat: {
-    isPunished: boolean;
-  } | null;
-};
 
 interface ClassPageClientProps {
-    classe: {
-        id: string;
-        nom: string;
-        chatroomId: string;
-        eleves: SimpleStudent[];
-    };
+    classe: ClasseWithDetails;
     teacher: AuthUser;
     announcements: AnnouncementWithAuthor[];
 }
@@ -47,9 +33,9 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!classe.chatroomId) return;
+    if (!classe.id) return;
 
-    const channelName = `presence-chatroom-${classe.chatroomId}`;
+    const channelName = `presence-classe-${classe.id}`;
     
     try {
         const channel = pusherClient.subscribe(channelName);
@@ -89,7 +75,7 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
     } catch (error) {
         console.error("💥 [Pusher] La souscription à Pusher a échoué:", error);
     }
-  }, [classe.chatroomId]);
+  }, [classe.id]);
 
 
   const handleSelectionChange = (studentId: string, isSelected: boolean) => {
@@ -121,12 +107,11 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
             </div>
             <div className="flex items-center gap-2">
                 <AddStudentForm classeId={classe.id} />
-                 {classe.chatroomId && teacher.id && (
+                 {teacher.id && (
                     <ChatSheet 
-                        chatroomId={classe.chatroomId} 
+                        classeId={classe.id} 
                         userId={teacher.id} 
                         userRole={teacher.role} 
-                        classeId={classe.id}
                     />
                  )}
                  <Button asChild>

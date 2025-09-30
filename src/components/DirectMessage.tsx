@@ -21,19 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from 'next-auth/react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { sendDirectMessage } from '@/lib/actions';
-import type { Conversation, Message, User } from '@prisma/client';
-
-type FullConversation = Conversation & {
-    messages: Message[];
-    initiator: Pick<User, 'id' | 'name'>;
-    receiver: Pick<User, 'id' | 'name'>;
-};
-
-interface DirectMessageProps {
-  conversation: FullConversation;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+import type { FullConversation } from '@/lib/types';
+import type { Message } from '@prisma/client';
 
 type MessageWithStatus = Message & {
     status?: 'pending' | 'failed';
@@ -71,6 +60,12 @@ function SubmitButton() {
           {pending ? <Loader2 className="animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
     )
+}
+
+interface DirectMessageProps {
+  conversation: FullConversation;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function DirectMessage({ conversation, isOpen, onOpenChange }: DirectMessageProps) {
