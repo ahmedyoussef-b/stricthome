@@ -1,17 +1,15 @@
 // src/app/session/[id]/page.tsx
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useState }s from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, VideoOff, MicOff, Star, XCircle, Timer, ScreenShare, Video, Mic } from 'lucide-react';
+import { ArrowLeft, Users, Timer, ScreenShare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { VideoControls } from '@/components/VideoControls';
-import type { RemoteParticipant } from 'twilio-video';
-import { Participant } from '@/components/Participant';
+import type { RemoteParticipant, LocalParticipant } from 'twilio-video';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { VideoGrid } from '@/components/VideoGrid';
 
 function SessionPageContent() {
     const router = useRouter();
@@ -22,66 +20,33 @@ function SessionPageContent() {
     const role = searchParams.get('role');
 
     const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
-    const [spotlightedParticipant, setSpotlightedParticipant] = useState<RemoteParticipant | 'local' | null>('local');
+    const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
 
     const handleGoBack = () => {
         router.back();
     };
 
-    const mainParticipant = spotlightedParticipant === 'local' 
-        ? null // Local participant is handled inside VideoPlayer
-        : participants.find(p => p.sid === spotlightedParticipant?.sid) || null;
-
     const teacherView = (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-            {/* Colonne principale avec la vidéo et l'espace de travail */}
-            <div className="lg:col-span-3 flex flex-col gap-6">
-                <Card className="flex-grow flex flex-col">
-                    <CardHeader>
-                        <CardTitle>
-                           {spotlightedParticipant === 'local' ? 'Mon flux (Enseignant)' : `En vedette : ${mainParticipant?.identity}`}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative flex-grow">
-                        <VideoPlayer 
-                            sessionId={sessionId} 
-                            role="teacher" 
-                            onParticipantsChanged={setParticipants}
-                            spotlightedParticipant={mainParticipant}
-                        />
-                    </CardContent>
-                </Card>
-                <div className="flex-grow">
-                   <Whiteboard sessionId={sessionId} />
-                </div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
+            {/* Colonne principale avec l'espace de travail */}
+            <div className="xl:col-span-2 flex flex-col gap-6">
+                <Whiteboard sessionId={sessionId} />
             </div>
 
-            {/* Colonne latérale de gestion */}
+            {/* Colonne latérale de gestion vidéo */}
             <div className="flex flex-col gap-6">
-                <Card>
-                    <CardHeader>
+                <Card className="flex-1 flex flex-col">
+                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
                             Participants ({participants.length + 1})
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Participant 
-                            participant="local" 
-                            isSpotlighted={spotlightedParticipant === 'local'}
-                            onSpotlight={() => setSpotlightedParticipant('local')}
-                            isTeacherView={true}
+                    <CardContent className="flex-1 overflow-y-auto">
+                        <VideoGrid 
+                           localParticipant={localParticipant}
+                           participants={participants}
                         />
-                         <Separator />
-                        {participants.map(participant => (
-                           <Participant 
-                                key={participant.sid}
-                                participant={participant}
-                                isSpotlighted={spotlightedParticipant?.sid === participant.sid}
-                                onSpotlight={() => setSpotlightedParticipant(participant)}
-                                isTeacherView={true}
-                            />
-                        ))}
                     </CardContent>
                 </Card>
                  <Card>
@@ -100,6 +65,12 @@ function SessionPageContent() {
                     </CardContent>
                 </Card>
             </div>
+             <VideoPlayer 
+                sessionId={sessionId} 
+                role="teacher" 
+                onParticipantsChanged={setParticipants}
+                onLocalParticipantChanged={setLocalParticipant}
+            />
         </div>
     );
 
@@ -115,6 +86,7 @@ function SessionPageContent() {
                             sessionId={sessionId} 
                             role="student" 
                             onParticipantsChanged={() => {}}
+                            onLocalParticipantChanged={() => {}}
                          />
                     </CardContent>
                 </Card>

@@ -11,20 +11,16 @@ const isAttachable = (track: Track): track is LocalVideoTrack | LocalAudioTrack 
   return typeof (track as any).attach === 'function';
 };
 
-const isDetachable = (track: Track): track is LocalVideoTrack | LocalAudioTrack | RemoteVideoTrack | RemoteAudioTrack => {
-  return typeof (track as any).detach === 'function';
-};
-
 interface VideoPlayerProps {
   sessionId: string;
   role: 'teacher' | 'student';
   onParticipantsChanged: (participants: RemoteParticipant[]) => void;
-  spotlightedParticipant?: RemoteParticipant | null;
+  onLocalParticipantChanged: (participant: LocalParticipant) => void;
 }
 
-export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlightedParticipant }: VideoPlayerProps) {
+export function VideoPlayer({ sessionId, role, onParticipantsChanged, onLocalParticipantChanged }: VideoPlayerProps) {
   const localVideoRef = useRef<HTMLDivElement>(null);
-  const remoteVideoRef = useRef<HTMLDivElement>(null); // For spotlighted participant
+  const remoteVideoRef = useRef<HTMLDivElement>(null); // Only for student view now
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
@@ -44,7 +40,7 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      cameraTrackRef.current = stream.getVideoTracks().map(track => new LocalVideoTrack(track))[0];
+      cameraTrackRef.current = new LocalVideoTrack(stream.getVideoTracks()[0]);
       setHasPermission(true);
     } catch (error) {
       console.error("💥 [VideoPlayer] Erreur d'accès aux média:", error);
@@ -76,35 +72,30 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
       const room = await Video.connect(token, {
         name: sessionId,
         audio: true,
-        video: { width: 640 },
         tracks: cameraTrackRef.current ? [cameraTrackRef.current] : [],
       });
       roomRef.current = room;
 
-      // Handle local participant
-      if (localVideoRef.current) {
-        attachTrack(room.localParticipant, localVideoRef.current);
-      }
+      onLocalParticipantChanged(room.localParticipant);
+
+      // In student view, attach teacher's video (assuming teacher is the first participant)
+      const mainRemoteContainer = role === 'student' ? remoteVideoRef.current : null;
 
       const updateParticipants = () => {
-        onParticipantsChanged(Array.from(room.participants.values()));
+        const remoteParticipants = Array.from(room.participants.values());
+        onParticipantsChanged(remoteParticipants);
       };
       
-      // Handle existing participants
       updateParticipants();
-      room.participants.forEach(p => handleParticipant(p, room));
 
-      // Handle new participants
+      room.participants.forEach(p => handleParticipant(p, room, mainRemoteContainer));
+
       room.on('participantConnected', (p) => {
-        handleParticipant(p, room);
+        handleParticipant(p, room, mainRemoteContainer);
         updateParticipants();
       });
       
-      // Handle participant disconnection
       room.on('participantDisconnected', (p) => {
-         p.tracks.forEach(publication => {
-             if (publication.track) detachTrack(publication.track);
-         });
          updateParticipants();
       });
       
@@ -118,45 +109,17 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, role, toast, onParticipantsChanged]);
+  }, [sessionId, role, toast, onParticipantsChanged, onLocalParticipantChanged]);
 
-  const handleParticipant = (participant: RemoteParticipant, room: Room) => {
-    participant.on('trackSubscribed', (track) => {
-        // We will attach tracks manually based on spotlight
-    });
-  };
 
-  const attachTrack = (participant: LocalParticipant | RemoteParticipant, container: HTMLElement) => {
-    participant.tracks.forEach(publication => {
-      if (publication.isSubscribed && publication.track && isAttachable(publication.track)) {
-        const element = publication.track.attach();
+  const handleParticipant = (participant: RemoteParticipant, room: Room, container: HTMLDivElement | null) => {
+    participant.on('trackSubscribed', track => {
+      if (container && isAttachable(track)) {
         container.innerHTML = ''; // Clear previous video
-        container.appendChild(element);
+        container.appendChild(track.attach());
       }
     });
   };
-
-  const detachTrack = (track: Track, container: HTMLElement) => {
-      if (isDetachable(track)) {
-          track.detach().forEach(element => element.remove());
-      }
-      container.innerHTML = '';
-  };
-  
-   useEffect(() => {
-    // Attach spotlighted participant's video to the main view
-    if (remoteVideoRef.current) {
-        // Clear previous video
-        remoteVideoRef.current.innerHTML = '';
-        if (spotlightedParticipant) {
-            attachTrack(spotlightedParticipant, remoteVideoRef.current);
-        } else if (roomRef.current) {
-            // If no spotlight, show local teacher's video
-            attachTrack(roomRef.current.localParticipant, remoteVideoRef.current);
-        }
-    }
-  }, [spotlightedParticipant]);
-
 
   useEffect(() => {
     connectToRoom();
@@ -165,6 +128,8 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
       if(roomRef.current) {
         roomRef.current.disconnect();
       }
+      cameraTrackRef.current?.stop();
+      screenTrackRef.current?.stop();
     };
   }, [connectToRoom]);
 
@@ -180,6 +145,7 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
 
         if (cameraTrackRef.current) {
             await room.localParticipant.unpublishTrack(cameraTrackRef.current);
+            cameraTrackRef.current.stop();
         }
         await room.localParticipant.publishTrack(screenTrack);
         setIsSharingScreen(true);
@@ -195,10 +161,15 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
         room.localParticipant.unpublishTrack(screenTrackRef.current);
         screenTrackRef.current.stop();
         screenTrackRef.current = null;
-
-        if (cameraTrackRef.current) {
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraTrackRef.current = new LocalVideoTrack(stream.getVideoTracks()[0]);
             await room.localParticipant.publishTrack(cameraTrackRef.current);
+        } catch (e) {
+            console.error("Failed to re-acquire camera", e);
         }
+
         setIsSharingScreen(false);
         toast({ title: "Partage d'écran arrêté" });
       }
@@ -219,28 +190,31 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlighte
     </div>
   );
   
-  const MainVideoView = spotlightedParticipant ? remoteVideoRef : (role === 'teacher' ? localVideoRef : remoteVideoRef);
-  const PipVideoView = role === 'teacher' ? null : localVideoRef;
+  if (role === 'teacher') {
+      return (
+          <>
+            {isLoading && hasPermission !== false && LoadingState}
+            {hasPermission === false && NoPermissionState}
+            {!isLoading && (
+                 <VideoControls 
+                    isSharingScreen={isSharingScreen}
+                    onToggleScreenShare={toggleScreenShare}
+                />
+            )}
+          </>
+      )
+  }
 
-
+  // Student View
   return (
     <div className="w-full h-full bg-muted rounded-md flex items-center justify-center relative overflow-hidden group">
-      {/* Main area for local or remote video */}
-      <div ref={MainVideoView} className="w-full h-full object-contain" />
+      {/* Main area for remote video (teacher) */}
+      <div ref={remoteVideoRef} className="w-full h-full object-contain" />
         
       {/* Picture-in-picture for student's local video */}
-      {PipVideoView && (
-        <div className="absolute bottom-4 right-4 w-1/4 max-w-[200px] h-auto z-20 border-2 border-background rounded-md overflow-hidden aspect-video shadow-lg">
-            <div ref={PipVideoView} className="w-full h-full" />
-        </div>
-      )}
-
-      {role === 'teacher' && !isLoading && (
-        <VideoControls 
-            isSharingScreen={isSharingScreen}
-            onToggleScreenShare={toggleScreenShare}
-        />
-      )}
+      <div className="absolute bottom-4 right-4 w-1/4 max-w-[200px] h-auto z-20 border-2 border-background rounded-md overflow-hidden aspect-video shadow-lg">
+          <div ref={localVideoRef} className="w-full h-full" />
+      </div>
         
       {isLoading && hasPermission !== false && LoadingState}
       {hasPermission === false && NoPermissionState}
