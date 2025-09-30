@@ -1,11 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    devServer: {
-      allowedDevOrigins: [
-        'https://*.cloudworkstations.dev',
-      ],
-    }
+    allowedDevOrigins: ["https://6000-firebase-studio-1759130826485.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev"],
   },
 };
 
