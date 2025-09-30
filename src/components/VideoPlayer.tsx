@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, VideoOff } from "lucide-react";
-import Video, { Room, LocalTrack, RemoteTrack, LocalVideoTrack, LocalAudioTrack, RemoteVideoTrack, RemoteAudioTrack, Track, LocalVideoTrackPublication, createLocalVideoTrack } from 'twilio-video';
+import Video, { Room, LocalTrack, RemoteTrack, LocalVideoTrack, LocalAudioTrack, RemoteVideoTrack, RemoteAudioTrack, Track, LocalVideoTrackPublication, createLocalVideoTrack, RemoteParticipant, LocalParticipant } from 'twilio-video';
 import { VideoControls } from "./VideoControls";
 
 const isAttachable = (track: Track): track is LocalVideoTrack | LocalAudioTrack | RemoteVideoTrack | RemoteAudioTrack => {
@@ -18,11 +18,13 @@ const isDetachable = (track: Track): track is LocalVideoTrack | LocalAudioTrack 
 interface VideoPlayerProps {
   sessionId: string;
   role: 'teacher' | 'student';
+  onParticipantsChanged: (participants: RemoteParticipant[]) => void;
+  spotlightedParticipant?: RemoteParticipant | null;
 }
 
-export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
+export function VideoPlayer({ sessionId, role, onParticipantsChanged, spotlightedParticipant }: VideoPlayerProps) {
   const localVideoRef = useRef<HTMLDivElement>(null);
-  const remoteVideoRef = useRef<HTMLDivElement>(null);
+  const remoteVideoRef = useRef<HTMLDivElement>(null); // For spotlighted participant
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
@@ -39,13 +41,10 @@ export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
         return;
     }
     setIsLoading(true);
-    console.log(`📹 [VideoPlayer] Démarrage de la connexion pour l'utilisateur ${participantName} à la session ${sessionId}.`);
 
     try {
-      console.log("🎤 [VideoPlayer] Demande d'accès aux périphériques média...");
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       cameraTrackRef.current = stream.getVideoTracks().map(track => new LocalVideoTrack(track))[0];
-      console.log("✅ [VideoPlayer] Accès aux périphériques média autorisé.");
       setHasPermission(true);
     } catch (error) {
       console.error("💥 [VideoPlayer] Erreur d'accès aux média:", error);
@@ -60,7 +59,6 @@ export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
     }
     
     try {
-      console.log("🔑 [VideoPlayer] Génération du jeton d'accès via la route API...");
       const response = await fetch('/api/twilio/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,115 +72,97 @@ export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
       }
       
       const token = data.token;
-      console.log("✅ [VideoPlayer] Jeton d'accès généré.");
-
-      console.log(`🚪 [VideoPlayer] Connexion à la salle Twilio "${sessionId}"...`);
+      
       const room = await Video.connect(token, {
         name: sessionId,
         audio: true,
         video: { width: 640 },
         tracks: cameraTrackRef.current ? [cameraTrackRef.current] : [],
       });
-      console.log(`✅ [VideoPlayer] Connecté à la salle "${room.name}". SID: ${room.sid}`);
       roomRef.current = room;
 
-      const attachTrack = (track: LocalTrack | RemoteTrack, container: HTMLElement | null) => {
-        if (isAttachable(track)) {
-          const element = track.attach();
-          container?.appendChild(element);
-        }
+      // Handle local participant
+      if (localVideoRef.current) {
+        attachTrack(room.localParticipant, localVideoRef.current);
+      }
+
+      const updateParticipants = () => {
+        onParticipantsChanged(Array.from(room.participants.values()));
       };
       
-      const detachTrack = (track: LocalTrack | RemoteTrack) => {
-          if (isDetachable(track)) {
-              track.detach().forEach(element => element.remove());
-          }
-      };
-
-      // Attach local participant tracks
-      console.log("📎 [VideoPlayer] Attachement des pistes locales...");
-      room.localParticipant.tracks.forEach(publication => {
-         if (publication.track && publication.track.kind === 'video') {
-            console.log(`[VideoPlayer] Piste locale: ${publication.track.kind}`);
-            attachTrack(publication.track, localVideoRef.current);
-         }
-      });
-
-      // Attach existing remote participant tracks
-      console.log(`[VideoPlayer] ${room.participants.size} participant(s) distant(s) déjà dans la salle.`);
-      room.participants.forEach(participant => {
-        console.log(`[VideoPlayer] Participant distant existant: ${participant.identity}`);
-        participant.tracks.forEach(publication => {
-          if (publication.track) {
-            console.log(`[VideoPlayer] Piste distante existante: ${publication.track.kind}`);
-            attachTrack(publication.track, remoteVideoRef.current);
-          }
-        });
-        participant.on('trackSubscribed', track => {
-          console.log(`[VideoPlayer] Souscription à une nouvelle piste de ${participant.identity}: ${track.kind}`);
-          attachTrack(track, remoteVideoRef.current);
-        });
-      });
+      // Handle existing participants
+      updateParticipants();
+      room.participants.forEach(p => handleParticipant(p, room));
 
       // Handle new participants
-      room.on('participantConnected', participant => {
-          console.log(`➕ [VideoPlayer] Nouveau participant connecté: ${participant.identity}`);
-          participant.on('trackSubscribed', track => {
-            console.log(`[VideoPlayer] Souscription à une piste de ${participant.identity}: ${track.kind}`);
-            attachTrack(track, remoteVideoRef.current);
-          });
+      room.on('participantConnected', (p) => {
+        handleParticipant(p, room);
+        updateParticipants();
       });
       
       // Handle participant disconnection
-      room.on('participantDisconnected', participant => {
-         console.log(`➖ [VideoPlayer] Participant déconnecté: ${participant.identity}`);
-         participant.tracks.forEach(publication => {
-             if (publication.track) {
-                 detachTrack(publication.track);
-             }
+      room.on('participantDisconnected', (p) => {
+         p.tracks.forEach(publication => {
+             if (publication.track) detachTrack(publication.track);
          });
-         // Clear the remote video ref if it was this participant
-         if (remoteVideoRef.current) {
-           remoteVideoRef.current.innerHTML = '';
-         }
+         updateParticipants();
       });
       
-      // Disconnect from the room when the window is closed
-      console.log("🔄 [VideoPlayer] Ajout du listener 'beforeunload'.");
       window.addEventListener('beforeunload', () => room.disconnect());
 
     } catch (error) {
-      console.error('💥 [VideoPlayer] Erreur de connexion à la salle Twilio:', error);
-      
       let description = "Impossible d'établir la connexion à la session vidéo.";
-      if (error && typeof error === 'object' && 'code' in error) {
-        const twilioError = error as { code: number; message: string };
-        if (twilioError.code === 20101 || twilioError.code === 20104) {
-            description = "Le jeton d'accès est invalide ou a expiré. Veuillez rafraîchir la page."
-        } else if (twilioError.message) {
-            description = twilioError.message;
-        }
-      } else if (error instanceof Error) {
-          description = error.message;
-      }
-
-      toast({
-          variant: 'destructive',
-          title: 'Erreur de connexion vidéo',
-          description: description,
-      });
+      if (error instanceof Error) description = error.message;
+      
+      toast({ variant: 'destructive', title: 'Erreur de connexion vidéo', description });
     } finally {
-      console.log("🏁 [VideoPlayer] Fin du bloc de connexion, arrêt du chargement.");
       setIsLoading(false);
     }
-  }, [sessionId, role, toast]);
+  }, [sessionId, role, toast, onParticipantsChanged]);
+
+  const handleParticipant = (participant: RemoteParticipant, room: Room) => {
+    participant.on('trackSubscribed', (track) => {
+        // We will attach tracks manually based on spotlight
+    });
+  };
+
+  const attachTrack = (participant: LocalParticipant | RemoteParticipant, container: HTMLElement) => {
+    participant.tracks.forEach(publication => {
+      if (publication.isSubscribed && publication.track && isAttachable(publication.track)) {
+        const element = publication.track.attach();
+        container.innerHTML = ''; // Clear previous video
+        container.appendChild(element);
+      }
+    });
+  };
+
+  const detachTrack = (track: Track, container: HTMLElement) => {
+      if (isDetachable(track)) {
+          track.detach().forEach(element => element.remove());
+      }
+      container.innerHTML = '';
+  };
+  
+   useEffect(() => {
+    // Attach spotlighted participant's video to the main view
+    if (remoteVideoRef.current) {
+        // Clear previous video
+        remoteVideoRef.current.innerHTML = '';
+        if (spotlightedParticipant) {
+            attachTrack(spotlightedParticipant, remoteVideoRef.current);
+        } else if (roomRef.current) {
+            // If no spotlight, show local teacher's video
+            attachTrack(roomRef.current.localParticipant, remoteVideoRef.current);
+        }
+    }
+  }, [spotlightedParticipant]);
+
 
   useEffect(() => {
     connectToRoom();
 
     return () => {
       if(roomRef.current) {
-        console.log(`🚪 [VideoPlayer] Déconnexion de la salle: ${roomRef.current.name}`);
         roomRef.current.disconnect();
       }
     };
@@ -198,24 +178,16 @@ export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
         const screenTrack = new LocalVideoTrack(stream.getTracks()[0]);
         screenTrackRef.current = screenTrack;
 
-        // Replace camera track with screen track
         if (cameraTrackRef.current) {
-            const publication = room.localParticipant.videoTracks.find(p => p.track === cameraTrackRef.current);
-            if (publication) {
-                await room.localParticipant.unpublishTrack(cameraTrackRef.current);
-            }
+            await room.localParticipant.unpublishTrack(cameraTrackRef.current);
         }
         await room.localParticipant.publishTrack(screenTrack);
         setIsSharingScreen(true);
         toast({ title: "Partage d'écran activé" });
 
-        // Listen for when the user stops sharing via the browser UI
-        screenTrack.on('stopped', () => {
-          toggleScreenShare();
-        });
+        screenTrack.on('stopped', () => toggleScreenShare());
 
       } catch (error) {
-        console.error("Erreur de partage d'écran:", error);
         toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de démarrer le partage d'écran." });
       }
     } else {
@@ -224,7 +196,6 @@ export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
         screenTrackRef.current.stop();
         screenTrackRef.current = null;
 
-        // Re-publish camera track
         if (cameraTrackRef.current) {
             await room.localParticipant.publishTrack(cameraTrackRef.current);
         }
@@ -235,38 +206,44 @@ export function VideoPlayer({ sessionId, role }: VideoPlayerProps) {
   };
 
   const LoadingState = (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
       <Loader2 className="h-8 w-8 animate-spin" />
       <p className="mt-2 text-sm">Connexion à la session...</p>
     </div>
   );
 
   const NoPermissionState = (
-     <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 text-destructive-foreground p-2 text-center">
+     <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 text-destructive-foreground p-2 text-center z-10">
         <VideoOff className="h-8 w-8 mb-2" />
         <p className="text-xs font-semibold">Caméra indisponible</p>
     </div>
   );
+  
+  const MainVideoView = spotlightedParticipant ? remoteVideoRef : (role === 'teacher' ? localVideoRef : remoteVideoRef);
+  const PipVideoView = role === 'teacher' ? null : localVideoRef;
+
 
   return (
-    <div className="aspect-video bg-muted rounded-md flex flex-col items-center justify-center relative overflow-hidden group">
-        {/* Main area for remote video or screen share */}
-        <div ref={remoteVideoRef} className="w-full h-full" />
+    <div className="w-full h-full bg-muted rounded-md flex items-center justify-center relative overflow-hidden group">
+      {/* Main area for local or remote video */}
+      <div ref={MainVideoView} className="w-full h-full object-contain" />
         
-        {/* Picture-in-picture for local video */}
-        <div className="absolute bottom-2 right-2 w-1/4 max-w-[200px] h-auto z-10 border-2 border-background rounded-md overflow-hidden aspect-video">
-            <div ref={localVideoRef} className="w-full h-full" />
+      {/* Picture-in-picture for student's local video */}
+      {PipVideoView && (
+        <div className="absolute bottom-4 right-4 w-1/4 max-w-[200px] h-auto z-20 border-2 border-background rounded-md overflow-hidden aspect-video shadow-lg">
+            <div ref={PipVideoView} className="w-full h-full" />
         </div>
+      )}
 
-        {role === 'teacher' && !isLoading && (
-            <VideoControls 
-                isSharingScreen={isSharingScreen}
-                onToggleScreenShare={toggleScreenShare}
-            />
-        )}
+      {role === 'teacher' && !isLoading && (
+        <VideoControls 
+            isSharingScreen={isSharingScreen}
+            onToggleScreenShare={toggleScreenShare}
+        />
+      )}
         
-        {isLoading && hasPermission !== false && LoadingState}
-        {hasPermission === false && NoPermissionState}
+      {isLoading && hasPermission !== false && LoadingState}
+      {hasPermission === false && NoPermissionState}
     </div>
   );
 }
