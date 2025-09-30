@@ -21,9 +21,16 @@ interface StudentCardProps {
   isSelected: boolean;
   onSelectionChange: (studentId: string, isSelected: boolean) => void;
   isConnected: boolean;
+  isSelectable?: boolean;
 }
 
-export function StudentCard({ student, isSelected, onSelectionChange, isConnected }: StudentCardProps) {
+export function StudentCard({ 
+    student, 
+    isSelected, 
+    onSelectionChange, 
+    isConnected, 
+    isSelectable = true 
+}: StudentCardProps) {
   const [isPending] = useTransition();
   
   const state = student.etat;
@@ -31,20 +38,22 @@ export function StudentCard({ student, isSelected, onSelectionChange, isConnecte
   return (
     <Card className={cn(
       "flex flex-col transition-all duration-300 relative",
-      isSelected && "ring-2 ring-primary",
+      isSelected && isSelectable && "ring-2 ring-primary",
       state?.isPunished && "bg-destructive/10 border-destructive",
-      (isPending || !isConnected) && "opacity-50",
-      !isConnected && "bg-muted/50"
+      (isPending || (!isConnected && isSelectable)) && "opacity-50",
+      (!isConnected && isSelectable) && "bg-muted/50"
     )}>
         <div className="absolute top-3 right-3 flex items-center gap-2">
              <div className={cn("h-2.5 w-2.5 rounded-full", isConnected ? 'bg-green-500' : 'bg-gray-400')} title={isConnected ? 'Connecté' : 'Déconnecté'}></div>
-             <Checkbox
-                id={`select-${student.id}`}
-                checked={isSelected}
-                onCheckedChange={(checked) => onSelectionChange(student.id, !!checked)}
-                aria-label={`Sélectionner ${student.name}`}
-                disabled={!isConnected}
-            />
+             {isSelectable && (
+                <Checkbox
+                    id={`select-${student.id}`}
+                    checked={isSelected}
+                    onCheckedChange={(checked) => onSelectionChange(student.id, !!checked)}
+                    aria-label={`Sélectionner ${student.name}`}
+                    disabled={!isConnected}
+                />
+             )}
         </div>
 
       <CardHeader className="pb-2">
@@ -58,7 +67,7 @@ export function StudentCard({ student, isSelected, onSelectionChange, isConnecte
         </div>
       </CardHeader>
       <CardContent className="flex-grow justify-center flex items-center">
-         {!isConnected && (
+         {!isConnected && isSelectable && (
              <p className="text-xs text-center text-muted-foreground font-semibold">Cet élève est hors ligne.</p>
         )}
       </CardContent>

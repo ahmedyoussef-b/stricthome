@@ -161,20 +161,7 @@ export default function ClassPageClient({ classe, teacher }: ClassPageClientProp
                         classeId={classe.id}
                     />
                  )}
-                {selectedCount > 0 && (
-                    <Button 
-                      onClick={handleStartSession} 
-                      disabled={isStartingSession}
-                      className="transition-all animate-in fade-in zoom-in-95"
-                    >
-                      {isStartingSession ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Video className="mr-2 h-4 w-4" />
-                      )}
-                      Démarrer une session ({selectedCount})
-                    </Button>
-                )}
+                {/* Le bouton de démarrage de session est maintenant géré via un flux centralisé */}
           </div>
         </div>
 
@@ -186,9 +173,30 @@ export default function ClassPageClient({ classe, teacher }: ClassPageClientProp
                 isSelected={selectedStudents.has(student.id)}
                 onSelectionChange={handleSelectionChange}
                 isConnected={!!student.email && onlineUserEmails.has(student.email)}
+                isSelectable={false} // Désactiver la sélection directe ici
              />
           ))}
         </div>
+         {/* L'ancienne UI de sélection est conservée pour référence mais n'est plus fonctionnelle pour le démarrage */}
+        {/*
+        {selectedCount > 0 && (
+            <div className="fixed bottom-4 right-4 z-50">
+                <Button 
+                  onClick={handleStartSession} 
+                  disabled={isStartingSession}
+                  size="lg"
+                  className="transition-all animate-in fade-in zoom-in-95 shadow-lg"
+                >
+                  {isStartingSession ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Video className="mr-2 h-4 w-4" />
+                  )}
+                  Démarrer une session ({selectedCount})
+                </Button>
+            </div>
+        )}
+        */}
       </main>
     </>
   );

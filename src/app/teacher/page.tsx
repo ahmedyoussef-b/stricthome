@@ -1,7 +1,7 @@
 // src/app/teacher/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users } from 'lucide-react';
+import { Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { AddClassForm } from '@/components/AddClassForm';
@@ -9,6 +9,7 @@ import { User, Classe, Chatroom } from '@prisma/client';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
+import { Button } from '@/components/ui/button';
 
 // Define a more accurate type for the teacher data
 type TeacherWithClasses = User & {
@@ -83,10 +84,16 @@ export default async function TeacherPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Tableau de bord du professeur</h1>
-            <p className="text-muted-foreground">Gérez vos classes et leur parcours d'apprentissage.</p>
+            <p className="text-muted-foreground">Gérez vos classes et démarrez des sessions interactives.</p>
           </div>
           <div className="flex items-center gap-2">
             <AddClassForm teacherId={user.id} />
+             <Button asChild>
+                <Link href="/teacher/session/create">
+                    <Video className="mr-2" />
+                    Démarrer une session
+                </Link>
+            </Button>
           </div>
         </div>
 
