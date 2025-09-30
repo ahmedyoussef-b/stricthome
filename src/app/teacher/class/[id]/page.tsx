@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
 import ClassPageClient from './ClassPageClient';
 import { getAuthSession } from '@/lib/session';
+import { getClassAnnouncements } from '@/lib/actions/announcement.actions';
 
 export default async function ClassPage({ params }: { params: { id: string } }) {
   const classeId = params.id;
@@ -27,6 +28,8 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
   if (!classe || !classe.chatroomId) {
     notFound();
   }
+
+  const announcements = await getClassAnnouncements(classe.id);
   
   const clientProps = {
     classe: {
@@ -43,6 +46,7 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       })),
     },
     teacher: session.user,
+    announcements,
   };
 
 

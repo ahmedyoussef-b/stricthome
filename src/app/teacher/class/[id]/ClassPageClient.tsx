@@ -15,6 +15,8 @@ import type { User as AuthUser } from 'next-auth';
 import { ChatSheet } from '@/components/ChatSheet';
 import { pusherClient } from '@/lib/pusher/client';
 import { Role } from '@prisma/client';
+import { AnnouncementsList } from '@/components/AnnouncementsList';
+import { AnnouncementWithAuthor } from '@/lib/types';
 
 // Définir un type simple et sérialisable pour les élèves
 type SimpleStudent = {
@@ -34,9 +36,10 @@ interface ClassPageClientProps {
         eleves: SimpleStudent[];
     };
     teacher: AuthUser;
+    announcements: AnnouncementWithAuthor[];
 }
 
-export default function ClassPageClient({ classe, teacher }: ClassPageClientProps) {
+export default function ClassPageClient({ classe, teacher, announcements }: ClassPageClientProps) {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [isStartingSession, startSessionTransition] = useTransition();
   const [onlineUserEmails, setOnlineUserEmails] = useState<Set<string>>(new Set());
@@ -135,17 +138,24 @@ export default function ClassPageClient({ classe, teacher }: ClassPageClientProp
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {classe.eleves.map((student) => (
-            <StudentCard 
-                key={student.id} 
-                student={student} 
-                isSelected={false} // La sélection n'est plus active ici
-                onSelectionChange={() => {}} // La sélection n'est plus active ici
-                isConnected={!!student.email && onlineUserEmails.has(student.email)}
-                isSelectable={false} // Désactiver la sélection directe
-             />
-          ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {classe.eleves.map((student) => (
+                        <StudentCard 
+                            key={student.id} 
+                            student={student} 
+                            isSelected={false} // La sélection n'est plus active ici
+                            onSelectionChange={() => {}} // La sélection n'est plus active ici
+                            isConnected={!!student.email && onlineUserEmails.has(student.email)}
+                            isSelectable={false} // Désactiver la sélection directe
+                        />
+                    ))}
+                </div>
+            </div>
+            <div className="space-y-8">
+                <AnnouncementsList announcements={announcements} />
+            </div>
         </div>
       </main>
     </>

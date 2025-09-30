@@ -1,4 +1,4 @@
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion, Annonce } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
     include: { classe: true }
@@ -55,3 +55,9 @@ export type ConversationWithMessages = Prisma.ConversationGetPayload<{
         messages: true;
     }
 }>
+
+export type AnnouncementWithAuthor = Annonce & {
+    author: {
+        name: string | null;
+    }
+};

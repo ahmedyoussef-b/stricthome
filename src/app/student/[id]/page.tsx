@@ -1,4 +1,3 @@
-
 // src/app/student/[id]/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,6 @@ import prisma from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
 import { Lightbulb, GraduationCap, FileUp, Video, Sparkles, Trophy } from 'lucide-react';
 import { CareerThemeWrapper } from '@/components/CareerThemeWrapper';
-import { PersonalizedContent } from '@/components/PersonalizedContent';
 import { StudentWithStateAndCareer } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -18,6 +16,8 @@ import { getAuthSession } from '@/lib/session';
 import { ChatSheet } from '@/components/ChatSheet';
 import { redis } from '@/lib/redis';
 import { TaskList } from '@/components/TaskList';
+import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
+import { AnnouncementsList } from '@/components/AnnouncementsList';
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
@@ -132,6 +132,7 @@ export default async function StudentPage({
   const activeSession = student.sessionsParticipees?.[0];
   const chatroomId = student.classe?.chatroomId;
   const tasks = await prisma.task.findMany();
+  const announcements = await getStudentAnnouncements(student.id);
 
   return (
     <CareerThemeWrapper career={career ?? undefined}>
@@ -192,7 +193,10 @@ export default async function StudentPage({
                 </CardContent>
               </Card>
 
-                <Card className="flex flex-col md:col-span-2">
+              <div className="md:col-span-2 space-y-8">
+                <AnnouncementsList announcements={announcements} />
+
+                <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                            <Sparkles />
@@ -208,6 +212,7 @@ export default async function StudentPage({
                         />
                     </CardContent>
                 </Card>
+              </div>
                 
                 <div className="flex flex-col gap-8">
                     {activeSession && (

@@ -3,12 +3,15 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthSession } from '@/lib/session';
-import { ArrowRight, BookOpen, UserCheck } from 'lucide-react';
+import { ArrowRight, BookOpen, UserCheck, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getPublicAnnouncements } from '@/lib/actions/announcement.actions';
+import { format } from 'date-fns';
 
 export default async function HomePage() {
   const session = await getAuthSession();
+  const announcements = await getPublicAnnouncements(3);
 
   // Redirect logged-in users to their respective dashboards
   if (session?.user) {
@@ -40,6 +43,33 @@ export default async function HomePage() {
             </Button>
           </div>
         </section>
+
+        {/* Announcements Section */}
+        {announcements.length > 0 && (
+          <section className="py-20">
+            <div className="container mx-auto px-4">
+              <h2 className="text-3xl font-bold text-center mb-12">Annonces Récentes</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {announcements.map(annonce => (
+                  <Card key={annonce.id}>
+                    <CardHeader>
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary/10 rounded-full">
+                          <Megaphone className="h-6 w-6 text-primary" />
+                        </div>
+                        <CardTitle>{annonce.title}</CardTitle>
+                      </div>
+                       <CardDescription>{format(new Date(annonce.createdAt), 'dd MMMM yyyy')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p>{annonce.content}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Features Section */}
         <section className="bg-muted py-20">

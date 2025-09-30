@@ -10,6 +10,7 @@ import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
 import { Button } from '@/components/ui/button';
+import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
 
 // Define a more accurate type for the teacher data
 type TeacherWithClasses = User & {
@@ -87,6 +88,7 @@ export default async function TeacherPage() {
             <p className="text-muted-foreground">Gérez vos classes et démarrez des sessions interactives.</p>
           </div>
           <div className="flex items-center gap-2">
+            <CreateAnnouncementForm classes={classes} />
             <AddClassForm teacherId={user.id} />
              <Button asChild>
                 <Link href="/teacher/session/create">
