@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { Workspace } from '@/components/Workspace';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { VideoControls } from '@/components/VideoControls';
 
 function SessionPageContent() {
     const router = useRouter();
@@ -30,8 +31,8 @@ function SessionPageContent() {
                     <CardHeader>
                         <CardTitle>Mon flux vidéo</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <VideoPlayer sessionId={sessionId} />
+                    <CardContent className="relative">
+                        <VideoPlayer sessionId={sessionId} role="teacher" />
                     </CardContent>
                 </Card>
                 <div className="flex-grow">
@@ -72,7 +73,7 @@ function SessionPageContent() {
                         <CardTitle>Session Vidéo</CardTitle>
                     </CardHeader>
                     <CardContent>
-                         <VideoPlayer sessionId={sessionId} />
+                         <VideoPlayer sessionId={sessionId} role="student" />
                     </CardContent>
                 </Card>
                  <div className="flex-grow">
