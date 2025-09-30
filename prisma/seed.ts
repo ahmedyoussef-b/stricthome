@@ -83,8 +83,16 @@ async function main() {
     data: [
       { title: 'Connexion quotidienne', description: 'Connectez-vous une fois par jour.', points: 5, type: TaskType.DAILY },
       { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY },
+      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY },
+      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY },
+      
       { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY },
+      { title: 'Collaboration', description: 'Participez à une session de groupe.', points: 40, type: TaskType.WEEKLY },
+      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris.', points: 30, type: TaskType.WEEKLY },
+      
       { title: 'Objectif mensuel', description: 'Participez à au moins 3 sessions en direct.', points: 100, type: TaskType.MONTHLY },
+      { title: 'Projet créatif', description: 'Soumettez un projet personnel lié à votre ambition.', points: 150, type: TaskType.MONTHLY },
+      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY },
     ]
   })
   console.log('✅ Tâches créées.');
@@ -114,10 +122,10 @@ async function main() {
   // Create students
   console.log('🧑‍🎓 Création des élèves...');
   const studentsData = [
-    { name: 'Alice', ambition: 'devenir pompier', email: 'student1@example.com' },
-    { name: 'Bob', ambition: 'explorer Mars', email: 'student2@example.com' },
-    { name: 'Charlie', ambition: 'soigner les animaux', email: 'student3@example.com' },
-    { name: 'Diana', ambition: "être une artiste célèbre", email: 'student4@example.com' },
+    { name: 'Alice', ambition: 'devenir pompier', email: 'student1@example.com', points: 125 },
+    { name: 'Bob', ambition: 'explorer Mars', email: 'student2@example.com', points: 80 },
+    { name: 'Charlie', ambition: 'soigner les animaux', email: 'student3@example.com', points: 210 },
+    { name: 'Diana', ambition: "être une artiste célèbre", email: 'student4@example.com', points: 55 },
   ];
   
   const createdStudents = [];
@@ -128,6 +136,7 @@ async function main() {
         name: studentData.name,
         role: Role.ELEVE,
         ambition: studentData.ambition,
+        points: studentData.points,
         classeId: classeA.id,
       },
     });
@@ -171,6 +180,27 @@ async function main() {
   });
   console.log('✅ Messages créés.');
   
+  // Create some announcements
+  console.log('📢 Création des annonces...');
+  await prisma.annonce.create({
+    data: {
+      title: 'Bienvenue sur Classroom Connector !',
+      content: "C'est un nouvel espace pour apprendre et explorer ensemble. N'hésitez pas à poser des questions !",
+      authorId: teacher.id,
+      // Public announcement (classeId is null)
+    }
+  });
+  await prisma.annonce.create({
+    data: {
+      title: 'Rappel pour la Classe A',
+      content: 'Le projet sur les volcans est à rendre pour vendredi prochain. Bon courage !',
+      authorId: teacher.id,
+      classeId: classeA.id,
+    }
+  });
+  console.log('✅ Annonces créées.');
+
+
   console.log('🎉 Seeding terminé avec succès !');
 }
 
@@ -182,3 +212,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    

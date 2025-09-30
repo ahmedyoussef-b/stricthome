@@ -12,32 +12,32 @@ datasource db {
 
 // Models
 model User {
-  id                  String   @id @default(cuid())
-  name                String?
-  email               String?  @unique
-  emailVerified       DateTime?
-  image               String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  role                Role
-  ambition            String?
-  points              Int      @default(0)
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          Role
+  ambition      String?
+  points        Int       @default(0)
 
   // Relations
-  classeId            String?
-  classe              Classe?  @relation(fields: [classeId], references: [id])
-  
-  classesEnseignees   Classe[] @relation("ProfesseurToClasse")
-  
-  etat                EtatEleve?
-  
+  classeId String?
+  classe   Classe? @relation(fields: [classeId], references: [id])
+
+  classesEnseignees Classe[] @relation("ProfesseurToClasse")
+
+  etat EtatEleve?
+
   sessionsEnseignees  CoursSession[] @relation("ProfesseurToSession")
   sessionsParticipees CoursSession[] @relation("ParticipantsToSession")
 
-  sentMessages        Message[]      @relation("Sender")
-  reactions           Reaction[]
-  taskCompletions     TaskCompletion[]
-  annoncesCrees       Annonce[]      @relation("AuthorToAnnonce")
+  sentMessages    Message[]        @relation("Sender")
+  reactions       Reaction[]
+  taskCompletions TaskCompletion[]
+  annoncesCrees   Annonce[]        @relation("AuthorToAnnonce")
 
   initiatedConversations Conversation[] @relation("Initiator")
   receivedConversations  Conversation[] @relation("Receiver")
@@ -45,26 +45,25 @@ model User {
   @@map("users")
 }
 
-
 model Classe {
-  id            String    @id @default(cuid())
-  nom           String
-  professeurId  String
-  professeur    User      @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
-  eleves        User[]
-  messages      Message[]
-  annonces      Annonce[]
+  id           String    @id @default(cuid())
+  nom          String
+  professeurId String
+  professeur   User      @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
+  eleves       User[]
+  messages     Message[]
+  annonces     Annonce[]
 
   @@map("classes")
 }
 
 model EtatEleve {
-  id          String   @id @default(cuid())
-  eleveId     String   @unique
-  eleve       User     @relation(fields: [eleveId], references: [id], onDelete: Cascade)
-  metierId    String?
-  metier      Metier?  @relation(fields: [metierId], references: [id])
-  isPunished  Boolean  @default(false)
+  id         String  @id @default(cuid())
+  eleveId    String  @unique
+  eleve      User    @relation(fields: [eleveId], references: [id], onDelete: Cascade)
+  metierId   String?
+  metier     Metier? @relation(fields: [metierId], references: [id])
+  isPunished Boolean @default(false)
 
   @@map("etats_eleves")
 }
@@ -81,21 +80,21 @@ model Metier {
 }
 
 model Message {
-  id             String    @id @default(cuid())
-  message        String
-  senderId       String
-  senderName     String
-  sender         User      @relation("Sender", fields: [senderId], references: [id])
-  createdAt      DateTime  @default(now())
-  
+  id         String   @id @default(cuid())
+  message    String
+  senderId   String
+  senderName String
+  sender     User     @relation("Sender", fields: [senderId], references: [id])
+  createdAt  DateTime @default(now())
+
   // A message belongs to EITHER a class or a direct conversation
-  classeId       String?
-  classe         Classe?   @relation(fields: [classeId], references: [id], onDelete: Cascade)
+  classeId String?
+  classe   Classe? @relation(fields: [classeId], references: [id], onDelete: Cascade)
 
   conversationId String?
   conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  reactions      Reaction[]
+  reactions Reaction[]
 
   @@map("messages")
 }
@@ -113,37 +112,36 @@ model Conversation {
   @@map("conversations")
 }
 
-
 model Reaction {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   emoji     String
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   messageId String
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@map("reactions")
 }
 
 model CoursSession {
-  id            String    @id @default(cuid())
-  professeurId  String
-  professeur    User      @relation("ProfesseurToSession", fields: [professeurId], references: [id])
-  participants  User[]    @relation("ParticipantsToSession")
-  createdAt     DateTime  @default(now())
-  endedAt       DateTime?
+  id                        String    @id @default(cuid())
+  professeurId              String
+  professeur                User      @relation("ProfesseurToSession", fields: [professeurId], references: [id])
+  participants              User[]    @relation("ParticipantsToSession")
+  createdAt                 DateTime  @default(now())
+  endedAt                   DateTime?
   spotlightedParticipantSid String?
 
   @@map("cours_sessions")
 }
 
 model Task {
-  id              String           @id @default(cuid())
-  title           String
-  description     String
-  points          Int
-  type            TaskType
-  completions     TaskCompletion[]
+  id          String           @id @default(cuid())
+  title       String
+  description String
+  points      Int
+  type        TaskType
+  completions TaskCompletion[]
 
   @@map("tasks")
 }

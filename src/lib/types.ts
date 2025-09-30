@@ -1,4 +1,4 @@
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion, Annonce, Classe, User } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion, Annonce, Classe, User, Metier } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
     include: { classe: true }
@@ -15,7 +15,15 @@ export type StudentWithStateAndCareer = Prisma.UserGetPayload<{
                 metier: true
             }
         },
-        sessionsParticipees: true,
+        sessionsParticipees: {
+          where: {
+            endedAt: null
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        },
         classe: true,
         taskCompletions: true,
     }
@@ -69,6 +77,19 @@ export type StudentForCard = Pick<User, 'id' | 'name' | 'email'> & {
   } | null;
 };
 
-export type ClasseWithDetails = Classe & {
+export type ClasseWithDetails = Omit<Classe, 'professeurId'> & {
   eleves: StudentForCard[];
 };
+
+export type CareerWithTheme = Metier & {
+  theme: {
+    backgroundColor: string;
+    textColor: string;
+    primaryColor: string;
+    accentColor: string;
+    cursor: string;
+    imageUrl: string;
+  }
+}
+
+    
