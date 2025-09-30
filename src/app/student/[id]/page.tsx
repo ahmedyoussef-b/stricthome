@@ -161,10 +161,6 @@ export default async function StudentPage({
                         <CardDescription className="text-lg">Bienvenue sur votre tableau de bord.</CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xl font-bold text-amber-500 bg-amber-500/10 p-3 rounded-lg">
-                        <Trophy className="h-6 w-6" />
-                        <span>{student.points} Points</span>
-                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -215,6 +211,19 @@ export default async function StudentPage({
               </div>
                 
                 <div className="flex flex-col gap-8">
+                    <Card className="bg-amber-500/10 border-amber-500/30">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-amber-600">
+                                <Trophy />
+                                Mes Points
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-center">
+                            <p className="text-5xl font-extrabold text-amber-700">{student.points}</p>
+                            <p className="text-sm text-amber-600/80">points collectés</p>
+                        </CardContent>
+                    </Card>
+
                     {activeSession && (
                     <Card>
                         <CardHeader>

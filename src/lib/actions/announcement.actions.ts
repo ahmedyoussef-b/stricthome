@@ -24,7 +24,7 @@ export async function createAnnouncement(formData: FormData) {
       title,
       content,
       authorId: session.user.id,
-      classeId: target === 'public' ? undefined : target,
+      classeId: target === 'public' ? null : target,
     },
   });
 
