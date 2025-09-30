@@ -6,8 +6,20 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { Checkbox } from './ui/checkbox';
+import { MessageSquare } from 'lucide-react';
+import { getOrCreateConversation } from '@/lib/actions/conversation.actions';
+import { useSession } from 'next-auth/react';
+import { DirectMessage } from './DirectMessage';
+import type { Conversation, Message, User } from '@prisma/client';
+
+type FullConversation = Conversation & {
+    messages: Message[];
+    initiator: Pick<User, 'id' | 'name'>;
+    receiver: Pick<User, 'id' | 'name'>;
+};
+
 
 // Utiliser un type simple pour les props de l'élève
 interface StudentCardProps {
@@ -31,10 +43,15 @@ export function StudentCard({
     isConnected, 
     isSelectable = true 
 }: StudentCardProps) {
-  const [isPending] = useTransition();
-  
+  const [isPending, startTransition] = useTransition();
+  const { data: session } = useSession();
+  const [isDmOpen, setIsDmOpen] = useState(false);
+  const [currentConversation, setCurrentConversation] = useState<FullConversation | null>(null);
+
   const state = student.etat;
   const isEffectivelySelectable = isSelectable && isConnected;
+  const isTeacherView = session?.user.role === 'PROFESSEUR';
+
 
   const handleCardClick = () => {
     if (isEffectivelySelectable) {
@@ -42,7 +59,19 @@ export function StudentCard({
     }
   };
 
+  const handleStartConversation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!session?.user.id) return;
+    
+    startTransition(async () => {
+        const conversation = await getOrCreateConversation(session.user.id, student.id);
+        setCurrentConversation(conversation as FullConversation);
+        setIsDmOpen(true);
+    })
+  }
+
   return (
+    <>
     <Card 
       onClick={handleCardClick}
       className={cn(
@@ -83,9 +112,23 @@ export function StudentCard({
       </CardContent>
       <CardFooter className="flex flex-col gap-2">
          <Button asChild className="w-full" variant="secondary" onClick={(e) => e.stopPropagation()}>
-            <Link href={`/student/${student.id}?viewAs=teacher`}>Voir la page de l'élève</Link>
+            <Link href={`/student/${student.id}?viewAs=teacher`}>Voir la page</Link>
         </Button>
+        {isTeacherView && (
+             <Button className="w-full" variant="outline" onClick={handleStartConversation} disabled={isPending}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                {isPending ? 'Chargement...' : 'Message'}
+            </Button>
+        )}
       </CardFooter>
     </Card>
+     {currentConversation && (
+        <DirectMessage 
+            conversation={currentConversation}
+            isOpen={isDmOpen}
+            onOpenChange={setIsDmOpen}
+        />
+     )}
+    </>
   );
 }

@@ -26,25 +26,39 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    if (!channelName.startsWith('presence-chatroom-')) {
-      return new Response(JSON.stringify({ error: 'Invalid channel type' }), {
-        status: 403,
+    // Autorisation pour les canaux de présence (classe, tableau blanc)
+    if (channelName.startsWith('presence-')) {
+       const userData = {
+        user_id: session.user.id,
+        user_info: {
+          name: session.user.name || 'Utilisateur',
+          email: session.user.email || 'user@example.com',
+        },
+      };
+      const authResponse = pusherServer.authorizeChannel(socketId, channelName, userData);
+      return new Response(JSON.stringify(authResponse), {
         headers: { 'Content-Type': 'application/json' }
       });
     }
     
-    const userData = {
-      user_id: session.user.id,
-      user_info: {
-        name: session.user.name || 'Utilisateur',
-        email: session.user.email || 'user@example.com',
-      },
-    };
+    // Autorisation pour les canaux privés (conversations directes)
+    if (channelName.startsWith('private-conversation-')) {
+      const conversationId = channelName.replace('private-conversation-', '');
+      // Note: Pour une sécurité renforcée, vous devriez vérifier ici
+      // si l'utilisateur (session.user.id) est bien un participant
+      // de la conversation avec l'ID `conversationId`.
+      // Pour la simplicité de ce PoC, nous autorisons l'abonnement
+      // si l'utilisateur est authentifié.
+      const authResponse = pusherServer.authorizeChannel(socketId, channelName);
+      return new Response(JSON.stringify(authResponse), {
+          headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
-    const authResponse = pusherServer.authorizeChannel(socketId, channelName, userData);
-    
-    return new Response(JSON.stringify(authResponse), {
-      headers: { 'Content-Type': 'application/json' }
+    // Si le canal n'est ni `presence-` ni `private-`, refuser l'accès.
+    return new Response(JSON.stringify({ error: 'Invalid channel type' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {

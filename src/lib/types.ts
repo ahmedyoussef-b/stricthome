@@ -49,3 +49,9 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
 export type TaskWithCompletions = Task & {
     completions: TaskCompletion[];
 };
+
+export type ConversationWithMessages = Prisma.ConversationGetPayload<{
+    include: {
+        messages: true;
+    }
+}>
