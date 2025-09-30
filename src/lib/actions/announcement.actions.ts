@@ -19,7 +19,7 @@ export async function createAnnouncement(formData: FormData) {
     throw new Error('Title and content are required');
   }
 
-  await prisma.annonce.create({
+  await prisma.Annonce.create({
     data: {
       title,
       content,
@@ -36,7 +36,7 @@ export async function createAnnouncement(formData: FormData) {
 }
 
 export async function getPublicAnnouncements(limit: number = 3) {
-    return prisma.annonce.findMany({
+    return prisma.Annonce.findMany({
         where: { classeId: null },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -52,7 +52,7 @@ export async function getStudentAnnouncements(studentId: string) {
     
     if (!student) return [];
 
-    return prisma.annonce.findMany({
+    return prisma.Annonce.findMany({
         where: {
             OR: [
                 { classeId: null }, // Public announcements
@@ -66,7 +66,7 @@ export async function getStudentAnnouncements(studentId: string) {
 }
 
 export async function getClassAnnouncements(classeId: string) {
-    return prisma.annonce.findMany({
+    return prisma.Annonce.findMany({
         where: {
             OR: [
                 { classeId: null }, // Public announcements

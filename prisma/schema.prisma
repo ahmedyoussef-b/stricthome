@@ -10,6 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
   id                    String                @id @default(cuid())
   name                  String?
@@ -19,39 +20,38 @@ model User {
   role                  Role                  @default(ELEVE)
   ambition              String?
   points                Int                   @default(0)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  classeId              String?
+
+  // Relations
   classe                Classe?               @relation(fields: [classeId], references: [id])
+  classeId              String?
   classesEnseignees     Classe[]              @relation("ProfesseurToClasse")
-  etat                  EtatEleve?
+  
+  etat                  EtatEleve?            
+  
   sessionsParticipees   CoursSession[]        @relation("SessionParticipants")
   sessionsEnseignees    CoursSession[]        @relation("SessionProfesseur")
-  sentMessages          Message[]             @relation("MessageSender")
-  reactions             Reaction[]
-  taskCompletions       TaskCompletion[]
-  annoncesCrees         Annonce[]
-  conversationsInitiated Conversation[]       @relation("Initiator")
-  conversationsReceived  Conversation[]       @relation("Receiver")
-}
 
-model Classe {
-  id           String         @id @default(cuid())
-  nom          String
-  professeurId String
-  professeur   User           @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
-  eleves       User[]
-  messages     Message[]      @relation("ClassMessages")
-  annonces     Annonce[]
+  taskCompletions       TaskCompletion[]
+  
+  annonces              Annonce[]
+
+  sentMessages          Message[]             @relation("SentMessages")
+  reactions             Reaction[]
+  
+  initiatedConversations Conversation[]       @relation("Initiator")
+  receivedConversations  Conversation[]       @relation("Receiver")
+
+  accounts              Account[]
+  sessions              Session[]
 }
 
 model EtatEleve {
-  id         String  @id @default(cuid())
-  eleveId    String  @unique
-  eleve      User    @relation(fields: [eleveId], references: [id], onDelete: Cascade)
-  isPunished Boolean @default(false)
-  metierId   String?
-  metier     Metier? @relation(fields: [metierId], references: [id])
+  id          String    @id @default(cuid())
+  eleve       User      @relation(fields: [eleveId], references: [id], onDelete: Cascade)
+  eleveId     String    @unique
+  metier      Metier?   @relation(fields: [metierId], references: [id])
+  metierId    String?
+  isPunished  Boolean   @default(false)
 }
 
 model Metier {
@@ -60,66 +60,69 @@ model Metier {
   description String
   icon        String?
   theme       Json
-  etatsEleve  EtatEleve[]
+  eleves      EtatEleve[]
+}
+
+model Classe {
+  id            String          @id @default(cuid())
+  nom           String
+  professeur    User            @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
+  professeurId  String
+  eleves        User[]
+  messages      Message[]
+  annonces      Annonce[]
 }
 
 model CoursSession {
-  id                       String   @id @default(cuid())
-  createdAt                DateTime @default(now())
+  id                       String    @id @default(cuid())
+  createdAt                DateTime  @default(now())
   endedAt                  DateTime?
+  professeur               User      @relation("SessionProfesseur", fields: [professeurId], references: [id])
   professeurId             String
-  professeur               User     @relation("SessionProfesseur", fields: [professeurId], references: [id])
-  participants             User[]   @relation("SessionParticipants")
+  participants             User[]    @relation("SessionParticipants")
   spotlightedParticipantSid String?
 }
 
 model Message {
-  id             String        @id @default(cuid())
-  message        String
-  createdAt      DateTime      @default(now())
-  senderId       String
-  sender         User          @relation("MessageSender", fields: [senderId], references: [id])
-  senderName     String
-  classeId       String?
-  classe         Classe?       @relation("ClassMessages", fields: [classeId], references: [id])
+  id            String        @id @default(cuid())
+  message       String
+  createdAt     DateTime      @default(now())
+  sender        User          @relation("SentMessages", fields: [senderId], references: [id])
+  senderId      String
+  senderName    String
+  
+  // Peut appartenir à une classe OU à une conversation, mais pas les deux
+  classe        Classe?       @relation(fields: [classeId], references: [id])
+  classeId      String?
+  conversation  Conversation? @relation(fields: [conversationId], references: [id])
   conversationId String?
-  conversation   Conversation? @relation("ConversationMessages", fields: [conversationId], references: [id])
-  reactions      Reaction[]
-}
 
-model Reaction {
-  id        String  @id @default(cuid())
-  emoji     String
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messageId String
-  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, messageId, emoji])
+  reactions     Reaction[]
 }
 
 model Conversation {
   id          String    @id @default(cuid())
-  initiatorId String
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
-  receiverId  String
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
-  messages    Message[] @relation("ConversationMessages")
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
+  
+  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
+  initiatorId String
+  
+  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
+  receiverId  String
+  
+  messages    Message[]
+  
   @@unique([initiatorId, receiverId])
 }
 
-model Annonce {
+
+model Reaction {
   id        String   @id @default(cuid())
-  title     String
-  content   String
-  createdAt DateTime @default(now())
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  classeId  String?
-  classe    Classe?  @relation(fields: [classeId], references: [id])
+  emoji     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  message   Message  @relation(fields: [messageId], references: [id])
+  messageId String
 }
 
 model Task {
@@ -133,13 +136,22 @@ model Task {
 
 model TaskCompletion {
   id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task     @relation(fields: [taskId], references: [id])
   taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   completedAt DateTime @default(now())
+}
 
-  @@unique([userId, taskId, completedAt])
+model Annonce {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  createdAt  DateTime @default(now())
+  author     User     @relation(fields: [authorId], references: [id])
+  authorId   String
+  classe     Classe?  @relation(fields: [classeId], references: [id])
+  classeId   String?
 }
 
 enum Role {
@@ -151,4 +163,40 @@ enum TaskType {
   DAILY
   WEEKLY
   MONTHLY
+}
+
+
+// --- NextAuth specific models ---
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
