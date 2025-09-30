@@ -1,11 +1,13 @@
-// prisma/schema.prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,59 +18,28 @@ model User {
   image               String?
   role                Role
   ambition            String?
+  points              Int              @default(0)
   classeId            String?
-  classe              Classe?          @relation("Eleves", fields: [classeId], references: [id])
-  classesEnseignees   Classe[]         @relation("Professeur")
-  etat                EtatEleve?
-  sessionsParticipees CoursSession[]   @relation("SessionParticipants")
-  sessionsCrees       CoursSession[]   @relation("SessionProfesseur")
+  classe              Classe?          @relation("StudentClasses", fields: [classeId], references: [id])
+  classesEnseignees   Classe[]         @relation("ProfClasses")
   messagesEnvoyes     Message[]
   reactions           Reaction[]
+  sessionsParticipees CoursSession[]   @relation("CoursSessionParticipants")
+  sessionsEnseignees  CoursSession[]   @relation("CoursSessionProfesseur")
+  etat                EtatEleve?
   taskCompletions     TaskCompletion[]
-  points              Int              @default(0)
 
   @@index([classeId])
 }
 
 model Classe {
-  id           String    @id @default(cuid())
+  id           String  @id @default(cuid())
   nom          String
   professeurId String
-  professeur   User      @relation("Professeur", fields: [professeurId], references: [id])
-  eleves       User[]    @relation("Eleves")
-  chatroomId   String?   @unique
-  chatroom     Chatroom? @relation(fields: [chatroomId], references: [id])
-
-  @@index([professeurId])
-}
-
-model EtatEleve {
-  id         String  @id @default(cuid())
-  eleveId    String  @unique
-  eleve      User    @relation(fields: [eleveId], references: [id])
-  isPunished Boolean @default(false)
-  metierId   String?
-  metier     Metier? @relation(fields: [metierId], references: [id])
-
-  @@index([metierId])
-}
-
-model Metier {
-  id          String      @id @default(cuid())
-  nom         String
-  description String
-  icon        String?
-  theme       Json
-  eleves      EtatEleve[]
-}
-
-model CoursSession {
-  id           String   @id @default(cuid())
-  professeurId String
-  professeur   User     @relation("SessionProfesseur", fields: [professeurId], references: [id])
-  participants User[]   @relation("SessionParticipants")
-  createdAt    DateTime @default(now())
-  endedAt      DateTime?
+  professeur   User    @relation("ProfClasses", fields: [professeurId], references: [id])
+  eleves       User[]  @relation("StudentClasses")
+  chatroomId   String  @unique
+  chatroom     Chatroom @relation(fields: [chatroomId], references: [id])
 
   @@index([professeurId])
 }
@@ -82,16 +53,16 @@ model Chatroom {
 model Message {
   id          String     @id @default(cuid())
   message     String
+  createdAt   DateTime   @default(now())
   senderId    String
   senderName  String
   sender      User       @relation(fields: [senderId], references: [id])
   chatroomId  String
   chatroom    Chatroom   @relation(fields: [chatroomId], references: [id])
-  createdAt   DateTime   @default(now())
   reactions   Reaction[]
 
-  @@index([senderId])
   @@index([chatroomId])
+  @@index([senderId])
 }
 
 model Reaction {
@@ -101,22 +72,49 @@ model Reaction {
   user      User     @relation(fields: [userId], references: [id])
   messageId String
   message   Message  @relation(fields: [messageId], references: [id])
-  createdAt DateTime @default(now())
 
   @@unique([userId, messageId, emoji])
-  @@index([userId])
   @@index([messageId])
 }
 
+model Metier {
+  id          String      @id @default(cuid())
+  nom         String      @unique
+  description String
+  icon        String?
+  theme       Json
+  etatsEleves EtatEleve[]
+}
+
+model EtatEleve {
+  id         String  @id @default(cuid())
+  eleveId    String  @unique
+  eleve      User    @relation(fields: [eleveId], references: [id])
+  isPunished Boolean @default(false)
+  metierId   String?
+  metier     Metier? @relation(fields: [metierId], references: [id])
+
+  @@index([metierId])
+}
+
+model CoursSession {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  endedAt      DateTime?
+  professeurId String
+  professeur   User     @relation("CoursSessionProfesseur", fields: [professeurId], references: [id])
+  participants User[]   @relation("CoursSessionParticipants")
+
+  @@index([professeurId])
+}
+
 model Task {
-  id              String           @id @default(cuid())
-  title           String
-  description     String
-  points          Int
-  type            TaskType
-  completions     TaskCompletion[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id            String           @id @default(cuid())
+  title         String
+  description   String
+  points        Int
+  type          TaskType
+  completions   TaskCompletion[]
 }
 
 model TaskCompletion {
@@ -127,11 +125,8 @@ model TaskCompletion {
   task        Task     @relation(fields: [taskId], references: [id])
   completedAt DateTime @default(now())
 
-  @@unique([userId, taskId, completedAt]) // Might change depending on task frequency logic
-  @@index([userId])
-  @@index([taskId])
+  @@unique([userId, taskId, completedAt])
 }
-
 
 enum Role {
   ELEVE
