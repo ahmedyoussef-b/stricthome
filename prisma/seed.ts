@@ -1,6 +1,6 @@
 
 // prisma/seed.ts
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, TaskType } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
 
 const prisma = new PrismaClient();
@@ -16,11 +16,13 @@ async function main() {
   await prisma.reaction.deleteMany();
   await prisma.message.deleteMany();
   await prisma.classe.deleteMany();
+  await prisma.taskCompletion.deleteMany();
   
   // Then delete main entities
   await prisma.user.deleteMany();
   await prisma.metier.deleteMany();
   await prisma.chatroom.deleteMany();
+  await prisma.task.deleteMany();
   console.log('✅ Données nettoyées.');
 
   // Create careers (métiers)
@@ -73,6 +75,19 @@ async function main() {
     },
   });
   console.log('✅ Métiers créés.');
+
+  // Create Tasks
+  console.log('🎯 Création des tâches...');
+  await prisma.task.createMany({
+    data: [
+      { title: 'Connexion quotidienne', description: 'Connectez-vous une fois par jour.', points: 5, type: TaskType.DAILY },
+      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY },
+      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY },
+      { title: 'Objectif mensuel', description: 'Participez à au moins 3 sessions en direct.', points: 100, type: TaskType.MONTHLY },
+    ]
+  })
+  console.log('✅ Tâches créées.');
+
 
   // Create a teacher
   console.log('🧑‍🏫 Création du professeur...');

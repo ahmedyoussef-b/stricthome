@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import prisma from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
-import { Lightbulb, GraduationCap, FileUp, Video, Sparkles } from 'lucide-react';
+import { Lightbulb, GraduationCap, FileUp, Video, Sparkles, Trophy } from 'lucide-react';
 import { CareerThemeWrapper } from '@/components/CareerThemeWrapper';
 import { PersonalizedContent } from '@/components/PersonalizedContent';
 import { StudentWithStateAndCareer } from '@/lib/types';
@@ -17,6 +17,7 @@ import { TeacherCareerSelector } from '@/components/TeacherCareerSelector';
 import { getAuthSession } from '@/lib/session';
 import { ChatSheet } from '@/components/ChatSheet';
 import { redis } from '@/lib/redis';
+import { TaskList } from '@/components/TaskList';
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
@@ -30,7 +31,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
                 console.log(`[Cache] HIT pour ${cacheKey}`);
                 student = JSON.parse(cachedStudent as string);
             }
-        } catch (error) {
+        } catch (error) => {
             console.error('[Cache] Erreur de lecture Redis:', error);
         }
     }
@@ -58,7 +59,8 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
                 createdAt: 'desc'
               },
               take: 1
-            }
+            },
+            taskCompletions: true,
           }
         });
         
@@ -129,12 +131,13 @@ export default async function StudentPage({
   
   const activeSession = student.sessionsParticipees?.[0];
   const chatroomId = student.classe?.chatroomId;
+  const tasks = await prisma.task.findMany();
 
   return (
     <CareerThemeWrapper career={career ?? undefined}>
       <div className="flex flex-col min-h-screen">
         <Header user={session.user}>
-            {chatroomId && (
+            {chatroomId && !isTeacherView && (
                 <ChatSheet chatroomId={chatroomId} userId={session.user.id} userRole={session.user.role} />
             )}
         </Header>
@@ -142,18 +145,24 @@ export default async function StudentPage({
           <div className="flex items-center gap-4 mb-8">
             <BackButton />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Card className="bg-background/80 backdrop-blur-sm md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card className="bg-background/80 backdrop-blur-sm md:col-span-3">
                 <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-primary">
-                      <AvatarFallback className="text-3xl bg-background">
-                        {student.name?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle className="text-3xl">Bonjour, {student.name}!</CardTitle>
-                      <CardDescription className="text-lg">Bienvenue sur votre tableau de bord.</CardDescription>
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16 border-2 border-primary">
+                        <AvatarFallback className="text-3xl bg-background">
+                            {student.name?.charAt(0)}
+                        </AvatarFallback>
+                        </Avatar>
+                        <div>
+                        <CardTitle className="text-3xl">Bonjour, {student.name}!</CardTitle>
+                        <CardDescription className="text-lg">Bienvenue sur votre tableau de bord.</CardDescription>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xl font-bold text-amber-500 bg-amber-500/10 p-3 rounded-lg">
+                        <Trophy className="h-6 w-6" />
+                        <span>{student.points} Points</span>
                     </div>
                   </div>
                 </CardHeader>
@@ -183,58 +192,65 @@ export default async function StudentPage({
                 </CardContent>
               </Card>
 
-                <Card className="flex flex-col">
+                <Card className="flex flex-col md:col-span-2">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                            <Sparkles />
-                           Votre parcours personnalisé
+                           Missions et Objectifs
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-grow">
-                        <PersonalizedContent student={student} />
+                       <TaskList 
+                            tasks={tasks}
+                            studentCompletions={student.taskCompletions}
+                            studentId={student.id}
+                            isTeacherView={isTeacherView}
+                        />
                     </CardContent>
                 </Card>
                 
-                {activeSession && (
-                  <Card>
-                      <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Video />
-                            Session en direct
-                          </CardTitle>
-                          <CardDescription>
-                              Votre professeur vous a invité à une session vidéo.
-                          </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button asChild className="w-full">
-                            <Link href={`/session/${activeSession.id}?role=student&studentId=${student.id}`}>
-                                Rejoindre la session
-                            </Link>
-                        </Button>
-                      </CardContent>
-                  </Card>
-                )}
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <FileUp />
-                            Soumettre un devoir
-                        </CardTitle>
-                        <CardDescription>
-                            Importez votre travail pour que votre professeur puisse le consulter.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form>
-                            <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="homework" type="file" />
-                            </div>
-                            <Button className="mt-4">Soumettre</Button>
-                        </form>
-                    </CardContent>
-                </Card>
+                <div className="flex flex-col gap-8">
+                    {activeSession && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Video />
+                                Session en direct
+                            </CardTitle>
+                            <CardDescription>
+                                Votre professeur vous a invité à une session vidéo.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button asChild className="w-full">
+                                <Link href={`/session/${activeSession.id}?role=student&studentId=${student.id}`}>
+                                    Rejoindre la session
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    )}
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileUp />
+                                Soumettre un devoir
+                            </CardTitle>
+                            <CardDescription>
+                                Importez votre travail pour que votre professeur puisse le consulter.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form>
+                                <div className="grid w-full max-w-sm items-center gap-1.5">
+                                    <Input id="homework" type="file" />
+                                </div>
+                                <Button className="mt-4">Soumettre</Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
           </div>
         </main>
       </div>

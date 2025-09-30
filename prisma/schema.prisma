@@ -1,8 +1,8 @@
-// prisma/schema.prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
-  provider        = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
-  engineType = "binary"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -10,134 +10,152 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                  String         @id @default(cuid())
-  name                String?
-  email               String?        @unique
-  emailVerified       DateTime?
-  image               String?
-  role                Role           @default(ELEVE)
-  ambition            String?
-  classeId            String?
-  classe              Classe?        @relation(fields: [classeId], references: [id])
-  classesEnseignees   Classe[]       @relation("ProfesseurToClasse")
-  sentMessages        Message[]      @relation("Sender")
-  reactions           Reaction[]
-  // CHANGEMENT: Renommer sessions -> coursSessions
-  coursSessions       CoursSession[] @relation("ProfesseurToCoursSession")
-  sessionsParticipees CoursSession[] @relation("Participants")
-  etat                EtatEleve?     @relation("EleveToEtat")
-  
-  // Relations pour NextAuth
-  accounts Account[]
-  sessions AuthSession[]
-}
-
-model Classe {
-  id           String    @id @default(cuid())
-  nom          String
-  professeurId String
-  professeur   User      @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
-  eleves       User[]
-  chatroomId   String?   @unique
-  chatroom     Chatroom? @relation(fields: [chatroomId], references: [id])
-}
-
-model Metier {
-  id          String      @id @default(cuid())
-  nom         String
-  description String
-  icon        String?
-  theme       Json
-  eleves      EtatEleve[]
-}
-
-model EtatEleve {
-  id         String  @id @default(cuid())
-  eleveId    String  @unique
-  eleve      User    @relation("EleveToEtat", fields: [eleveId], references: [id])
-  isPunished Boolean @default(false)
-  metierId   String?
-  metier     Metier? @relation(fields: [metierId], references: [id])
-}
-
-// CHANGEMENT: Session -> CoursSession
-model CoursSession {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  endedAt       DateTime?
-  professeurId  String
-  professeur    User     @relation("ProfesseurToCoursSession", fields: [professeurId], references: [id])
-  participants  User[]   @relation("Participants")
-}
-
-model Chatroom {
-  id        String    @id @default(cuid())
-  messages  Message[]
-  classes   Classe[]
-}
-
-model Message {
-  id          String     @id @default(cuid())
-  createdAt   DateTime   @default(now())
-  message     String
-  senderId    String
-  sender      User       @relation("Sender", fields: [senderId], references: [id])
-  senderName  String
-  chatroomId  String
-  chatroom    Chatroom   @relation(fields: [chatroomId], references: [id])
-  reactions   Reaction[]
-}
-
-model Reaction {
-  id        String  @id @default(cuid())
-  emoji     String
-  messageId String
-  message   Message @relation(fields: [messageId], references: [id])
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
-
-  @@unique([messageId, emoji, userId])
-}
+// ===================================
+//          ENUMS
+// ===================================
 
 enum Role {
   ELEVE
   PROFESSEUR
 }
 
-// MODÈLES NEXT-AUTH (sans conflit)
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
+enum TaskType {
+  DAILY
+  WEEKLY
+  MONTHLY
 }
 
-// CHANGEMENT: Session -> AuthSession pour éviter le conflit
-model AuthSession {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+// ===================================
+//          MODELS
+// ===================================
+
+model User {
+  id                  String       @id @default(cuid())
+  name                String?
+  email               String?      @unique
+  emailVerified       DateTime?
+  image               String?
+  role                Role
+  ambition            String?
+  points              Int          @default(0)
+
+  // Relations
+  classe              Classe?      @relation(fields: [classeId], references: [id])
+  classeId            String?
+  
+  classesEnseignees   Classe[]     @relation("ProfesseurToClasse")
+  
+  etat                EtatEleve?   @relation(fields: [etatEleveId], references: [id])
+  etatEleveId         String?      @unique
+
+  sessionsCrees       CoursSession[] @relation("ProfesseurSessions")
+  sessionsParticipees CoursSession[] @relation("Participants")
+
+  messages            Message[]
+  reactions           Reaction[]
+
+  taskCompletions     TaskCompletion[]
+
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model Classe {
+  id            String      @id @default(cuid())
+  nom           String
+  
+  // Relations
+  professeur    User        @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
+  professeurId  String
+  
+  eleves        User[]
+  
+  chatroom      Chatroom?   @relation(fields: [chatroomId], references: [id])
+  chatroomId    String?     @unique
+}
 
-  @@unique([identifier, token])
+model EtatEleve {
+  id          String   @id @default(cuid())
+  isPunished  Boolean  @default(false)
+  
+  // Relations
+  eleve       User?
+  eleveId     String   @unique
+  
+  metier      Metier?  @relation(fields: [metierId], references: [id])
+  metierId    String?
+}
+
+model Metier {
+  id          String    @id @default(cuid())
+  nom         String
+  description String
+  icon        String?
+  theme       Json      // Stocke les informations de thème (couleurs, curseur, etc.)
+  etats       EtatEleve[]
+}
+
+
+model CoursSession {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  endedAt       DateTime?
+
+  professeurId  String
+  professeur    User     @relation("ProfesseurSessions", fields: [professeurId], references: [id])
+
+  participants  User[]   @relation("Participants")
+}
+
+model Chatroom {
+  id        String    @id @default(cuid())
+  classe    Classe?
+  messages  Message[]
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  message     String
+  createdAt   DateTime    @default(now())
+  senderId    String
+  senderName  String
+  sender      User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  chatroomId  String
+  chatroom    Chatroom    @relation(fields: [chatroomId], references: [id], onDelete: Cascade)
+  reactions   Reaction[]
+}
+
+model Reaction {
+  id          String   @id @default(cuid())
+  emoji       String
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  points      Int
+  type        TaskType
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  completions TaskCompletion[]
+}
+
+model TaskCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, taskId, completedAt])
 }

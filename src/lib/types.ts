@@ -1,4 +1,4 @@
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
     include: { classe: true }
@@ -20,7 +20,8 @@ export type StudentWithStateAndCareer = Prisma.UserGetPayload<{
           include: {
             chatroom: true
           }
-        }
+        },
+        taskCompletions: true,
     }
 }>
 
@@ -44,3 +45,7 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
         } 
     }
 }>;
+
+export type TaskWithCompletions = Task & {
+    completions: TaskCompletion[];
+};
