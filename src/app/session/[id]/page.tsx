@@ -87,12 +87,19 @@ function SessionPageContent() {
     }, [sessionId, localParticipant, participants, room]);
 
 
-    const handleGoBack = () => {
+    const handleGoBack = async () => {
         room?.disconnect();
         if (role === 'teacher') {
-            endCoursSession(sessionId).catch(err => {
+            try {
+                await endCoursSession(sessionId);
+            } catch (err) {
                 console.error("Failed to end session:", err);
-            });
+                 toast({
+                    variant: 'destructive',
+                    title: 'Erreur',
+                    description: 'Impossible de fermer la session correctement.',
+                });
+            }
         }
         router.back();
     };
