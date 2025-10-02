@@ -2,7 +2,7 @@
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, Star, Pin, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +33,12 @@ async function getSessionData(sessionId: string) {
     return response.json();
 }
 
+function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 function SessionPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -57,6 +63,13 @@ function SessionPageContent() {
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
     const [teacher, setTeacher] = useState<any>(null);
 
+    // Timer State
+    const [duration, setDuration] = useState(300); // 5 minutes
+    const [timeLeft, setTimeLeft] = useState(duration);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+
     useEffect(() => {
         roomRef.current = room;
     }, [room]);
@@ -64,6 +77,59 @@ function SessionPageContent() {
      useEffect(() => {
         spotlightedParticipantRef.current = spotlightedParticipant;
     }, [spotlightedParticipant]);
+
+    const broadcastTimerEvent = async (event: string, data?: any) => {
+        try {
+            await fetch('/api/pusher/timer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, event, data }),
+            });
+        } catch (error) {
+            console.error(`Failed to broadcast timer event ${event}`, error);
+            toast({ variant: 'destructive', title: 'Erreur de synchronisation', description: 'Le minuteur n\'a pas pu être synchronisé.' });
+        }
+    };
+
+    const handleStartTimer = () => {
+        setIsTimerRunning(true);
+        broadcastTimerEvent('timer-start', { duration: timeLeft });
+    };
+
+    const handlePauseTimer = () => {
+        setIsTimerRunning(false);
+        broadcastTimerEvent('timer-pause');
+    };
+
+    const handleResetTimer = () => {
+        setIsTimerRunning(false);
+        setTimeLeft(duration);
+        broadcastTimerEvent('timer-reset', { duration });
+    };
+
+    // Countdown effect for teacher
+    useEffect(() => {
+        if (isTeacher && isTimerRunning) {
+            timerIntervalRef.current = setInterval(() => {
+                setTimeLeft(prevTime => {
+                    const newTime = prevTime > 0 ? prevTime - 1 : 0;
+                    broadcastTimerEvent('timer-tick', { timeLeft: newTime });
+                    if (newTime === 0) {
+                        setIsTimerRunning(false);
+                    }
+                    return newTime;
+                });
+            }, 1000);
+        } else if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+        }
+
+        return () => {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+            }
+        };
+    }, [isTeacher, isTimerRunning]);
 
 
     const onConnected = useCallback((newRoom: Room) => {
@@ -149,17 +215,38 @@ function SessionPageContent() {
             }
         };
 
+        // Student timer handlers
+        const handleTimerStart = (data: { duration: number }) => {
+            setTimeLeft(data.duration);
+            setIsTimerRunning(true);
+        };
+        const handleTimerPause = () => setIsTimerRunning(false);
+        const handleTimerReset = (data: { duration: number }) => {
+            setIsTimerRunning(false);
+            setTimeLeft(data.duration);
+        };
+        const handleTimerTick = (data: { timeLeft: number }) => {
+            setTimeLeft(data.timeLeft);
+        };
+
         channel.bind('participant-spotlighted', handleSpotlight);
 
+        if (!isTeacher) {
+            channel.bind('timer-start', handleTimerStart);
+            channel.bind('timer-pause', handleTimerPause);
+            channel.bind('timer-reset', handleTimerReset);
+            channel.bind('timer-tick', handleTimerTick);
+        }
+
         return () => {
-            channel.unbind('participant-spotlighted', handleSpotlight);
+            channel.unbind_all();
             pusherClient.unsubscribe(channelName);
              if (roomRef.current) {
                 roomRef.current.disconnect();
             }
         };
 
-    }, [sessionId, toast]);
+    }, [sessionId, toast, isTeacher]);
 
 
     const handleGoBack = async () => {
@@ -205,10 +292,20 @@ function SessionPageContent() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
-                        <p className="text-4xl font-bold">05:00</p>
+                        <p className="text-4xl font-bold">{formatTime(timeLeft)}</p>
                         <div className="flex justify-center gap-2 mt-2">
-                            <Button variant="outline" size="sm">Démarrer</Button>
-                            <Button variant="ghost" size="sm">Réinitialiser</Button>
+                           {!isTimerRunning ? (
+                                <Button variant="outline" size="sm" onClick={handleStartTimer} disabled={timeLeft === 0}>
+                                    <Play className="mr-2 h-4 w-4" /> Démarrer
+                                </Button>
+                            ) : (
+                                <Button variant="outline" size="sm" onClick={handlePauseTimer}>
+                                    <Pause className="mr-2 h-4 w-4" /> Pauser
+                                </Button>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={handleResetTimer}>
+                                <RotateCcw className="mr-2 h-4 w-4" /> Réinitialiser
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -286,6 +383,17 @@ function SessionPageContent() {
                 </div>
             </div>
              <div className="flex flex-col space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Timer />
+                            Temps restant
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants ({allLiveParticipants.length})</CardTitle>
