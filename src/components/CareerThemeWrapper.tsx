@@ -21,35 +21,31 @@ interface CustomCSSProperties extends React.CSSProperties {
 export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps) {
     const [zoom, setZoom] = useState(1);
     const [blur, setBlur] = useState(8);
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    const theme = career?.theme as any; 
+    const [themeStyles, setThemeStyles] = useState<CustomCSSProperties>({});
     
     const careerName = (career?.nom ? career.nom.toLowerCase() : 'default') as keyof typeof placeholderImages;
     const imageData = placeholderImages[careerName] || placeholderImages.default;
 
-    const themeStyles: CustomCSSProperties = career
-    ? {
-        '--primary-hsl': theme?.primaryColor,
-        '--accent-hsl': theme?.accentColor,
-      }
-    : {
-        '--primary-hsl': '207 90% 54%', // default primary
-        '--accent-hsl': '36 100% 65%', // default accent
-      };
+    useEffect(() => {
+        const newStyles: CustomCSSProperties = career
+            ? {
+                '--primary-hsl': (career.theme as any)?.primaryColor,
+                '--accent-hsl': (career.theme as any)?.accentColor,
+              }
+            : {
+                '--primary-hsl': '207 90% 54%', // default primary
+                '--accent-hsl': '36 100% 65%', // default accent
+              };
+        setThemeStyles(newStyles);
+    }, [career]);
+
 
   const themeClasses = cn(
-      career ? theme?.textColor : 'text-foreground',
-      career ? theme?.cursor : 'cursor-default'
+      career ? (career.theme as any)?.textColor : 'text-foreground',
+      career ? (career.theme as any)?.cursor : 'cursor-default'
   );
     
     useEffect(() => {
-        if (!isMounted) return;
-
         const handleWheel = (event: WheelEvent) => {
             // Check if the scroll event is happening inside the chat sheet (or any dialog)
             const target = event.target as HTMLElement;
@@ -83,7 +79,7 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
         return () => {
             window.removeEventListener('wheel', handleWheel);
         };
-    }, [isMounted]);
+    }, []);
 
   return (
     <div
