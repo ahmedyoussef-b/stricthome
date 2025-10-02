@@ -23,7 +23,8 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
     const [blur, setBlur] = useState(8);
 
     const theme = career?.theme as any; 
-    const careerName = career?.nom.toLowerCase() as keyof typeof placeholderImages || 'default';
+    
+    const careerName = (career?.nom ? career.nom.toLowerCase() : 'default') as keyof typeof placeholderImages;
     const imageData = placeholderImages[careerName] || placeholderImages.default;
 
     const themeStyles: CustomCSSProperties = career
