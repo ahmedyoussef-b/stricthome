@@ -4,6 +4,7 @@
 import { Mic, MicOff, ScreenShare, ScreenShareOff, Video, VideoOff, PhoneOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Separator } from './ui/separator';
 
 interface VideoControlsProps {
   isSharingScreen: boolean;
@@ -49,7 +50,7 @@ export function VideoControls({ isSharingScreen, onToggleScreenShare }: VideoCon
                     >
                         {isSharingScreen ? <ScreenShareOff /> : <ScreenShare />}
                     </Button>
-                </TooltipTrigger.js
+                </TooltipTrigger>
                 <TooltipContent>
                     <p>{isSharingScreen ? "Arrêter le partage" : "Partager l'écran"}</p>
                 </TooltipContent>
