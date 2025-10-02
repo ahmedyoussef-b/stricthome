@@ -11,9 +11,4 @@ if (!pusherKey) {
 export const pusherClient = new PusherClient(pusherKey, {
   cluster: pusherCluster || 'mt1',
   authEndpoint: '/api/pusher/auth',
-  auth: {
-    params: {},
-    headers: {}
-  },
-  enabledTransports: ['ws', 'wss'],
 });
