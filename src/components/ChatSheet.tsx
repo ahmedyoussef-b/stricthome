@@ -292,6 +292,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
         reactions: [],
         status: 'pending',
         classeId: classeId,
+        conversationId: null,
     };
     
     setMessages(prev => [...prev, optimisticMessage]);
@@ -412,3 +413,5 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
     </Sheet>
   );
 }
+
+    
