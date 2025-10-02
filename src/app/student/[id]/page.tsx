@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import prisma from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
-import { Lightbulb, GraduationCap, FileUp, Video, Sparkles, Trophy } from 'lucide-react';
+import { FileUp, Video, Sparkles, Trophy } from 'lucide-react';
 import { CareerThemeWrapper } from '@/components/CareerThemeWrapper';
 import { StudentWithStateAndCareer } from '@/lib/types';
 import Link from 'next/link';
@@ -17,6 +17,7 @@ import { ChatSheet } from '@/components/ChatSheet';
 import { TaskList } from '@/components/TaskList';
 import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
+import { StudentHeaderContent } from '@/components/StudentHeaderContent';
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
@@ -84,14 +85,6 @@ export default async function StudentPage({
   const career = student.etat?.metier;
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
-  const ambitionOrCareerText = career ? (
-    <>Votre métier exploré : <span className="font-semibold text-foreground">{career.nom}</span></>
-  ) : (
-    <>Votre ambition : <span className="font-semibold italic text-foreground">"{student.ambition}"</span></>
-  );
-
-  const ambitionIcon = career ? <GraduationCap className="h-5 w-5 text-primary" /> : <Lightbulb className="h-5 w-5 text-accent" />;
-  
   // La requête getStudentData garantit que nous n'avons que des sessions actives.
   const activeSession = student.sessionsParticipees?.[0];
 
@@ -127,16 +120,13 @@ export default async function StudentPage({
                         </Avatar>
                         <div>
                         <CardTitle className="text-3xl">Bonjour, {student.name}!</CardTitle>
-                        <CardDescription className="text-lg">Bienvenue sur votre tableau de bord.</CardDescription>
+                        <CardDescription>Bienvenue sur votre tableau de bord.</CardDescription>
                         </div>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                      {ambitionIcon}
-                      <p>{ambitionOrCareerText}</p>
-                  </div>
+                  <StudentHeaderContent student={student} />
                     
                     {isTeacherView && (
                         <TeacherCareerSelector 
