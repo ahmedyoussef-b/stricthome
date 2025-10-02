@@ -91,7 +91,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         roomRef.current.disconnect();
       }
     };
-  }, [sessionId, role, userId, toast, onConnected]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, role, userId, toast]);
 
 
   // This component handles the logic but doesn't render any visible UI itself.

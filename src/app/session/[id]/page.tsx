@@ -2,7 +2,7 @@
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, Star, Pin } from 'lucide-react';
+import { ArrowLeft, Users, Timer, Star, Pin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,13 +10,12 @@ import type { RemoteParticipant, LocalParticipant, Room, Participant as TwilioPa
 import { Badge } from '@/components/ui/badge';
 import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
-import { Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { StudentWithCareer } from '@/lib/types';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
+import { endCoursSession } from '@/lib/actions';
 
 // Dynamically import the VideoPlayer component with SSR disabled
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -32,7 +31,6 @@ async function getSessionData(sessionId: string) {
     }
     return response.json();
 }
-
 
 function SessionPageContent() {
     const router = useRouter();
@@ -54,6 +52,7 @@ function SessionPageContent() {
     const spotlightedParticipantRef = useRef(spotlightedParticipant);
     
     const [isLoading, setIsLoading] = useState(true);
+    const [isEndingSession, setIsEndingSession] = useState(false);
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
     const [teacher, setTeacher] = useState<any>(null);
 
@@ -70,26 +69,20 @@ function SessionPageContent() {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
         
-        // Set initial participants
         const remoteParticipants = new Map(newRoom.participants);
         setParticipants(remoteParticipants);
 
-        // Teacher is spotlighted by default
-        if (isTeacher) {
-            setSpotlightedParticipant(newRoom.localParticipant);
-        } else {
-             // Find teacher among participants
-            const teacherParticipant = Array.from(remoteParticipants.values()).find(p => p.identity.startsWith('teacher-'));
-            setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant); // Fallback to self
-        }
+        const teacherParticipant = newRoom.localParticipant.identity.startsWith('teacher-')
+            ? newRoom.localParticipant
+            : Array.from(remoteParticipants.values()).find(p => p.identity.startsWith('teacher-'));
+
+        setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
 
         newRoom.on('participantConnected', (participant) => {
-            console.log(`Participant "${participant.identity}" connected`);
             setParticipants(prev => new Map(prev).set(participant.sid, participant));
         });
 
         newRoom.on('participantDisconnected', (participant) => {
-             console.log(`Participant "${participant.identity}" disconnected`);
             setParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
@@ -97,29 +90,25 @@ function SessionPageContent() {
             });
             
             if (spotlightedParticipantRef.current?.sid === participant.sid) {
-                // If spotlighted participant leaves, default back to teacher or self
-                 if (isTeacher) {
-                    setSpotlightedParticipant(newRoom.localParticipant);
-                } else {
-                    const teacherParticipant = Array.from(newRoom.participants.values()).find(p => p.identity.startsWith('teacher-'));
-                    setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
-                }
+                const newSpotlight = newRoom.localParticipant.identity.startsWith('teacher-')
+                    ? newRoom.localParticipant
+                    : Array.from(newRoom.participants.values()).find(p => p.identity.startsWith('teacher-'));
+                setSpotlightedParticipant(newSpotlight || newRoom.localParticipant);
             }
         });
 
         newRoom.on('disconnected', () => {
-            toast({
-                title: "Session terminée",
-                description: "Vous avez été déconnecté de la session.",
-            });
-            if (isTeacher) {
-                router.push('/teacher');
-            } else {
+            // This event is fired for both teacher and students.
+            // Students are redirected, teacher's redirect is handled in `handleGoBack`.
+            if (!isTeacher) {
+                toast({
+                    title: "Session terminée",
+                    description: "Le professeur a mis fin à la session.",
+                });
                 router.push(`/student/${userId}`);
             }
         });
-
-    }, [isTeacher, router, toast, userId]);
+    }, [isTeacher, router, userId, toast]);
 
 
     useEffect(() => {
@@ -168,8 +157,30 @@ function SessionPageContent() {
 
 
     const handleGoBack = async () => {
-        // Disconnect logic is handled by VideoPlayer's cleanup
-        router.back();
+        if (isTeacher) {
+            setIsEndingSession(true);
+            try {
+                await endCoursSession(sessionId);
+                toast({
+                    title: "Session terminée",
+                    description: "La session a été fermée pour tous les participants."
+                });
+                // The room disconnect logic will be triggered by the VideoPlayer's cleanup effect
+                // after the router push completes and the component unmounts.
+                router.push('/teacher');
+            } catch (error) {
+                toast({
+                    variant: "destructive",
+                    title: "Erreur",
+                    description: "Impossible de terminer la session."
+                });
+                setIsEndingSession(false);
+            }
+        } else {
+            // For students, just disconnect and go back.
+            room?.disconnect();
+            router.back();
+        }
     };
     
     const teacherView = (
@@ -222,7 +233,6 @@ function SessionPageContent() {
     const mainParticipant = spotlightedParticipant ?? localParticipant;
     const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as TwilioParticipant[];
 
-
     const studentView = (
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             <div className="lg:col-span-2 flex flex-col gap-6">
@@ -257,7 +267,7 @@ function SessionPageContent() {
                                 <Avatar className="h-8 w-8">
                                     <AvatarFallback>{p.identity.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-sm font-medium">{p.identity} {p === localParticipant ? '(Vous)' : ''}</span>
+                                <span className="text-sm font-medium">{p.identity.split('-')[0]} {p === localParticipant ? '(Vous)' : ''}</span>
                           </div>
                       ))}
                     </CardContent>
@@ -277,8 +287,8 @@ function SessionPageContent() {
             <header className="border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                     <h1 className="text-xl font-bold">Session en direct: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
-                    <Button variant="outline" onClick={handleGoBack}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
+                    <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
+                         {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
                         Quitter la session
                     </Button>
                 </div>

@@ -10,52 +10,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =====================================
+// AUTH
+// =====================================
 
 model User {
-  id                    String                @id @default(cuid())
-  name                  String?
-  email                 String?               @unique
-  emailVerified         DateTime?
-  image                 String?
-  role                  Role                  @default(ELEVE)
-  ambition              String?
-  points                Int                   @default(0)
-
-  // Relations
-  classe                Classe?               @relation(fields: [classeId], references: [id])
-  classeId              String?
-  classesEnseignees     Classe[]              @relation("ProfesseurToClasse")
-  
-  etat                  EtatEleve?            
-  
-  sessionsParticipees   CoursSession[]        @relation("SessionParticipants")
-  sessionsEnseignees    CoursSession[]        @relation("SessionProfesseur")
-
-  taskCompletions       TaskCompletion[]
-  
-  annonces              Annonce[]
-
-  sentMessages          Message[]             @relation("SentMessages")
-  reactions             Reaction[]
-  
-  initiatedConversations Conversation[]       @relation("Initiator")
-  receivedConversations  Conversation[]       @relation("Receiver")
-
-  accounts              Account[]
-  sessions              Session[]
+  id                   String            @id @default(cuid())
+  name                 String?
+  email                String?           @unique
+  emailVerified        DateTime?
+  image                String?
+  role                 Role              @default(ELEVE)
+  ambition             String?
+  points               Int               @default(0)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  classeId             String?
+  classe               Classe?           @relation(fields: [classeId], references: [id], onDelete: SetNull)
+  classesEnseignees    Classe[]
+  etat                 EtatEleve?
+  sessionsParticipees  CoursSession[]    @relation("Participants")
+  sessionsEnseignees   CoursSession[]    @relation("Professeur")
+  taskCompletions      TaskCompletion[]
+  messages             Message[]
+  reactions            Reaction[]
+  authoredAnnouncements Annonce[]
+  conversationsInitiated Conversation[]  @relation("Initiator")
+  conversationsReceived  Conversation[]  @relation("Receiver")
 }
 
 model EtatEleve {
-  id          String    @id @default(cuid())
-  eleve       User      @relation(fields: [eleveId], references: [id], onDelete: Cascade)
-  eleveId     String    @unique
-  metier      Metier?   @relation(fields: [metierId], references: [id])
-  metierId    String?
-  isPunished  Boolean   @default(false)
+  id         String   @id @default(cuid())
+  eleveId    String   @unique
+  eleve      User     @relation(fields: [eleveId], references: [id], onDelete: Cascade)
+  isPunished Boolean  @default(false)
+  metierId   String?
+  metier     Metier?  @relation(fields: [metierId], references: [id], onDelete: SetNull)
+}
+
+enum Role {
+  ELEVE
+  PROFESSEUR
+}
+
+// =====================================
+// APPLICATION
+// =====================================
+
+model Classe {
+  id            String         @id @default(cuid())
+  nom           String
+  eleves        User[]
+  professeurId  String
+  professeur    User           @relation(fields: [professeurId], references: [id])
+  annonces      Annonce[]
+  messages      Message[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model CoursSession {
+  id                       String    @id @default(cuid())
+  professeurId             String
+  professeur               User      @relation("Professeur", fields: [professeurId], references: [id])
+  participants             User[]    @relation("Participants")
+  createdAt                DateTime  @default(now())
+  endedAt                  DateTime? // Ajouté pour marquer la fin de la session
+  spotlightedParticipantSid String?
 }
 
 model Metier {
-  id          String      @id @default(cuid())
+  id          String    @id @default(cuid())
   nom         String
   description String
   icon        String?
@@ -63,75 +88,13 @@ model Metier {
   eleves      EtatEleve[]
 }
 
-model Classe {
-  id            String          @id @default(cuid())
-  nom           String
-  professeur    User            @relation("ProfesseurToClasse", fields: [professeurId], references: [id])
-  professeurId  String
-  eleves        User[]
-  messages      Message[]
-  annonces      Annonce[]
-}
-
-model CoursSession {
-  id                       String    @id @default(cuid())
-  createdAt                DateTime  @default(now())
-  endedAt                  DateTime?
-  professeur               User      @relation("SessionProfesseur", fields: [professeurId], references: [id])
-  professeurId             String
-  participants             User[]    @relation("SessionParticipants")
-  spotlightedParticipantSid String?
-}
-
-model Message {
-  id            String        @id @default(cuid())
-  message       String
-  createdAt     DateTime      @default(now())
-  sender        User          @relation("SentMessages", fields: [senderId], references: [id])
-  senderId      String
-  senderName    String
-  
-  // Peut appartenir à une classe OU à une conversation, mais pas les deux
-  classe        Classe?       @relation(fields: [classeId], references: [id])
-  classeId      String?
-  conversation  Conversation? @relation(fields: [conversationId], references: [id])
-  conversationId String?
-
-  reactions     Reaction[]
-}
-
-model Conversation {
-  id          String    @id @default(cuid())
-  createdAt   DateTime  @default(now())
-  
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
-  initiatorId String
-  
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
-  receiverId  String
-  
-  messages    Message[]
-  
-  @@unique([initiatorId, receiverId])
-}
-
-
-model Reaction {
-  id        String   @id @default(cuid())
-  emoji     String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  message   Message  @relation(fields: [messageId], references: [id])
-  messageId String
-}
-
 model Task {
-  id            String           @id @default(cuid())
-  title         String
-  description   String
-  points        Int
-  type          TaskType
-  completions   TaskCompletion[]
+  id              String           @id @default(cuid())
+  title           String
+  description     String
+  points          Int
+  type            TaskType
+  completions     TaskCompletion[]
 }
 
 model TaskCompletion {
@@ -143,60 +106,58 @@ model TaskCompletion {
   completedAt DateTime @default(now())
 }
 
-model Annonce {
-  id         String   @id @default(cuid())
-  title      String
-  content    String
-  createdAt  DateTime @default(now())
-  author     User     @relation(fields: [authorId], references: [id])
-  authorId   String
-  classe     Classe?  @relation(fields: [classeId], references: [id])
-  classeId   String?
-}
-
-enum Role {
-  ELEVE
-  PROFESSEUR
-}
-
 enum TaskType {
   DAILY
   WEEKLY
   MONTHLY
 }
 
+model Message {
+  id             String      @id @default(cuid())
+  message        String
+  senderId       String
+  senderName     String
+  sender         User        @relation(fields: [senderId], references: [id])
+  createdAt      DateTime    @default(now())
+  
+  classeId       String?
+  classe         Classe?     @relation(fields: [classeId], references: [id], onDelete: Cascade)
+  
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-// --- NextAuth specific models ---
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
+  reactions      Reaction[]
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  message   Message  @relation(fields: [messageId], references: [id])
+  messageId String
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model Annonce {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  classe    Classe?  @relation(fields: [classeId], references: [id])
+  classeId  String?
+  createdAt DateTime @default(now())
+}
 
-  @@unique([identifier, token])
+model Conversation {
+  id           String    @id @default(cuid())
+  initiatorId  String
+  receiverId   String
+  initiator    User      @relation("Initiator", fields: [initiatorId], references: [id])
+  receiver     User      @relation("Receiver", fields: [receiverId], references: [id])
+  messages     Message[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([initiatorId, receiverId])
 }

@@ -84,27 +84,33 @@ export async function endCoursSession(sessionId: string) {
     throw new Error('Unauthorized: Only teachers can end sessions.');
   }
 
-  const coursSession = await prisma.coursSession.findUnique({
-    where: { id: sessionId, professeurId: session.user.id },
+  const coursSession = await prisma.coursSession.findFirst({
+    where: { 
+        id: sessionId, 
+        professeurId: session.user.id,
+        endedAt: null, // S'assurer qu'on ne termine pas une session déjà terminée
+    },
     include: { participants: true },
   });
 
   if (!coursSession) {
-    // Session already ended or doesn't exist.
+    // Session already ended or doesn't exist/belong to the teacher.
     return null;
   }
 
   const updatedSession = await prisma.coursSession.update({
     where: { id: sessionId },
     data: { endedAt: new Date() },
-    include: { participants: true } // re-include to be sure
   });
 
-  if (updatedSession) {
-    for (const participant of updatedSession.participants) {
-      revalidatePath(`/student/${participant.id}`);
-    }
+  // Revalidate paths for all participants
+  for (const participant of coursSession.participants) {
+    revalidatePath(`/student/${participant.id}`);
   }
+  // Revalidate teacher's path too, just in case
+  revalidatePath(`/teacher`);
+
+  console.log(`✅ [Session End] Session ${sessionId} terminée par le professeur ${session.user.id}.`);
 
   return updatedSession;
 }
