@@ -101,7 +101,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         roomRef.current.disconnect();
       }
     };
-  }, [connectToRoom]);
+  }, []);
 
 
   // This component handles the logic but doesn't render any visible UI itself.
