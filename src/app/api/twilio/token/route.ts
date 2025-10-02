@@ -2,12 +2,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 
+// Correction: AccessToken est un export nommé de twilio.jwt, pas une propriété de celui-ci.
 const { AccessToken } = twilio.jwt;
 const { VideoGrant } = AccessToken;
 
 export async function POST(request: NextRequest) {
   try {
     const { identity, room } = await request.json();
+    
+    if (!identity || !room) {
+        return NextResponse.json({ error: 'Identity and room name are required.' }, { status: 400 });
+    }
     
     console.log(`🔑 [Twilio Token API] Demande de jeton pour l'identité "${identity}" dans la salle "${room}"`);
 
@@ -32,10 +37,12 @@ export async function POST(request: NextRequest) {
     );
     
     token.identity = identity;
-    token.addGrant(new VideoGrant({ room }));
+    
+    const videoGrant = new VideoGrant({ room });
+    token.addGrant(videoGrant);
     
     const jwt = token.toJwt();
-    console.log('✅ [Twilio Token API] Jeton généré avec succès, longueur:', jwt.length);
+    console.log('✅ [Twilio Token API] Jeton généré avec succès.');
     
     return NextResponse.json({ token: jwt });
   } catch (error) {
