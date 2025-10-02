@@ -16,6 +16,7 @@ import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { endCoursSession } from '@/lib/actions';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Dynamically import the VideoPlayer component with SSR disabled
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -165,8 +166,6 @@ function SessionPageContent() {
                     title: "Session terminée",
                     description: "La session a été fermée pour tous les participants."
                 });
-                // The room disconnect logic will be triggered by the VideoPlayer's cleanup effect
-                // after the router push completes and the component unmounts.
                 router.push('/teacher');
             } catch (error) {
                 toast({
@@ -177,38 +176,16 @@ function SessionPageContent() {
                 setIsEndingSession(false);
             }
         } else {
-            // For students, just disconnect and go back.
-            room?.disconnect();
             router.back();
         }
     };
+
+    const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as TwilioParticipant[];
     
     const teacherView = (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
-            <div className="lg:col-span-4 flex flex-col gap-6">
-                 <Card className="flex-1 flex flex-col">
-                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users />
-                            Salle de classe ({participants.size + 1} en ligne)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-y-auto p-4">
-                        <ClassroomGrid
-                            teacher={teacher}
-                            students={classStudents}
-                            localParticipant={localParticipant}
-                            remoteParticipants={Array.from(participants.values())}
-                            spotlightedParticipantSid={spotlightedParticipant?.sid}
-                            sessionId={sessionId}
-                            isTeacher={isTeacher}
-                         />
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="lg:col-span-1 flex flex-col gap-6">
-               <div className="h-96">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+            <div className="lg:col-span-3 flex flex-col gap-6">
+               <div className="flex-grow min-h-[400px]">
                  <Whiteboard sessionId={sessionId} />
                </div>
                  <Card>
@@ -227,11 +204,37 @@ function SessionPageContent() {
                     </CardContent>
                 </Card>
             </div>
+
+            <div className="lg:col-span-1 flex flex-col gap-6">
+                 <Card className="flex-1 flex flex-col">
+                     <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users />
+                            Participants ({allLiveParticipants.length})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 p-2">
+                        <ScrollArea className="h-full">
+                            <div className="flex flex-col gap-4 p-2">
+                                {allLiveParticipants.map((p) => (
+                                    <Participant
+                                        key={p.sid}
+                                        participant={p}
+                                        isLocal={p === localParticipant}
+                                        isSpotlighted={p.sid === spotlightedParticipant?.sid}
+                                        sessionId={sessionId}
+                                        isTeacher={isTeacher}
+                                    />
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
     
     const mainParticipant = spotlightedParticipant ?? localParticipant;
-    const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as TwilioParticipant[];
 
     const studentView = (
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
