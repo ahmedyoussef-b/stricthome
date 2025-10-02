@@ -72,3 +72,22 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
 
     revalidatePath(`/session/${sessionId}`);
 }
+
+export async function endCoursSession(sessionId: string) {
+    const session = await getAuthSession();
+    if (session?.user.role !== 'PROFESSEUR') {
+        throw new Error("Unauthorized: Only teachers can end sessions.");
+    }
+
+    const coursSession = await prisma.coursSession.update({
+        where: { id: sessionId, professeurId: session.user.id },
+        data: { endedAt: new Date() },
+        include: { participants: true }
+    });
+
+    if (coursSession) {
+        coursSession.participants.forEach(p => revalidatePath(`/student/${p.id}`));
+    }
+
+    return coursSession;
+}

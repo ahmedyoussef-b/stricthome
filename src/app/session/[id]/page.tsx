@@ -15,6 +15,7 @@ import { VideoPlayer } from '@/components/VideoPlayer';
 import { StudentWithCareer } from '@/lib/types';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
+import { endCoursSession } from '@/lib/actions';
 
 // This function will fetch the necessary data on the client side
 async function getSessionData(sessionId: string) {
@@ -88,6 +89,11 @@ function SessionPageContent() {
 
     const handleGoBack = () => {
         room?.disconnect();
+        if (role === 'teacher') {
+            endCoursSession(sessionId).catch(err => {
+                console.error("Failed to end session:", err);
+            });
+        }
         router.back();
     };
     
@@ -102,6 +108,8 @@ function SessionPageContent() {
              const teacherParticipant = Array.from(newRoom.participants.values()).find((p: any) => p.identity.startsWith('teacher-'));
              if (teacherParticipant) {
                  setSpotlightedParticipant(teacherParticipant);
+             } else {
+                 setSpotlightedParticipant(newRoom.localParticipant)
              }
         } else {
             // Teacher spotlights themselves by default
@@ -135,7 +143,7 @@ function SessionPageContent() {
                 handleGoBack();
             }
         });
-    }, [role, toast, router]);
+    }, [role, toast, router, spotlightedParticipant]);
 
 
     const teacherView = (
