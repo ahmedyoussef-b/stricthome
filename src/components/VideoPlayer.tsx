@@ -14,11 +14,12 @@ const isAttachable = (track: Track): track is LocalVideoTrack | LocalAudioTrack 
 interface VideoPlayerProps {
   sessionId: string;
   role: 'teacher' | 'student';
-  onParticipantsChanged: (participants: RemoteParticipant[]) => void;
+  onConnected: (room: Room) => void;
+  onParticipantsChanged: (participants: Map<string, RemoteParticipant>) => void;
   onLocalParticipantChanged: (participant: LocalParticipant) => void;
 }
 
-export function VideoPlayer({ sessionId, role, onParticipantsChanged, onLocalParticipantChanged }: VideoPlayerProps) {
+export function VideoPlayer({ sessionId, role, onConnected, onParticipantsChanged, onLocalParticipantChanged }: VideoPlayerProps) {
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null); // Only for student view now
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -38,9 +39,11 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, onLocalPar
     }
     setIsLoading(true);
 
+    let localTracks: (LocalTrack | RemoteTrack)[] = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       cameraTrackRef.current = new LocalVideoTrack(stream.getVideoTracks()[0]);
+      localTracks = [cameraTrackRef.current, ...stream.getAudioTracks().map(t => new LocalAudioTrack(t))];
       setHasPermission(true);
     } catch (error) {
       console.error("💥 [VideoPlayer] Erreur d'accès aux média:", error);
@@ -71,32 +74,22 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, onLocalPar
       
       const room = await Video.connect(token, {
         name: sessionId,
-        audio: true,
-        tracks: cameraTrackRef.current ? [cameraTrackRef.current] : [],
+        tracks: localTracks,
       });
       roomRef.current = room;
+      onConnected(room);
 
-      onLocalParticipantChanged(room.localParticipant);
 
-      // In student view, attach teacher's video (assuming teacher is the first participant)
-      const mainRemoteContainer = role === 'student' ? remoteVideoRef.current : null;
-
-      const updateParticipants = () => {
-        const remoteParticipants = Array.from(room.participants.values());
-        onParticipantsChanged(remoteParticipants);
-      };
+      // Handle existing participants
+      room.participants.forEach(p => handleParticipant(p, room));
       
-      updateParticipants();
-
-      room.participants.forEach(p => handleParticipant(p, room, mainRemoteContainer));
-
       room.on('participantConnected', (p) => {
-        handleParticipant(p, room, mainRemoteContainer);
-        updateParticipants();
+        handleParticipant(p, room);
+        onParticipantsChanged(new Map(room.participants));
       });
       
       room.on('participantDisconnected', (p) => {
-         updateParticipants();
+         onParticipantsChanged(new Map(room.participants));
       });
       
       window.addEventListener('beforeunload', () => room.disconnect());
@@ -109,15 +102,12 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, onLocalPar
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, role, toast, onParticipantsChanged, onLocalParticipantChanged]);
+  }, [sessionId, role, toast, onConnected, onParticipantsChanged]);
 
 
-  const handleParticipant = (participant: RemoteParticipant, room: Room, container: HTMLDivElement | null) => {
+  const handleParticipant = (participant: RemoteParticipant, room: Room) => {
     participant.on('trackSubscribed', track => {
-      if (container && isAttachable(track)) {
-        container.innerHTML = ''; // Clear previous video
-        container.appendChild(track.attach());
-      }
+       // The logic to attach tracks is handled in the Participant component
     });
   };
 
@@ -176,48 +166,8 @@ export function VideoPlayer({ sessionId, role, onParticipantsChanged, onLocalPar
     }
   };
 
-  const LoadingState = (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
-      <Loader2 className="h-8 w-8 animate-spin" />
-      <p className="mt-2 text-sm">Connexion à la session...</p>
-    </div>
-  );
-
-  const NoPermissionState = (
-     <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 text-destructive-foreground p-2 text-center z-10">
-        <VideoOff className="h-8 w-8 mb-2" />
-        <p className="text-xs font-semibold">Caméra indisponible</p>
-    </div>
-  );
-  
-  if (role === 'teacher') {
-      return (
-          <>
-            {isLoading && hasPermission !== false && LoadingState}
-            {hasPermission === false && NoPermissionState}
-            {!isLoading && (
-                 <VideoControls 
-                    isSharingScreen={isSharingScreen}
-                    onToggleScreenShare={toggleScreenShare}
-                />
-            )}
-          </>
-      )
-  }
-
-  // Student View
-  return (
-    <div className="w-full h-full bg-muted rounded-md flex items-center justify-center relative overflow-hidden group">
-      {/* Main area for remote video (teacher) */}
-      <div ref={remoteVideoRef} className="w-full h-full object-contain" />
-        
-      {/* Picture-in-picture for student's local video */}
-      <div className="absolute bottom-4 right-4 w-1/4 max-w-[200px] h-auto z-20 border-2 border-background rounded-md overflow-hidden aspect-video shadow-lg">
-          <div ref={localVideoRef} className="w-full h-full" />
-      </div>
-        
-      {isLoading && hasPermission !== false && LoadingState}
-      {hasPermission === false && NoPermissionState}
-    </div>
-  );
+  // This component handles the logic but doesn't render any visible UI itself.
+  // The actual video rendering is done in Participant.tsx and VideoGrid.tsx.
+  // We can show a global loading/error state if needed, but it's better handled in the parent.
+  return null;
 }

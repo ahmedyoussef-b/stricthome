@@ -13,6 +13,7 @@ import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import { getSessionDetails } from '@/lib/actions';
 import { Loader2 } from 'lucide-react';
+import { VideoPlayer } from '@/components/VideoPlayer';
 
 function SessionPageContent() {
     const router = useRouter();
@@ -188,8 +189,23 @@ function SessionPageContent() {
     }, [role, spotlightedParticipant]);
 
 
+    const handleSetParticipants = useCallback((participantsMap: Map<string, RemoteParticipant>) => {
+        setParticipants(participantsMap);
+    }, []);
+
+    const handleSetLocalParticipant = useCallback((participant: LocalParticipant) => {
+        setLocalParticipant(participant);
+    }, []);
+
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
+            <VideoPlayer 
+                sessionId={sessionId}
+                role={role === 'teacher' ? 'teacher' : 'student'}
+                onConnected={onConnected}
+                onParticipantsChanged={handleSetParticipants}
+                onLocalParticipantChanged={handleSetLocalParticipant}
+            />
             <header className="border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                     <h1 className="text-xl font-bold">Session en direct: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
