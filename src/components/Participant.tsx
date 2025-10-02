@@ -34,13 +34,15 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
   const identity = participant.identity;
 
   useEffect(() => {
+    const videoElementRef = videoRef.current;
+    
     const attachTrack = (track: Track) => {
-        if (isAttachable(track) && videoRef.current?.parentElement) {
+        if (isAttachable(track) && videoElementRef) {
             const videoElement = track.attach();
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
             videoElement.style.objectFit = 'cover';
-            videoRef.current.parentElement.replaceChildren(videoElement);
+            videoElementRef.appendChild(videoElement);
         }
     }
     
@@ -78,7 +80,8 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
       participant.off('trackSubscribed', handleTrackSubscribed);
        participant.tracks.forEach(publication => {
         if(publication.track && isAttachable(publication.track)) {
-          publication.track.detach().forEach((el: HTMLElement) => el.remove());
+          const attachedElements = publication.track.detach();
+          attachedElements.forEach((el: HTMLElement) => el.remove());
         }
       });
     };
@@ -106,7 +109,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
         "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group",
         isSpotlighted && "ring-2 ring-amber-500 shadow-lg"
     )}>
-        <div ref={videoRef as any} className="w-full h-full object-cover" />
+        <div ref={videoRef} className="w-full h-full object-cover" />
 
         {!hasVideo && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
