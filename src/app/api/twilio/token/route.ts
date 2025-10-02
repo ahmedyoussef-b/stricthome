@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       twilioAccountSid,
       twilioApiKeySid, 
       twilioApiKeySecret,
-      { identity, ttl: 3600 }
+      { identity: identity, ttl: 3600 }
     );
 
     token.addGrant(new VideoGrant({ room }));
