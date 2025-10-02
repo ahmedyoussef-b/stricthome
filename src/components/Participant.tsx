@@ -26,7 +26,7 @@ interface ParticipantProps {
 }
 
 export function Participant({ participant, isLocal, isSpotlighted, sessionId }: ParticipantProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
   const { toast } = useToast();
@@ -37,12 +37,13 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
     const videoElementRef = videoRef.current;
     
     const attachTrack = (track: Track) => {
-        if (isAttachable(track) && videoElementRef) {
+        if (isAttachable(track) && videoElementRef?.parentElement) {
             const videoElement = track.attach();
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
             videoElement.style.objectFit = 'cover';
-            videoElementRef.appendChild(videoElement);
+            // Replace the ref div with the video element
+            videoElementRef.parentElement.replaceChild(videoElement, videoElementRef);
         }
     }
     
@@ -80,8 +81,8 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
       participant.off('trackSubscribed', handleTrackSubscribed);
        participant.tracks.forEach(publication => {
         if(publication.track && isAttachable(publication.track)) {
-          const attachedElements = publication.track.detach();
-          attachedElements.forEach((el: HTMLElement) => el.remove());
+          // detach is sufficient to remove the element from the DOM
+          publication.track.detach();
         }
       });
     };
