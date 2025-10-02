@@ -18,7 +18,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { EmojiPicker } from './EmojiPicker';
-import { getMessages, sendMessage, toggleReaction, deleteChatHistory } from '@/lib/actions';
+import { getMessages } from '@/lib/actions/chat.client.actions';
+import { sendMessage, toggleReaction, deleteChatHistory } from '@/lib/actions';
 import { MessageWithReactions, ReactionWithUser } from '@/lib/types';
 import { useFormStatus } from 'react-dom';
 import { pusherClient } from '@/lib/pusher/client';
@@ -413,5 +414,3 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
     </Sheet>
   );
 }
-
-    

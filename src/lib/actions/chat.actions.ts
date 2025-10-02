@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher/server';
 import { getAuthSession } from '@/lib/session';
-import { MessageWithReactions, ReactionWithUser } from '@/lib/types';
+import { ReactionWithUser } from '@/lib/types';
 
 
 export async function getMessages(classeId: string) {
