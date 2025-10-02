@@ -67,13 +67,9 @@ function SessionPageContent() {
     };
 
     const teacherView = (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
-            <div className="xl:col-span-2 flex flex-col gap-6">
-                <Whiteboard sessionId={sessionId} />
-            </div>
-
-            <div className="flex flex-col gap-6">
-                <Card className="flex-1 flex flex-col">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+            <div className="lg:col-span-4 flex flex-col gap-6">
+                 <Card className="flex-1 flex flex-col">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
@@ -89,6 +85,12 @@ function SessionPageContent() {
                         />
                     </CardContent>
                 </Card>
+            </div>
+
+            <div className="lg:col-span-1 flex flex-col gap-6">
+               <div className="h-96">
+                 <Whiteboard sessionId={sessionId} />
+               </div>
                  <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">

@@ -14,7 +14,7 @@ interface VideoGridProps {
 export function VideoGrid({ sessionId, localParticipant, participants, spotlightedParticipantSid }: VideoGridProps) {
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {localParticipant && (
                 <Participant 
                     key={localParticipant.sid}
