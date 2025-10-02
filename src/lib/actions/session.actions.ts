@@ -8,7 +8,7 @@ import { pusherServer } from '../pusher/server';
 import { redis } from '../redis';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
-    console.log(`🚀 [Session Start] Le professeur ${professeurId} démarre une session pour ${studentIds.length} élève(s).`);
+    console.log(`🚀 [Action Server] Démarrage de la création de session pour ${studentIds.length} élève(s).`);
     if (!professeurId || studentIds.length === 0) {
         throw new Error('Teacher ID and at least one student ID are required.');
     }
@@ -24,13 +24,13 @@ export async function createCoursSession(professeurId: string, studentIds: strin
         },
     });
 
-    console.log(`✅ [DB] Session ${session.id} créée dans la base de données.`);
+    console.log(`✅ [DB] Session ${session.id} créée. Invitation envoyée aux élèves.`);
 
     // Revalidate the paths for each student participating in the session
     studentIds.forEach(id => {
         revalidatePath(`/student/${id}`);
     });
-    console.log(`🔄 [Path Revalidation] Revalidation des chemins pour les élèves.`);
+    console.log(`🔄 [Revalidation] Pages des élèves invalidées pour afficher l'invitation.`);
 
     return session;
 }

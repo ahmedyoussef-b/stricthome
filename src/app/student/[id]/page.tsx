@@ -20,7 +20,7 @@ import { AnnouncementsList } from '@/components/AnnouncementsList';
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
-    // Suppression de la logique de cache Redis pour garantir que les données sont toujours fraîches.
+    // Suppression de la logique de cache pour garantir que les données sont toujours fraîches.
     console.log(`[DB] Récupération des données fraîches pour l'élève ${id}. Pas de cache.`);
     const student = await prisma.user.findUnique({
       where: { id, role: 'ELEVE' },
