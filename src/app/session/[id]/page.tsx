@@ -11,11 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import { Loader2 } from 'lucide-react';
-import { VideoPlayer } from '@/components/VideoPlayer';
+import dynamic from 'next/dynamic';
 import { StudentWithCareer } from '@/lib/types';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
 import { endCoursSession } from '@/lib/actions';
+
+// Dynamically import the VideoPlayer component with SSR disabled
+const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
+    ssr: false,
+    loading: () => <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">Chargement de la vidéo...</div>
+});
 
 // This function will fetch the necessary data on the client side
 async function getSessionData(sessionId: string) {
