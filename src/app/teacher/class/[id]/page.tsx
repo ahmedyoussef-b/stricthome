@@ -44,7 +44,9 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
     ...classe,
     eleves: classe.eleves.map(e => ({
       ...e,
-      etat: e.etat // 'etat' can be null, which is fine
+      etat: {
+        isPunished: e.etat?.isPunished ?? false
+      }
     }))
   };
 
