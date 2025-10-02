@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, UserX, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,9 @@ import { spotlightParticipant } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
-const isAttachable = (track: Track | null) => {
+type AttachableTrack = LocalVideoTrack | RemoteVideoTrack | LocalAudioTrack | RemoteAudioTrack;
+
+const isAttachable = (track: Track | null): track is AttachableTrack => {
   return track && typeof (track as any).attach === 'function';
 };
 
@@ -33,28 +35,28 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
 
   useEffect(() => {
     const attachTrack = (track: Track) => {
-        if (isAttachable(track) && videoRef.current) {
+        if (isAttachable(track) && videoRef.current?.parentElement) {
             const videoElement = track.attach();
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
             videoElement.style.objectFit = 'cover';
-            videoRef.current.parentElement?.replaceChildren(videoElement);
+            videoRef.current.parentElement.replaceChildren(videoElement);
         }
     }
     
-    const videoTrack = Array.from(participant.videoTracks.values())[0]?.track;
-    const audioTrack = Array.from(participant.audioTracks.values())[0]?.track;
+    const videoTrackPublication = [...participant.videoTracks.values()][0];
+    const audioTrackPublication = [...participant.audioTracks.values()][0];
+    
+    const videoTrack = videoTrackPublication?.track;
+    const audioTrack = audioTrackPublication?.track;
 
     setHasVideo(!!videoTrack && videoTrack.isEnabled);
-    setIsMuted(!!audioTrack && !audioTrack.isEnabled);
+    setIsMuted(!!audioTrack ? !audioTrack.isEnabled : false);
     
     if(videoTrack) attachTrack(videoTrack);
-    if(audioTrack) {
-        // Audio tracks are attached to the document body automatically
-    }
 
-    const handleTrackEnabled = (track: Track) => { if (track.kind === 'video') setHasVideo(true); else setIsMuted(false) };
-    const handleTrackDisabled = (track: Track) => { if (track.kind === 'video') setHasVideo(false); else setIsMuted(true) };
+    const handleTrackEnabled = (track: Track) => { if (track.kind === 'video') setHasVideo(true); else if (track.kind === 'audio') setIsMuted(false) };
+    const handleTrackDisabled = (track: Track) => { if (track.kind === 'video') setHasVideo(false); else if (track.kind === 'audio') setIsMuted(true) };
 
     const handleTrackSubscribed = (track: Track) => {
       if (track.kind === 'video') {
@@ -76,7 +78,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
       participant.off('trackSubscribed', handleTrackSubscribed);
        participant.tracks.forEach(publication => {
         if(publication.track && isAttachable(publication.track)) {
-          publication.track.detach().forEach(el => el.remove());
+          publication.track.detach().forEach((el: HTMLElement) => el.remove());
         }
       });
     };
