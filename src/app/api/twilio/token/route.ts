@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 
 const AccessToken = twilio.jwt.AccessToken;
+const VideoGrant = AccessToken.VideoGrant;
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,12 +32,10 @@ export async function POST(request: NextRequest) {
       twilioAccountSid,
       twilioApiKeySid, 
       twilioApiKeySecret,
-      { ttl: 3600 }
+      { identity: identity, ttl: 3600 }
     );
     
-    token.identity = identity;
-    
-    const videoGrant = new AccessToken.VideoGrant({ room });
+    const videoGrant = new VideoGrant({ room });
     token.addGrant(videoGrant);
     
     const jwt = token.toJwt();
