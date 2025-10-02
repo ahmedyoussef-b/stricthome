@@ -87,7 +87,7 @@ function SessionPageContent() {
 
 
     const handleGoBack = async () => {
-        room?.disconnect();
+        // The room?.disconnect() is now handled by the VideoPlayer's cleanup effect
         if (role === 'teacher') {
             try {
                 await endCoursSession(sessionId);
