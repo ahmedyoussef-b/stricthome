@@ -1,4 +1,3 @@
-
 // prisma/seed.ts
 import { PrismaClient, Role, TaskType } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
@@ -109,75 +108,87 @@ async function main() {
   });
   console.log('✅ Professeur créé.');
 
-  // Create a class
-  console.log('🏫 Création de la classe...');
+  // Create classes
+  console.log('🏫 Création des classes...');
   const classeA = await prisma.classe.create({
-    data: {
-      nom: 'Classe A',
-      professeurId: teacher.id,
-    },
+    data: { nom: 'Classe A', professeurId: teacher.id },
   });
-  console.log('✅ Classe créée.');
+  const classeB = await prisma.classe.create({
+    data: { nom: 'Classe B', professeurId: teacher.id },
+  });
+  const classeC = await prisma.classe.create({
+    data: { nom: 'Classe C', professeurId: teacher.id },
+  });
+  console.log('✅ 3 Classes créées.');
 
   // Create students
   console.log('🧑‍🎓 Création des élèves...');
-  const studentsData = [
-    { name: 'Alice', ambition: 'devenir pompier', email: 'student1@example.com', points: 125 },
-    { name: 'Bob', ambition: 'explorer Mars', email: 'student2@example.com', points: 80 },
-    { name: 'Charlie', ambition: 'soigner les animaux', email: 'student3@example.com', points: 210 },
-    { name: 'Diana', ambition: "être une artiste célèbre", email: 'student4@example.com', points: 55 },
+  const studentNames = [
+      // Classe A
+      'Ahmed', 'Ali', 'Fatima', 'Yasmine', 'Omar', 'Karim', 'Leila', 'Sofia', 'Hassan', 'Nadia',
+      // Classe B
+      'Mohamed', 'Aya', 'Youssef', 'Nour', 'Adam', 'Sarah', 'Amir', 'Ines', 'Rayan', 'Lina',
+      // Classe C
+      'Mehdi', 'Samira', 'Bilal', 'Zahra', 'Idris', 'Anissa', 'Malik', 'Khadija', 'Walid', 'Salma'
   ];
-  
-  const createdStudents = [];
-  for (const studentData of studentsData) {
-    const student = await prisma.user.create({
-      data: {
-        email: studentData.email,
-        name: studentData.name,
-        role: Role.ELEVE,
-        ambition: studentData.ambition,
-        points: studentData.points,
-        classeId: classeA.id,
-      },
-    });
-    createdStudents.push(student);
+
+  const classes = [classeA, classeB, classeC];
+  let studentIndex = 0;
+
+  for (const classe of classes) {
+      for (let i = 0; i < 10; i++) {
+          const name = studentNames[studentIndex];
+          const student = await prisma.user.create({
+              data: {
+                  name: name,
+                  email: `${name.toLowerCase()}@example.com`,
+                  role: 'ELEVE',
+                  ambition: `devenir ${name === 'Fatima' ? 'médecin' : 'ingénieur'}`,
+                  points: Math.floor(Math.random() * 250),
+                  classeId: classe.id,
+              },
+          });
+          
+          let metierId: string | undefined = undefined;
+          if (i % 3 === 0) metierId = pompier.id;
+          else if (i % 3 === 1) metierId = astronaute.id;
+          
+          await prisma.etatEleve.create({
+              data: {
+                  eleveId: student.id,
+                  isPunished: false,
+                  metierId: metierId,
+              },
+          });
+          studentIndex++;
+      }
   }
+  console.log(`✅ ${studentIndex} élèves créés et répartis dans les classes.`);
 
-  // Create student states
-  await prisma.etatEleve.create({
-      data: { eleveId: createdStudents[0].id, isPunished: false, metierId: pompier.id },
-  });
-   await prisma.etatEleve.create({
-      data: { eleveId: createdStudents[1].id, isPunished: false, metierId: astronaute.id },
-  });
-   await prisma.etatEleve.create({
-      data: { eleveId: createdStudents[2].id, isPunished: false, metierId: veterinaire.id },
-  });
-    await prisma.etatEleve.create({
-      data: { eleveId: createdStudents[3].id, isPunished: false },
-  });
-
-  console.log('✅ Élèves et leurs états créés.');
-
+  
   // Create some messages in the chatroom
   console.log('✉️ Création des messages...');
-  await prisma.message.create({
-    data: {
-        message: "Bonjour la classe! N'oubliez pas vos devoirs pour demain.",
-        senderId: teacher.id,
-        senderName: teacher.name!,
-        classeId: classeA.id,
-    }
-  });
+  const firstStudent = await prisma.user.findFirst({where: {role: 'ELEVE'}});
+  
+  if (firstStudent) {
+    await prisma.message.create({
+        data: {
+            message: "Bonjour la classe! N'oubliez pas vos devoirs pour demain.",
+            senderId: teacher.id,
+            senderName: teacher.name!,
+            classeId: classeA.id,
+        }
+    });
 
-  await prisma.message.create({
-    data: {
-        message: "Bonjour Monsieur, j'ai une question sur l'exercice 3.",
-        senderId: createdStudents[0].id,
-        senderName: createdStudents[0].name!,
-        classeId: classeA.id,
-    }
-  });
+    await prisma.message.create({
+        data: {
+            message: "Bonjour Monsieur, j'ai une question sur l'exercice 3.",
+            senderId: firstStudent.id,
+            senderName: firstStudent.name!,
+            classeId: classeA.id,
+        }
+    });
+  }
   console.log('✅ Messages créés.');
   
   // Create some announcements
@@ -212,5 +223,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-    
