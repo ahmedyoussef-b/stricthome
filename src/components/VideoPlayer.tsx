@@ -22,7 +22,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   const connectToRoom = useCallback(async () => {
     // Construct a unique identity
     const participantName = `${role}-${userId.substring(0, 8)}`;
-    console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la salle "${sessionId}"`);
+    console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la session: ${sessionId.substring(0,8)}`);
 
     if (!participantName || !sessionId) {
         console.warn("⚠️ [VideoPlayer] Nom du participant ou ID de session manquant. Connexion annulée.");
@@ -33,16 +33,16 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     let localTracks: LocalTrack[] = [];
     try {
-      console.log("🎥 [VideoPlayer] Demande d'accès à la caméra et au microphone...");
+      console.log(`🎥 [VideoPlayer] Demande d'accès à la caméra et au microphone pour la session: ${sessionId.substring(0,8)}...`);
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localTracks = [
           new LocalVideoTrack(stream.getVideoTracks()[0]),
           new LocalAudioTrack(stream.getAudioTracks()[0])
       ];
       setHasPermission(true);
-      console.log("✅ [VideoPlayer] Accès média obtenu.");
+      console.log(`✅ [VideoPlayer] Accès média obtenu pour la session: ${sessionId.substring(0,8)}.`);
     } catch (error) {
-      console.error("💥 [VideoPlayer] Erreur d'accès média:", error);
+      console.error(`💥 [VideoPlayer] Erreur d'accès média pour la session: ${sessionId.substring(0,8)}:`, error);
       setHasPermission(false);
       setIsLoading(false);
       toast({
@@ -54,7 +54,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     }
     
     try {
-      console.log("🔑 [VideoPlayer] Récupération du jeton d'accès Twilio...");
+      console.log(`🔑 [VideoPlayer] Récupération du jeton d'accès Twilio pour la session: ${sessionId.substring(0,8)}...`);
       const response = await fetch('/api/twilio/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,15 +68,15 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       }
       
       const token = data.token;
-      console.log("✅ [VideoPlayer] Jeton Twilio reçu.");
+      console.log(`✅ [VideoPlayer] Jeton Twilio reçu pour la session: ${sessionId.substring(0,8)}.`);
       
-      console.log(`🚪 [VideoPlayer] Connexion à la salle Twilio "${sessionId}"...`);
+      console.log(`🚪 [VideoPlayer] Connexion à la salle Twilio "${sessionId.substring(0,8)}"...`);
       const room = await Video.connect(token, {
         name: sessionId,
         tracks: localTracks,
       });
       roomRef.current = room;
-      console.log(`✅ [VideoPlayer] Connecté avec succès à la salle en tant que "${room.localParticipant.identity}"`);
+      console.log(`✅ [VideoPlayer] Connecté avec succès à la salle "${sessionId.substring(0,8)}" en tant que "${room.localParticipant.identity}"`);
       onConnected(room);
       
       window.addEventListener('beforeunload', () => room.disconnect());
@@ -85,7 +85,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       let description = "Impossible d'établir la connexion à la session vidéo.";
       if (error instanceof Error) description = error.message;
       
-      console.error("❌ [VideoPlayer] Erreur de connexion vidéo:", description);
+      console.error(`❌ [VideoPlayer] Erreur de connexion vidéo pour la session: ${sessionId.substring(0,8)}:`, description);
       toast({ variant: 'destructive', title: 'Erreur de Connexion Vidéo', description });
     } finally {
       setIsLoading(false);
@@ -97,7 +97,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     return () => {
       if(roomRef.current) {
-        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name}"`);
+        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name.substring(0,8)}"`);
         roomRef.current.disconnect();
       }
     };
