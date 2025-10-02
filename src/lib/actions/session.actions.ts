@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getAuthSession } from '../session';
 import { pusherServer } from '../pusher/server';
+import { redis } from '../redis';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
     if (!professeurId || studentIds.length === 0) {
@@ -21,6 +22,13 @@ export async function createCoursSession(professeurId: string, studentIds: strin
             },
         },
     });
+
+    // Invalidate student cache to ensure they see the new session
+    if (redis) {
+      for (const studentId of studentIds) {
+        await redis.del(`student:${studentId}`);
+      }
+    }
 
     // Revalidate the paths for each student participating in the session
     studentIds.forEach(id => {
@@ -86,6 +94,11 @@ export async function endCoursSession(sessionId: string) {
     });
 
     if (coursSession) {
+        if (redis) {
+            for (const participant of coursSession.participants) {
+                await redis.del(`student:${participant.id}`);
+            }
+        }
         coursSession.participants.forEach(p => revalidatePath(`/student/${p.id}`));
     }
 
