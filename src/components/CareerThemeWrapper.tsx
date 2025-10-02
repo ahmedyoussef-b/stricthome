@@ -21,11 +21,6 @@ interface CustomCSSProperties extends React.CSSProperties {
 export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps) {
     const [zoom, setZoom] = useState(1);
     const [blur, setBlur] = useState(8);
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     const theme = career?.theme as any; 
     const careerName = career?.nom.toLowerCase() as keyof typeof placeholderImages || 'default';
@@ -41,13 +36,12 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
         '--accent-hsl': '36 100% 65%', // default accent
       };
 
-  const themeClasses = career 
-    ? theme?.textColor
-    : 'text-foreground';
+  const themeClasses = cn(
+      career ? theme?.textColor : 'text-foreground',
+      career ? theme?.cursor : 'cursor-default'
+  );
     
     useEffect(() => {
-        if (!isMounted) return;
-
         const handleWheel = (event: WheelEvent) => {
             // Check if the scroll event is happening inside the chat sheet (or any dialog)
             const target = event.target as HTMLElement;
@@ -81,12 +75,12 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
         return () => {
             window.removeEventListener('wheel', handleWheel);
         };
-    }, [isMounted]);
+    }, []);
 
   return (
     <div
       style={themeStyles}
-      className={cn("transition-all duration-700 ease-in-out relative min-h-screen", themeClasses, theme?.cursor)}
+      className={cn("transition-all duration-700 ease-in-out relative min-h-screen", themeClasses)}
     >
         <div 
           className="fixed inset-0 w-full h-full z-[-1] bg-cover bg-center transition-all duration-1000"
