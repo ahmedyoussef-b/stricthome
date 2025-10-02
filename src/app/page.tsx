@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getPublicAnnouncements } from '@/lib/actions/announcement.actions';
 import { format } from 'date-fns';
+import { AnnouncementWithAuthor } from '@/lib/types';
 
 export default async function HomePage() {
   const session = await getAuthSession();
@@ -50,7 +51,7 @@ export default async function HomePage() {
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold text-center mb-12">Annonces Récentes</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {announcements.map(annonce => (
+                {announcements.map((annonce: AnnouncementWithAuthor) => (
                   <Card key={annonce.id}>
                     <CardHeader>
                       <div className="flex items-center gap-4">
