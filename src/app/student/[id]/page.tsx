@@ -46,13 +46,13 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
                 metier: true
               }
             },
-            classe: true,
             sessionsParticipees: {
               orderBy: {
                 createdAt: 'desc'
               },
             },
             taskCompletions: true,
+            classe: true,
           }
         });
         
@@ -122,6 +122,11 @@ export default async function StudentPage({
   const ambitionIcon = career ? <GraduationCap className="h-5 w-5 text-primary" /> : <Lightbulb className="h-5 w-5 text-accent" />;
   
   const activeSession = student.sessionsParticipees?.find(s => s.endedAt === null);
+
+  if (activeSession) {
+      console.log(`📬 [Page Élève] Invitation détectée pour la session active: ${activeSession.id}`);
+  }
+
   const classeId = student.classeId;
   const tasks = await prisma.task.findMany();
   const announcements = await getStudentAnnouncements(student.id);

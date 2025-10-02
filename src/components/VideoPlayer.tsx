@@ -17,15 +17,15 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const roomRef = useRef<Room | null>(null);
-  const cameraTrackRef = useRef<LocalVideoTrack | null>(null);
   const { toast } = useToast();
   
   const connectToRoom = useCallback(async () => {
     // Construct a unique identity
     const participantName = `${role}-${userId.substring(0, 8)}`;
+    console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la salle "${sessionId}"`);
 
     if (!participantName || !sessionId) {
-        console.warn("⚠️ [VideoPlayer] participantName or sessionId missing. Connection cancelled.");
+        console.warn("⚠️ [VideoPlayer] Nom du participant ou ID de session manquant. Connexion annulée.");
         setIsLoading(false);
         return;
     }
@@ -33,23 +33,28 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     let localTracks: LocalTrack[] = [];
     try {
+      console.log("🎥 [VideoPlayer] Demande d'accès à la caméra et au microphone...");
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      cameraTrackRef.current = new LocalVideoTrack(stream.getVideoTracks()[0]);
-      localTracks = [cameraTrackRef.current, ...stream.getAudioTracks().map(t => new LocalAudioTrack(t))];
+      localTracks = [
+          new LocalVideoTrack(stream.getVideoTracks()[0]),
+          new LocalAudioTrack(stream.getAudioTracks()[0])
+      ];
       setHasPermission(true);
+      console.log("✅ [VideoPlayer] Accès média obtenu.");
     } catch (error) {
-      console.error("💥 [VideoPlayer] Media access error:", error);
+      console.error("💥 [VideoPlayer] Erreur d'accès média:", error);
       setHasPermission(false);
       setIsLoading(false);
       toast({
         variant: 'destructive',
-        title: 'Media Access Denied',
-        description: "Please allow access to camera and microphone.",
+        title: "Accès Média Refusé",
+        description: "Veuillez autoriser l'accès à la caméra et au microphone.",
       });
       return;
     }
     
     try {
+      console.log("🔑 [VideoPlayer] Récupération du jeton d'accès Twilio...");
       const response = await fetch('/api/twilio/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,25 +64,29 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       const data = await response.json();
 
       if (!response.ok) {
-          throw new Error(data.error || 'Unknown server error for token. Check server config.');
+          throw new Error(data.error || 'Erreur serveur inconnue pour le jeton. Vérifiez la config serveur.');
       }
       
       const token = data.token;
+      console.log("✅ [VideoPlayer] Jeton Twilio reçu.");
       
+      console.log(`🚪 [VideoPlayer] Connexion à la salle Twilio "${sessionId}"...`);
       const room = await Video.connect(token, {
         name: sessionId,
         tracks: localTracks,
       });
       roomRef.current = room;
+      console.log(`✅ [VideoPlayer] Connecté avec succès à la salle en tant que "${room.localParticipant.identity}"`);
       onConnected(room);
       
       window.addEventListener('beforeunload', () => room.disconnect());
 
     } catch (error) {
-      let description = "Could not establish connection to the video session.";
+      let description = "Impossible d'établir la connexion à la session vidéo.";
       if (error instanceof Error) description = error.message;
       
-      toast({ variant: 'destructive', title: 'Video Connection Error', description });
+      console.error("❌ [VideoPlayer] Erreur de connexion vidéo:", description);
+      toast({ variant: 'destructive', title: 'Erreur de Connexion Vidéo', description });
     } finally {
       setIsLoading(false);
     }
@@ -88,9 +97,9 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     return () => {
       if(roomRef.current) {
+        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name}"`);
         roomRef.current.disconnect();
       }
-      cameraTrackRef.current?.stop();
     };
   }, [connectToRoom]);
 

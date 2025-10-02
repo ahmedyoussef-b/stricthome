@@ -85,6 +85,8 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
   const handleStartSession = () => {
     if (selectedStudents.size === 0) return;
     
+    console.log(`🚀 [Session Start] Le professeur ${teacher.id} démarre une session pour ${selectedStudents.size} élève(s).`);
+
     startSessionTransition(async () => {
       try {
         const studentIds = Array.from(selectedStudents);
@@ -93,8 +95,10 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
           title: "Session créée !",
           description: `La session a été démarrée avec ${studentIds.length} élève(s).`,
         });
-        router.push(`/session/${session.id}?role=teacher&students=${studentIds.join(',')}`);
+        console.log(`✅ [Session Start] Session ${session.id} créée. Redirection...`);
+        router.push(`/session/${session.id}?role=teacher&userId=${teacher.id}`);
       } catch (error) {
+        console.error("❌ [Session Start] Erreur lors de la création de la session:", error);
         toast({
           variant: 'destructive',
           title: 'Erreur',
