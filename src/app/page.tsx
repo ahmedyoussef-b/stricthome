@@ -61,7 +61,7 @@ export default async function HomePage() {
                         <CardTitle>{annonce.title}</CardTitle>
                       </div>
                        <CardDescription>
-                         Par {annonce.author.name ?? 'Utilisateur inconnu'} - {format(new Date(annonce.createdAt), 'dd MMMM yyyy')}
+                         <p>Par {annonce.author.name ?? 'Utilisateur inconnu'} - {format(new Date(annonce.createdAt), 'dd MMMM yyyy')}</p>
                        </CardDescription>
                     </CardHeader>
                     <CardContent>
