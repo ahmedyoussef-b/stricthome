@@ -22,6 +22,7 @@ function SessionPageContent() {
     
     const sessionId = typeof params.id === 'string' ? params.id : '';
     const role = searchParams.get('role');
+    const userId = searchParams.get('userId');
 
     const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
     const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
@@ -125,7 +126,7 @@ function SessionPageContent() {
                     <Card className="aspect-video flex items-center justify-center bg-muted">
                         <div className="text-center">
                             <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                            <p className="mt-2 text-muted-foreground">En attente du participant en vedette...</p>
+                            <p className="mt-2 text-muted-foreground">En attente du professeur...</p>
                         </div>
                     </Card>
                 )}
@@ -139,18 +140,12 @@ function SessionPageContent() {
                         <CardTitle className="flex items-center gap-2"><Users /> Participants</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        {localParticipant && (
-                           <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
-                                <Star className="h-4 w-4 text-amber-500" />
-                                <span className="font-semibold">{localParticipant.identity} (Vous)</span>
-                           </div>
-                        )}
-                        {Array.from(participants.values()).map(p => (
-                            <div key={p.sid} className="flex items-center gap-2 p-2 rounded-md">
-                                <Pin className="h-4 w-4 text-muted-foreground" />
-                                <span>{p.identity}</span>
-                            </div>
-                        ))}
+                       <VideoGrid 
+                           sessionId={sessionId}
+                           localParticipant={localParticipant}
+                           participants={Array.from(participants.values())}
+                           spotlightedParticipantSid={spotlightedParticipant?.sid}
+                        />
                     </CardContent>
                 </Card>
              </div>
@@ -162,18 +157,23 @@ function SessionPageContent() {
         const remoteParticipants = new Map<string, RemoteParticipant>(room.participants);
         setParticipants(remoteParticipants);
         
-        // Default spotlight to teacher (first participant)
-        if (room.participants.size > 0) {
-            const firstParticipant = room.participants.values().next().value;
-             if (role === 'student' && !spotlightedParticipant) {
-                setSpotlightedParticipant(firstParticipant);
-             }
-        } else if (role === 'student') {
-             setSpotlightedParticipant(room.localParticipant);
+        // Default spotlight to teacher if they are present, otherwise self
+        if (role === 'student') {
+            const teacher = Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-'));
+            if(teacher) {
+                setSpotlightedParticipant(teacher);
+            } else if (room.localParticipant.identity.startsWith('teacher-')) {
+                setSpotlightedParticipant(room.localParticipant);
+            }
         }
+
 
         room.on('participantConnected', (participant: RemoteParticipant) => {
             setParticipants(prev => new Map(prev).set(participant.sid, participant));
+            // If student joins and teacher is not yet spotlighted, spotlight teacher
+             if (role === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipant) {
+                setSpotlightedParticipant(participant);
+            }
         });
 
         room.on('participantDisconnected', (participant: RemoteParticipant) => {
@@ -201,7 +201,8 @@ function SessionPageContent() {
         <div className="min-h-screen bg-background text-foreground flex flex-col">
             <VideoPlayer 
                 sessionId={sessionId}
-                role={role === 'teacher' ? 'teacher' : 'student'}
+                role={role ?? 'student'}
+                userId={userId ?? ''}
                 onConnected={onConnected}
                 onParticipantsChanged={handleSetParticipants}
                 onLocalParticipantChanged={handleSetLocalParticipant}

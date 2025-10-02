@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, LocalVideoTrackPublication } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Mic, MicOff, Star, UserX, VideoOff } from "lucide-react";
+import { Mic, MicOff, Star, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -35,18 +35,21 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
 
   useEffect(() => {
     const videoElementRef = videoRef.current;
-    
+    if (!videoElementRef) return;
+
     const attachTrack = (track: Track) => {
-        if (isAttachable(track) && videoElementRef?.parentElement) {
-            const videoElement = track.attach();
-            videoElement.style.width = '100%';
-            videoElement.style.height = '100%';
-            videoElement.style.objectFit = 'cover';
-            // Replace the ref div with the video element
-            videoElementRef.parentElement.replaceChild(videoElement, videoElementRef);
-        }
-    }
+      if (isAttachable(track)) {
+        const videoElement = track.attach();
+        videoElementRef.appendChild(videoElement);
+      }
+    };
     
+    const detachTrack = (track: Track) => {
+        if (isAttachable(track)) {
+            track.detach().forEach((element) => element.remove());
+        }
+    };
+
     const videoTrackPublication = [...participant.videoTracks.values()][0];
     const audioTrackPublication = [...participant.audioTracks.values()][0];
     
@@ -56,7 +59,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
     setHasVideo(!!videoTrack && videoTrack.isEnabled);
     setIsMuted(audioTrack ? !audioTrack.isEnabled : false);
     
-    if(videoTrack) attachTrack(videoTrack);
+    if (videoTrack) attachTrack(videoTrack);
 
     const handleTrackEnabled = (track: Track) => { if (track.kind === 'video') setHasVideo(true); else if (track.kind === 'audio') setIsMuted(false) };
     const handleTrackDisabled = (track: Track) => { if (track.kind === 'video') setHasVideo(false); else if (track.kind === 'audio') setIsMuted(true) };
@@ -79,10 +82,9 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
 
     return () => {
       participant.off('trackSubscribed', handleTrackSubscribed);
-       participant.tracks.forEach(publication => {
-        if(publication.track && isAttachable(publication.track)) {
-          // detach is sufficient to remove the element from the DOM
-          publication.track.detach();
+      participant.tracks.forEach(publication => {
+        if (publication.track) {
+          detachTrack(publication.track);
         }
       });
     };
@@ -110,7 +112,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
         "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group",
         isSpotlighted && "ring-2 ring-amber-500 shadow-lg"
     )}>
-        <div ref={videoRef} className="w-full h-full object-cover" />
+        <div ref={videoRef} className="w-full h-full object-cover [&>video]:w-full [&>video]:h-full [&>video]:object-cover" />
 
         {!hasVideo && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -148,11 +150,9 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
                  </TooltipProvider>
              )}
         </div>
-         {hasVideo && (
-            <p className="absolute bottom-2 left-2 text-xs font-semibold bg-black/50 text-white px-2 py-1 rounded">
-                {isLocal ? 'Vous' : identity}
-            </p>
-        )}
+         <p className="absolute bottom-2 left-2 text-xs font-semibold bg-black/50 text-white px-2 py-1 rounded">
+            {isLocal ? 'Vous' : identity}
+        </p>
     </Card>
   );
 }

@@ -233,7 +233,7 @@ export default async function StudentPage({
                         </CardHeader>
                         <CardContent>
                             <Button asChild className="w-full">
-                                <Link href={`/session/${activeSession.id}?role=student&studentId=${student.id}`}>
+                                <Link href={`/session/${activeSession.id}?role=student&userId=${student.id}`}>
                                     Rejoindre la session
                                 </Link>
                             </Button>
