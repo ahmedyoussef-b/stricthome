@@ -82,25 +82,36 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
 }
 
 export async function endCoursSession(sessionId: string) {
-    const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSEUR') {
-        throw new Error("Unauthorized: Only teachers can end sessions.");
+  const session = await getAuthSession();
+  if (session?.user.role !== 'PROFESSEUR') {
+    throw new Error('Unauthorized: Only teachers can end sessions.');
+  }
+
+  const coursSession = await prisma.coursSession.findUnique({
+    where: { id: sessionId, professeurId: session.user.id },
+    include: { participants: true },
+  });
+
+  if (!coursSession) {
+    // Session already ended or doesn't exist.
+    return null;
+  }
+
+  const updatedSession = await prisma.coursSession.update({
+    where: { id: sessionId },
+    data: { endedAt: new Date() },
+    include: { participants: true } // re-include to be sure
+  });
+
+  if (updatedSession) {
+    // Invalidate cache and revalidate paths for all participants
+    for (const participant of updatedSession.participants) {
+      if (redis) {
+        await redis.del(`student:${participant.id}`);
+      }
+      revalidatePath(`/student/${participant.id}`);
     }
+  }
 
-    const coursSession = await prisma.coursSession.update({
-        where: { id: sessionId, professeurId: session.user.id },
-        data: { endedAt: new Date() },
-        include: { participants: true }
-    });
-
-    if (coursSession) {
-        if (redis) {
-            for (const participant of coursSession.participants) {
-                await redis.del(`student:${participant.id}`);
-            }
-        }
-        coursSession.participants.forEach(p => revalidatePath(`/student/${p.id}`));
-    }
-
-    return coursSession;
+  return updatedSession;
 }
