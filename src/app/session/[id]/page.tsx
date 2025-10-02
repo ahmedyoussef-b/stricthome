@@ -99,8 +99,9 @@ function SessionPageContent() {
         });
 
         newRoom.on('disconnected', () => {
-            // This event is fired for both teacher and students.
-            // Students are redirected, teacher's redirect is handled in `handleGoBack`.
+            if (roomRef.current) {
+                roomRef.current.disconnect();
+            }
             if (!isTeacher) {
                 toast({
                     title: "Session terminée",
@@ -112,7 +113,6 @@ function SessionPageContent() {
     }, [isTeacher, router, userId, toast]);
 
      useEffect(() => {
-        // Only run this once on component mount
         if (!sessionId) return;
         
         const fetchSessionDetails = async () => {
@@ -186,7 +186,6 @@ function SessionPageContent() {
     };
 
     const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as TwilioParticipant[];
-    const mainParticipantForView = spotlightedParticipant ?? localParticipant;
     
     const findParticipantByIdentity = (identity: string) => {
         return allLiveParticipants.find(p => p.identity === identity);
@@ -226,6 +225,16 @@ function SessionPageContent() {
                     <CardContent className="flex-1 p-2">
                         <ScrollArea className="h-full">
                             <div className="flex flex-col gap-4 p-2">
+                                {localParticipant && localParticipant.identity.startsWith('teacher-') && (
+                                     <Participant
+                                        key={localParticipant.sid}
+                                        participant={localParticipant}
+                                        isLocal={true}
+                                        isSpotlighted={localParticipant.sid === spotlightedParticipant?.sid}
+                                        sessionId={sessionId}
+                                        isTeacher={isTeacher}
+                                    />
+                                )}
                                 {classStudents.map((student) => {
                                     const participant = findParticipantByIdentity(`student-${student.id.substring(0, 8)}`);
                                     if (participant) {
@@ -242,17 +251,6 @@ function SessionPageContent() {
                                     }
                                     return <StudentPlaceholder key={student.id} student={student} isOnline={false} />;
                                 })}
-                                {/* Always show teacher at the top */}
-                                {localParticipant && localParticipant.identity.startsWith('teacher-') && (
-                                     <Participant
-                                        key={localParticipant.sid}
-                                        participant={localParticipant}
-                                        isLocal={true}
-                                        isSpotlighted={localParticipant.sid === spotlightedParticipant?.sid}
-                                        sessionId={sessionId}
-                                        isTeacher={isTeacher}
-                                    />
-                                )}
                             </div>
                         </ScrollArea>
                     </CardContent>
