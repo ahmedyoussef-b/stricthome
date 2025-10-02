@@ -1,4 +1,4 @@
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion, Annonce, Classe, User, Metier } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion, Annonce, Classe, User, Metier, CoursSession } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
     include: { classe: true }
@@ -15,15 +15,7 @@ export type StudentWithStateAndCareer = Prisma.UserGetPayload<{
                 metier: true
             }
         },
-        sessionsParticipees: {
-          where: {
-            endedAt: null
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
-        },
+        sessionsParticipees: true,
         classe: true,
         taskCompletions: true,
     }

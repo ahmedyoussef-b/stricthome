@@ -48,13 +48,9 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
             },
             classe: true,
             sessionsParticipees: {
-              where: {
-                endedAt: null
-              },
               orderBy: {
                 createdAt: 'desc'
               },
-              take: 1
             },
             taskCompletions: true,
           }
@@ -125,7 +121,7 @@ export default async function StudentPage({
 
   const ambitionIcon = career ? <GraduationCap className="h-5 w-5 text-primary" /> : <Lightbulb className="h-5 w-5 text-accent" />;
   
-  const activeSession = student.sessionsParticipees?.[0];
+  const activeSession = student.sessionsParticipees?.find(s => s.endedAt === null);
   const classeId = student.classeId;
   const tasks = await prisma.task.findMany();
   const announcements = await getStudentAnnouncements(student.id);
