@@ -8,7 +8,7 @@ import { pusherServer } from '../pusher/server';
 import { redis } from '../redis';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
-    console.log(`📝 [Action] Création d'une session par le professeur ${professeurId} pour ${studentIds.length} élèves.`);
+    console.log(`🚀 [Session Start] Le professeur ${professeurId} démarre une session pour ${studentIds.length} élève(s).`);
     if (!professeurId || studentIds.length === 0) {
         throw new Error('Teacher ID and at least one student ID are required.');
     }
@@ -24,22 +24,13 @@ export async function createCoursSession(professeurId: string, studentIds: strin
         },
     });
 
-    console.log(`✅ [Action] Session ${session.id} créée dans la base de données.`);
-
-    // Invalidate student cache to ensure they see the new session
-    if (redis) {
-      console.log(`🔄 [Action] Invalidation du cache pour ${studentIds.length} élèves.`);
-      for (const studentId of studentIds) {
-        console.log(`   - Invalidation du cache pour student:${studentId}`);
-        await redis.del(`student:${studentId}`);
-      }
-    }
+    console.log(`✅ [DB] Session ${session.id} créée dans la base de données.`);
 
     // Revalidate the paths for each student participating in the session
     studentIds.forEach(id => {
         revalidatePath(`/student/${id}`);
     });
-    console.log(`🔄 [Action] Revalidation des chemins pour les élèves.`);
+    console.log(`🔄 [Path Revalidation] Revalidation des chemins pour les élèves.`);
 
     return session;
 }
@@ -110,12 +101,6 @@ export async function endCoursSession(sessionId: string) {
   });
 
   if (updatedSession) {
-    // Invalidate cache and revalidate paths for all participants
-    if (redis) {
-      for (const participant of updatedSession.participants) {
-        await redis.del(`student:${participant.id}`);
-      }
-    }
     for (const participant of updatedSession.participants) {
       revalidatePath(`/student/${participant.id}`);
     }

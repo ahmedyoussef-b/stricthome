@@ -14,69 +14,42 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TeacherCareerSelector } from '@/components/TeacherCareerSelector';
 import { getAuthSession } from '@/lib/session';
 import { ChatSheet } from '@/components/ChatSheet';
-import { redis } from '@/lib/redis';
 import { TaskList } from '@/components/TaskList';
 import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
-    const cacheKey = `student:${id}`;
-    let student: StudentWithStateAndCareer | null = null;
-
-    if (redis) {
-        try {
-            const cachedStudent = await redis.get(cacheKey);
-            if (cachedStudent) {
-                console.log(`[Cache] HIT pour ${cacheKey}`);
-                student = JSON.parse(cachedStudent as string);
-            }
-        } catch (error) {
-            console.error('[Cache] Erreur de lecture Redis:', error);
-        }
-    }
-    
-    if (!student) {
-        console.log(`[Cache] MISS pour ${cacheKey}. Récupération depuis la DB.`);
-        student = await prisma.user.findUnique({
-          where: { id, role: 'ELEVE' },
+    // Suppression de la logique de cache Redis pour garantir que les données sont toujours fraîches.
+    console.log(`[DB] Récupération des données fraîches pour l'élève ${id}. Pas de cache.`);
+    const student = await prisma.user.findUnique({
+      where: { id, role: 'ELEVE' },
+      include: {
+        etat: {
           include: {
-            etat: {
-              include: {
-                metier: true
-              }
-            },
-            sessionsParticipees: {
-              where: { endedAt: null }, // STRICTLY fetch only active sessions
-            },
-            taskCompletions: true,
-            classe: true,
+            metier: true
           }
-        });
-        
-        if (student && redis) {
-            try {
-                // Cache pendant 10 minutes
-                await redis.set(cacheKey, JSON.stringify(student), { ex: 600 });
-            } catch (error) {
-                 console.error('[Cache] Erreur d\'écriture Redis:', error);
-            }
-        }
-    }
+        },
+        // S'assurer de ne récupérer STRICTEMENT que les sessions actives.
+        sessionsParticipees: {
+          where: { endedAt: null },
+        },
+        taskCompletions: true,
+        classe: true,
+      }
+    });
 
     if (!student) return null;
 
-    // If student is punished, don't return the career theme
+    // Si l'élève est puni, ne pas retourner le thème de carrière
     if (student.etat?.isPunished && student.etat.metier) {
-        // Create a new object to avoid modifying the cached one
-        const studentWithoutTheme: any = { // Use any to allow modification
+        return {
             ...student,
             etat: {
                 ...student.etat,
                 metier: null
             }
-        };
-        return studentWithoutTheme as StudentWithStateAndCareer;
+        } as StudentWithStateAndCareer;
     }
 
     return student as StudentWithStateAndCareer;
@@ -102,7 +75,7 @@ export default async function StudentPage({
     notFound();
   }
   
-  // Security check: a student can only see their own page
+  // Sécurité: un élève ne peut voir que sa propre page
   if (session.user.role === 'ELEVE' && student.id !== session.user.id) {
       notFound();
   }
@@ -119,6 +92,7 @@ export default async function StudentPage({
 
   const ambitionIcon = career ? <GraduationCap className="h-5 w-5 text-primary" /> : <Lightbulb className="h-5 w-5 text-accent" />;
   
+  // La requête getStudentData garantit que nous n'avons que des sessions actives.
   const activeSession = student.sessionsParticipees?.[0];
 
   if (activeSession) {
