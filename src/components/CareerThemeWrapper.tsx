@@ -15,7 +15,6 @@ interface CareerThemeWrapperProps {
 interface CustomCSSProperties extends React.CSSProperties {
     '--primary-hsl'?: string;
     '--accent-hsl'?: string;
-    cursor?: string;
 }
 
 
@@ -36,7 +35,6 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
     ? {
         '--primary-hsl': theme?.primaryColor,
         '--accent-hsl': theme?.accentColor,
-        cursor: theme?.cursor.replace('cursor-', ''),
       }
     : {
         '--primary-hsl': '207 90% 54%', // default primary
