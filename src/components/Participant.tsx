@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, LocalVideoTrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, UserX, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 type AttachableTrack = LocalVideoTrack | RemoteVideoTrack | LocalAudioTrack | RemoteAudioTrack;
 
 const isAttachable = (track: Track | null): track is AttachableTrack => {
-  return track && typeof (track as any).attach === 'function';
+  return track !== null && typeof (track as any).attach === 'function';
 };
 
 interface ParticipantProps {
@@ -51,7 +51,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
     const audioTrack = audioTrackPublication?.track;
 
     setHasVideo(!!videoTrack && videoTrack.isEnabled);
-    setIsMuted(!!audioTrack ? !audioTrack.isEnabled : false);
+    setIsMuted(audioTrack ? !audioTrack.isEnabled : false);
     
     if(videoTrack) attachTrack(videoTrack);
 
