@@ -16,6 +16,8 @@ import { StudentWithCareer } from '@/lib/types';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
 import { endCoursSession } from '@/lib/actions';
+import { VideoGrid } from '@/components/VideoGrid';
+
 
 // Dynamically import the VideoPlayer component with SSR disabled
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -45,17 +47,23 @@ function SessionPageContent() {
 
     const [room, setRoom] = useState<Room | null>(null);
     const roomRef = useRef(room);
-    roomRef.current = room;
     
     const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
     const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<RemoteParticipant | LocalParticipant | null>(null);
     const spotlightedParticipantRef = useRef(spotlightedParticipant);
-    spotlightedParticipantRef.current = spotlightedParticipant;
-
+    
     const [isLoading, setIsLoading] = useState(true);
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
     const [teacher, setTeacher] = useState<any>(null);
+
+    useEffect(() => {
+        roomRef.current = room;
+    }, [room]);
+
+     useEffect(() => {
+        spotlightedParticipantRef.current = spotlightedParticipant;
+    }, [spotlightedParticipant]);
 
 
      useEffect(() => {
@@ -102,7 +110,6 @@ function SessionPageContent() {
 
 
     const handleGoBack = async () => {
-        // The room?.disconnect() is now handled by the VideoPlayer's cleanup effect
         if (role === 'teacher') {
             try {
                 await endCoursSession(sessionId);
@@ -118,7 +125,7 @@ function SessionPageContent() {
         router.back();
     };
     
-    const onConnected = useCallback((newRoom: Room) => {
+     const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
         setParticipants(new Map(newRoom.participants));
@@ -142,9 +149,10 @@ function SessionPageContent() {
 
         newRoom.on('participantConnected', (participant) => {
             setParticipants(prev => new Map(prev).set(participant.sid, participant));
-            if (currentRole === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipantRef.current) {
+            // Student's spotlight shouldn't change when another student connects
+            if (currentRole === 'student' && participant.identity.startsWith('teacher-')) {
                setSpotlightedParticipant(participant);
-           }
+            }
         });
 
         newRoom.on('participantDisconnected', (participant) => {
@@ -215,6 +223,12 @@ function SessionPageContent() {
             </div>
         </div>
     );
+    
+    const remoteParticipantsArray = Array.from(participants.values());
+    const otherParticipants = [localParticipant, ...remoteParticipantsArray].filter(
+      p => p && p.sid !== spotlightedParticipant?.sid
+    ) as (LocalParticipant | RemoteParticipant)[];
+
 
     const studentView = (
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
@@ -238,30 +252,17 @@ function SessionPageContent() {
                    <Whiteboard sessionId={sessionId} />
                 </div>
             </div>
-             <div className="space-y-4">
-                 {localParticipant && (
-                    <Card>
-                        <CardHeader>
-                           <CardTitle className="text-sm">Votre caméra</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Participant
-                                key={localParticipant.sid}
-                                participant={localParticipant}
-                                isLocal={true}
-                            />
-                        </CardContent>
-                    </Card>
-                 )}
+             <div className="flex flex-col space-y-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants ({participants.size + 1})</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2">
-                       <ul className="text-sm text-muted-foreground">
-                         {localParticipant && <li>{localParticipant.identity} (Vous)</li>}
-                         {Array.from(participants.values()).map(p => <li key={p.sid}>{p.identity}</li>)}
-                       </ul>
+                    <CardContent className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+                       <VideoGrid 
+                           sessionId={sessionId}
+                           localParticipant={localParticipant}
+                           participants={remoteParticipantsArray}
+                       />
                     </CardContent>
                 </Card>
              </div>
