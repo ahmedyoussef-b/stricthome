@@ -14,6 +14,18 @@ import { pusherClient } from '@/lib/pusher/client';
 import { getSessionDetails } from '@/lib/actions';
 import { Loader2 } from 'lucide-react';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { StudentWithCareer } from '@/lib/types';
+import { ClassroomGrid } from '@/components/ClassroomGrid';
+
+// This function will fetch the necessary data on the client side
+async function getSessionData(sessionId: string) {
+    const response = await fetch(`/api/session/${sessionId}/details`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch session details');
+    }
+    return response.json();
+}
+
 
 function SessionPageContent() {
     const router = useRouter();
@@ -29,16 +41,26 @@ function SessionPageContent() {
     const [room, setRoom] = useState<any>(null);
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<RemoteParticipant | LocalParticipant | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
+    const [teacher, setTeacher] = useState<any>(null);
+
 
      useEffect(() => {
         if (!sessionId) return;
         
         const fetchSessionDetails = async () => {
-            const details = await getSessionDetails(sessionId);
-            if (details?.spotlightedParticipantSid) {
-                // Initial spotlight will be set once participants are loaded
+            try {
+                const { session, students, teacher } = await getSessionData(sessionId);
+                if (session?.spotlightedParticipantSid) {
+                    // Initial spotlight will be set once participants are loaded
+                }
+                setClassStudents(students || []);
+                setTeacher(teacher);
+            } catch (error) {
+                console.error("Failed to load session data", error);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
         fetchSessionDetails();
 
@@ -67,6 +89,43 @@ function SessionPageContent() {
         room?.disconnect();
         router.back();
     };
+    
+    const onConnected = useCallback((newRoom: any) => {
+        setRoom(newRoom);
+        setLocalParticipant(newRoom.localParticipant);
+        const remoteParticipantsMap = new Map<string, RemoteParticipant>(newRoom.participants);
+        setParticipants(remoteParticipantsMap);
+
+        // Set default spotlight
+        if (role === 'student') {
+             const teacherParticipant = Array.from(newRoom.participants.values()).find((p: any) => p.identity.startsWith('teacher-'));
+             if (teacherParticipant) {
+                 setSpotlightedParticipant(teacherParticipant);
+             }
+        } else {
+            // Teacher spotlights themselves by default
+            setSpotlightedParticipant(newRoom.localParticipant);
+        }
+
+        newRoom.on('participantConnected', (participant: RemoteParticipant) => {
+            setParticipants(prev => new Map(prev).set(participant.sid, participant));
+            if (role === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipant) {
+                setSpotlightedParticipant(participant);
+            }
+        });
+
+        newRoom.on('participantDisconnected', (participant: RemoteParticipant) => {
+            setParticipants(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(participant.sid);
+                return newMap;
+            });
+            if (spotlightedParticipant?.sid === participant.sid && role !== 'student') {
+                setSpotlightedParticipant(newRoom.localParticipant); // Default to self if spotlighted participant leaves
+            }
+        });
+    }, [role, spotlightedParticipant]);
+
 
     const teacherView = (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
@@ -75,16 +134,18 @@ function SessionPageContent() {
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
-                            Participants ({participants.size + 1})
+                            Salle de classe ({participants.size + 1} en ligne)
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-y-auto">
-                        <VideoGrid 
-                           sessionId={sessionId}
-                           localParticipant={localParticipant}
-                           participants={Array.from(participants.values())}
-                           spotlightedParticipantSid={spotlightedParticipant?.sid}
-                        />
+                        <ClassroomGrid
+                            teacher={teacher}
+                            students={classStudents}
+                            localParticipant={localParticipant}
+                            remoteParticipants={Array.from(participants.values())}
+                            spotlightedParticipantSid={spotlightedParticipant?.sid}
+                            sessionId={sessionId}
+                         />
                     </CardContent>
                 </Card>
             </div>
@@ -135,67 +196,34 @@ function SessionPageContent() {
                 </div>
             </div>
              <div className="space-y-4">
+                 {localParticipant && (
+                    <Card>
+                        <CardHeader>
+                           <CardTitle className="text-sm">Votre caméra</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Participant
+                                key={localParticipant.sid}
+                                participant={localParticipant}
+                                isLocal={true}
+                            />
+                        </CardContent>
+                    </Card>
+                 )}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Users /> Participants</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                       <VideoGrid 
-                           sessionId={sessionId}
-                           localParticipant={localParticipant}
-                           participants={Array.from(participants.values())}
-                           spotlightedParticipantSid={spotlightedParticipant?.sid}
-                        />
+                       <ul className="text-sm text-muted-foreground">
+                         {localParticipant && <li>{localParticipant.identity} (Vous)</li>}
+                         {Array.from(participants.values()).map(p => <li key={p.sid}>{p.identity}</li>)}
+                       </ul>
                     </CardContent>
                 </Card>
              </div>
         </div>
     );
-     const onConnected = useCallback((room: any) => {
-        setRoom(room);
-        setLocalParticipant(room.localParticipant);
-        const remoteParticipants = new Map<string, RemoteParticipant>(room.participants);
-        setParticipants(remoteParticipants);
-        
-        // Default spotlight to teacher if they are present, otherwise self
-        if (role === 'student') {
-            const teacher = Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-'));
-            if(teacher) {
-                setSpotlightedParticipant(teacher);
-            } else if (room.localParticipant.identity.startsWith('teacher-')) {
-                setSpotlightedParticipant(room.localParticipant);
-            }
-        }
-
-
-        room.on('participantConnected', (participant: RemoteParticipant) => {
-            setParticipants(prev => new Map(prev).set(participant.sid, participant));
-            // If student joins and teacher is not yet spotlighted, spotlight teacher
-             if (role === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipant) {
-                setSpotlightedParticipant(participant);
-            }
-        });
-
-        room.on('participantDisconnected', (participant: RemoteParticipant) => {
-            setParticipants(prev => {
-                const newMap = new Map(prev);
-                newMap.delete(participant.sid);
-                return newMap;
-            });
-            if (spotlightedParticipant?.sid === participant.sid) {
-                setSpotlightedParticipant(room.localParticipant); // Or default to teacher
-            }
-        });
-    }, [role, spotlightedParticipant]);
-
-
-    const handleSetParticipants = useCallback((participantsMap: Map<string, RemoteParticipant>) => {
-        setParticipants(participantsMap);
-    }, []);
-
-    const handleSetLocalParticipant = useCallback((participant: LocalParticipant) => {
-        setLocalParticipant(participant);
-    }, []);
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -204,8 +232,6 @@ function SessionPageContent() {
                 role={role ?? 'student'}
                 userId={userId ?? ''}
                 onConnected={onConnected}
-                onParticipantsChanged={handleSetParticipants}
-                onLocalParticipantChanged={handleSetLocalParticipant}
             />
             <header className="border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
@@ -229,10 +255,9 @@ function SessionPageContent() {
     );
 }
 
-
 export default function SessionPage() {
     return (
-        <Suspense fallback={<div>Chargement de la session...</div>}>
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center">Chargement de la session...</div>}>
             <SessionPageContent />
         </Suspense>
     )

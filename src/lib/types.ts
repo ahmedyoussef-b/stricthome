@@ -81,6 +81,12 @@ export type StudentForCard = Pick<User, 'id' | 'name' | 'email'> & {
   } | null;
 };
 
+export type StudentWithCareer = Pick<User, 'id' | 'name' | 'email'> & {
+    etat: {
+        metier: Metier | null;
+    } | null
+}
+
 export type ClasseWithDetails = Omit<Classe, 'professeurId'> & {
   eleves: StudentForCard[];
 };
@@ -95,5 +101,3 @@ export type CareerWithTheme = Metier & {
     imageUrl: string;
   }
 }
-
-    

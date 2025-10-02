@@ -11,8 +11,6 @@ interface VideoPlayerProps {
   role: string;
   userId: string;
   onConnected: (room: Room) => void;
-  onParticipantsChanged: (participants: Map<string, RemoteParticipant>) => void;
-  onLocalParticipantChanged: (participant: LocalParticipant) => void;
 }
 
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
@@ -72,14 +70,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       });
       roomRef.current = room;
       onConnected(room);
-
-
-      // Handle existing participants
-      room.participants.forEach(p => handleParticipant(p, room));
-      
-      room.on('participantConnected', (p) => {
-        handleParticipant(p, room);
-      });
       
       window.addEventListener('beforeunload', () => room.disconnect());
 
@@ -92,13 +82,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       setIsLoading(false);
     }
   }, [sessionId, role, userId, toast, onConnected]);
-
-
-  const handleParticipant = (participant: RemoteParticipant, room: Room) => {
-    participant.on('trackSubscribed', track => {
-       // The logic to attach tracks is handled in the Participant component
-    });
-  };
 
   useEffect(() => {
     connectToRoom();
