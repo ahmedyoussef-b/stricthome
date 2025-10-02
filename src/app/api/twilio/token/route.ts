@@ -2,9 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 
-// Correction: AccessToken est une propriété de twilio.jwt
 const AccessToken = twilio.jwt.AccessToken;
-const { VideoGrant } = AccessToken;
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +36,7 @@ export async function POST(request: NextRequest) {
     
     token.identity = identity;
     
-    const videoGrant = new VideoGrant({ room });
+    const videoGrant = new AccessToken.VideoGrant({ room });
     token.addGrant(videoGrant);
     
     const jwt = token.toJwt();
