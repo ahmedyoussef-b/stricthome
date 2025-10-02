@@ -47,9 +47,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
               }
             },
             sessionsParticipees: {
-              orderBy: {
-                createdAt: 'desc'
-              },
+              where: { endedAt: null }, // STRICTLY fetch only active sessions
             },
             taskCompletions: true,
             classe: true,
@@ -121,7 +119,7 @@ export default async function StudentPage({
 
   const ambitionIcon = career ? <GraduationCap className="h-5 w-5 text-primary" /> : <Lightbulb className="h-5 w-5 text-accent" />;
   
-  const activeSession = student.sessionsParticipees?.find(s => s.endedAt === null);
+  const activeSession = student.sessionsParticipees?.[0];
 
   if (activeSession) {
       console.log(`📬 [Page Élève] Invitation détectée pour la session active: ${activeSession.id}`);
