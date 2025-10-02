@@ -47,7 +47,7 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       id: e.id,
       name: e.name,
       email: e.email,
-      etat: e.etat ? { isPunished: e.etat.isPunished } : { isPunished: false },
+      etat: { isPunished: e.etat?.isPunished ?? false },
     }))
   };
 
