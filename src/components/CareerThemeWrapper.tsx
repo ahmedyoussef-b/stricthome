@@ -21,6 +21,11 @@ interface CustomCSSProperties extends React.CSSProperties {
 export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps) {
     const [zoom, setZoom] = useState(1);
     const [blur, setBlur] = useState(8);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const theme = career?.theme as any; 
     
@@ -43,6 +48,8 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
   );
     
     useEffect(() => {
+        if (!isMounted) return;
+
         const handleWheel = (event: WheelEvent) => {
             // Check if the scroll event is happening inside the chat sheet (or any dialog)
             const target = event.target as HTMLElement;
@@ -76,7 +83,7 @@ export function CareerThemeWrapper({ career, children }: CareerThemeWrapperProps
         return () => {
             window.removeEventListener('wheel', handleWheel);
         };
-    }, []);
+    }, [isMounted]);
 
   return (
     <div
