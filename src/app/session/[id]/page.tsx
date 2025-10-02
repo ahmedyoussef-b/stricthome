@@ -81,10 +81,9 @@ function SessionPageContent() {
         return () => {
             channel.unbind('participant-spotlighted', handleSpotlight);
             pusherClient.unsubscribe(channelName);
-            room?.disconnect();
         };
 
-    }, [sessionId, localParticipant, participants, room]);
+    }, [sessionId, localParticipant, participants]);
 
 
     const handleGoBack = async () => {
