@@ -166,9 +166,6 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     const { offsetX, offsetY } = nativeEvent;
     const w = canvasRef.current.width;
     const h = canvasRef.current.height;
-    
-    const lastX = contextRef.current.canvas.width * (contextRef.current.currentPoint?.x / w || offsetX/w);
-    const lastY = contextRef.current.canvas.height * (contextRef.current.currentPoint?.y / h || offsetY/h);
 
     const data: Omit<DrawData, 'senderId'> = {
       x0: (offsetX - nativeEvent.movementX) / w,
