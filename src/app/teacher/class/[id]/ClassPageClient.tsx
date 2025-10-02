@@ -7,7 +7,7 @@ import { StudentCard } from '@/components/StudentCard';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Video, User } from 'lucide-react';
+import { ArrowLeft, Loader2, Video, Users } from 'lucide-react';
 import { AddStudentForm } from '@/components/AddStudentForm';
 import { createCoursSession } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,7 @@ import { pusherClient } from '@/lib/pusher/client';
 import { Role } from '@prisma/client';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
 import { AnnouncementWithAuthor, ClasseWithDetails } from '@/lib/types';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
 interface ClassPageClientProps {
@@ -41,22 +42,16 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
         const channel = pusherClient.subscribe(channelName);
         
         channel.bind('pusher:subscription_succeeded', (members: any) => {
-            console.log('✅ [Pusher] Souscription réussie au canal:', channelName);
             const onlineEmails = new Set<string>();
-            members.each((member: any) => {
-              console.log(`👤 [ClassPage] Utilisateur déjà en ligne: ${member.info.name} (${member.info.email})`);
-              onlineEmails.add(member.info.email)
-            });
+            members.each((member: any) => onlineEmails.add(member.info.email));
             setOnlineUserEmails(onlineEmails);
         });
 
         channel.bind('pusher:member_added', (member: any) => {
-            console.log(`➕ [Pusher] Membre rejoint: ${member.info.name} (${member.info.email})`);
             setOnlineUserEmails(prev => new Set(prev).add(member.info.email));
         });
 
         channel.bind('pusher:member_removed', (member: any) => {
-            console.log(`➖ [Pusher] Membre parti: ${member.info.name} (${member.info.email})`);
             setOnlineUserEmails(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(member.info.email);
@@ -64,12 +59,7 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
             });
         });
         
-        channel.bind('pusher:subscription_error', (error: any) => {
-          console.error(`💥 [Pusher] Erreur de souscription Pusher pour ${channelName}:`, error);
-        });
-
         return () => {
-            console.log(`🔌 [Pusher] Désabonnement du canal: ${channelName}`);
             pusherClient.unsubscribe(channelName);
         };
     } catch (error) {
@@ -79,13 +69,39 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
 
 
   const handleSelectionChange = (studentId: string, isSelected: boolean) => {
-    // La sélection est maintenant gérée dans le flux de création de session
+    setSelectedStudents(prev => {
+      const newSelection = new Set(prev);
+      if (isSelected) {
+        newSelection.add(studentId);
+      } else {
+        newSelection.delete(studentId);
+      }
+      return newSelection;
+    });
   };
 
   const selectedCount = selectedStudents.size;
 
   const handleStartSession = () => {
-    // Cette fonction est maintenant obsolète ici
+    if (selectedStudents.size === 0) return;
+    
+    startSessionTransition(async () => {
+      try {
+        const studentIds = Array.from(selectedStudents);
+        const session = await createCoursSession(teacher.id, studentIds);
+        toast({
+          title: "Session créée !",
+          description: `La session a été démarrée avec ${studentIds.length} élève(s).`,
+        });
+        router.push(`/session/${session.id}?role=teacher&students=${studentIds.join(',')}`);
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erreur',
+          description: 'Impossible de démarrer la session.',
+        });
+      }
+    });
   };
 
   return (
@@ -111,31 +127,39 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
                     <ChatSheet 
                         classeId={classe.id} 
                         userId={teacher.id} 
-                        userRole={teacher.role} 
+                        userRole={teacher.role as Role} 
                     />
                  )}
-                 <Button asChild>
-                     <Link href="/teacher/session/create">
-                        <Video className="mr-2 h-4 w-4" />
-                        Créer une session
-                    </Link>
+                 <Button onClick={handleStartSession} disabled={selectedCount === 0 || isStartingSession}>
+                    {isStartingSession ? <Loader2 className="animate-spin" /> : <Video className="mr-2 h-4 w-4" />}
+                    Démarrer la session ({selectedCount})
                  </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
+                <Alert>
+                    <Users className="h-4 w-4" />
+                    <AlertTitle>Sélection des participants</AlertTitle>
+                    <AlertDescription>
+                       Cochez les élèves en ligne que vous souhaitez inviter à une session vidéo.
+                    </AlertDescription>
+                </Alert>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {classe.eleves.map((student) => (
-                        <StudentCard 
-                            key={student.id} 
-                            student={student} 
-                            isSelected={false} // La sélection n'est plus active ici
-                            onSelectionChange={() => {}} // La sélection n'est plus active ici
-                            isConnected={!!student.email && onlineUserEmails.has(student.email)}
-                            isSelectable={false} // Désactiver la sélection directe
-                        />
-                    ))}
+                    {classe.eleves.map((student) => {
+                        const isConnected = !!student.email && onlineUserEmails.has(student.email);
+                        return (
+                           <StudentCard 
+                                key={student.id} 
+                                student={student} 
+                                isSelected={selectedStudents.has(student.id)}
+                                onSelectionChange={handleSelectionChange}
+                                isConnected={isConnected}
+                                isSelectable={true}
+                            />
+                        )
+                    })}
                 </div>
             </div>
             <div className="space-y-8">

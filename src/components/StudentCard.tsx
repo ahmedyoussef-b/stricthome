@@ -40,7 +40,11 @@ export function StudentCard({
   const isTeacherView = session?.user.role === 'PROFESSEUR';
 
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent click on card from triggering when clicking on a button inside
+    if ((e.target as HTMLElement).closest('button, a')) {
+        return;
+    }
     if (isEffectivelySelectable) {
       onSelectionChange(student.id, !isSelected);
     }
@@ -75,7 +79,10 @@ export function StudentCard({
           <Checkbox
             id={`select-${student.id}`}
             checked={isSelected}
-            onCheckedChange={(checked) => onSelectionChange(student.id, !!checked)}
+            onClick={(e) => {
+                e.stopPropagation();
+                onSelectionChange(student.id, !isSelected);
+            }}
             aria-label={`Sélectionner ${student.name}`}
             disabled={!isEffectivelySelectable}
           />
@@ -95,6 +102,11 @@ export function StudentCard({
       <CardContent className="flex-grow justify-center flex items-center">
         {!isConnected && isSelectable && (
           <p className="text-xs text-center text-muted-foreground font-semibold">Cet élève est hors ligne et ne peut pas être invité.</p>
+        )}
+         {state?.isPunished && (
+           <p className="text-xs text-center text-destructive-foreground font-semibold bg-destructive/80 px-2 py-1 rounded">
+               Puni
+           </p>
         )}
       </CardContent>
       <CardFooter className="flex flex-col gap-2">

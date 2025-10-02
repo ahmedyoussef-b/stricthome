@@ -47,12 +47,6 @@ export default async function TeacherPage() {
           <div className="flex items-center gap-2">
             <CreateAnnouncementForm classes={classes} />
             <AddClassForm teacherId={user.id} />
-             <Button asChild>
-                <Link href="/teacher/session/create">
-                    <Video className="mr-2" />
-                    Créer une session
-                </Link>
-            </Button>
           </div>
         </div>
 
