@@ -135,7 +135,7 @@ function SessionPageContent() {
                 handleGoBack();
             }
         });
-    }, [role, spotlightedParticipant, toast, router, room]);
+    }, [role, toast, router]);
 
 
     const teacherView = (
