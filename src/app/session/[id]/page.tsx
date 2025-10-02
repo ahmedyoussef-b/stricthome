@@ -156,7 +156,7 @@ function SessionPageContent() {
      const onConnected = useCallback((room: any) => {
         setRoom(room);
         setLocalParticipant(room.localParticipant);
-        const remoteParticipants = new Map(room.participants);
+        const remoteParticipants = new Map<string, RemoteParticipant>(room.participants);
         setParticipants(remoteParticipants);
         
         // Default spotlight to teacher (first participant)
