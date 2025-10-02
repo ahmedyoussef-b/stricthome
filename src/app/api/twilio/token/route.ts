@@ -2,8 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 
-// Correction: AccessToken est un export nommé de twilio.jwt, pas une propriété de celui-ci.
-const { AccessToken } = twilio.jwt;
+// Correction: AccessToken est une propriété de twilio.jwt
+const AccessToken = twilio.jwt.AccessToken;
 const { VideoGrant } = AccessToken;
 
 export async function POST(request: NextRequest) {
