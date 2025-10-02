@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { pusherClient } from '@/lib/pusher/client';
 import { Users } from 'lucide-react';
+import type { PresenceChannel } from 'pusher-js';
 
 interface OnlineUsersProps {
   channelType: 'classe' | 'session';
@@ -16,19 +17,19 @@ export function OnlineUsers({ channelType, channelId }: OnlineUsersProps) {
     if (!channelId) return;
     
     const channelName = `presence-${channelType}-${channelId}`;
-    const channel = pusherClient.subscribe(channelName);
+    const channel = pusherClient.subscribe(channelName) as PresenceChannel;
     
-    const updateUsers = (members: any) => {
-        const users = Object.keys(members.members).map((id) => ({
+    const updateUsers = () => {
+        const users = Object.keys(channel.members.members).map((id) => ({
             id: id,
-            name: members.members[id].name
+            name: channel.members.members[id].name
         }));
         setOnlineUsers(users);
     }
 
     channel.bind('pusher:subscription_succeeded', updateUsers);
-    channel.bind('pusher:member_added', () => updateUsers(channel.members));
-    channel.bind('pusher:member_removed', () => updateUsers(channel.members));
+    channel.bind('pusher:member_added', updateUsers);
+    channel.bind('pusher:member_removed', updateUsers);
 
     return () => {
       pusherClient.unsubscribe(channelName);
