@@ -20,6 +20,7 @@ import { Loader2, Video } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Users } from 'lucide-react';
 import { ClasseWithDetails, StudentForCard } from '@/lib/types';
+import type { PresenceChannel } from 'pusher-js';
 
 
 interface ClassParticipantSelectorProps {
@@ -52,9 +53,9 @@ export function ClassParticipantSelector({ teacherId, classes }: ClassParticipan
         setOnlineUserEmails(onlineEmails);
     };
 
-    channel.bind('pusher:subscription_succeeded', updateOnlineMembers);
-    channel.bind('pusher:member_added', () => updateOnlineMembers(channel.members));
-    channel.bind('pusher:member_removed', () => updateOnlineMembers(channel.members));
+    channel.bind('pusher:subscription_succeeded', () => updateOnlineMembers((channel as PresenceChannel).members));
+    channel.bind('pusher:member_added', () => updateOnlineMembers((channel as PresenceChannel).members));
+    channel.bind('pusher:member_removed', () => updateOnlineMembers((channel as PresenceChannel).members));
 
     return () => {
       pusherClient.unsubscribe(channelName);
