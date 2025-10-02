@@ -135,7 +135,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
                  )}
              </div>
              
-             {!isLocal && sessionId && (
+             {sessionId && (
                  <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
