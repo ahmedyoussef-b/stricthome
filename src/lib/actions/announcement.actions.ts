@@ -4,6 +4,7 @@
 import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
+import { AnnouncementWithAuthor } from '../types';
 
 export async function createAnnouncement(formData: FormData) {
   const session = await getAuthSession();
@@ -19,7 +20,7 @@ export async function createAnnouncement(formData: FormData) {
     throw new Error('Title and content are required');
   }
 
-  await prisma.Annonce.create({
+  await prisma.annonce.create({
     data: {
       title,
       content,
@@ -35,8 +36,8 @@ export async function createAnnouncement(formData: FormData) {
   }
 }
 
-export async function getPublicAnnouncements(limit: number = 3) {
-    return prisma.Annonce.findMany({
+export async function getPublicAnnouncements(limit: number = 3): Promise<AnnouncementWithAuthor[]> {
+    return prisma.annonce.findMany({
         where: { classeId: null },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -44,7 +45,7 @@ export async function getPublicAnnouncements(limit: number = 3) {
     });
 }
 
-export async function getStudentAnnouncements(studentId: string) {
+export async function getStudentAnnouncements(studentId: string): Promise<AnnouncementWithAuthor[]> {
     const student = await prisma.user.findUnique({
         where: { id: studentId },
         select: { classeId: true }
@@ -52,7 +53,7 @@ export async function getStudentAnnouncements(studentId: string) {
     
     if (!student) return [];
 
-    return prisma.Annonce.findMany({
+    return prisma.annonce.findMany({
         where: {
             OR: [
                 { classeId: null }, // Public announcements
@@ -65,8 +66,8 @@ export async function getStudentAnnouncements(studentId: string) {
     });
 }
 
-export async function getClassAnnouncements(classeId: string) {
-    return prisma.Annonce.findMany({
+export async function getClassAnnouncements(classeId: string): Promise<AnnouncementWithAuthor[]> {
+    return prisma.annonce.findMany({
         where: {
             OR: [
                 { classeId: null }, // Public announcements
