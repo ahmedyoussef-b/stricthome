@@ -8,40 +8,20 @@ import { AddClassForm } from '@/components/AddClassForm';
 import { User, Classe } from '@prisma/client';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
-import { redis } from '@/lib/redis';
 import { Button } from '@/components/ui/button';
 import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
 
-// Define a more accurate type for the teacher data
-type TeacherWithClasses = User & {
-  classesEnseignees: (Classe & {
-    _count: {
-      eleves: number;
-    };
-  })[];
-};
-
-
-async function getTeacherData(teacherId: string): Promise<TeacherWithClasses | null> {
-  const cacheKey = `teacher:${teacherId}`;
-  let teacher: TeacherWithClasses | null = null;
+export default async function TeacherPage() {
+  const session = await getAuthSession();
   
-  if (redis) {
-    try {
-        const cachedTeacher = await redis.get(cacheKey);
-        if (cachedTeacher) {
-        console.log(`[Cache] HIT pour ${cacheKey}`);
-        return JSON.parse(cachedTeacher as string);
-        }
-    } catch (error) {
-        console.error('[Cache] Erreur de lecture Redis:', error);
-    }
+  if (!session?.user || session.user.role !== 'PROFESSEUR') {
+      redirect('/login');
   }
+  const user = session.user;
 
-
-  console.log(`[Cache] MISS pour ${cacheKey}. Récupération depuis la DB.`);
-  teacher = await prisma.user.findUnique({
-    where: { id: teacherId, role: 'PROFESSEUR' },
+  // Fetch teacher data directly, removing the caching layer
+  const teacher = await prisma.user.findUnique({
+    where: { id: user.id, role: 'PROFESSEUR' },
     include: {
       classesEnseignees: {
         include: {
@@ -53,27 +33,6 @@ async function getTeacherData(teacherId: string): Promise<TeacherWithClasses | n
     },
   });
 
-  if (teacher && redis) {
-    try {
-        // Cache pendant 10 minutes
-        await redis.set(cacheKey, JSON.stringify(teacher), { ex: 600 });
-    } catch (error) {
-        console.error('[Cache] Erreur d\'écriture Redis:', error);
-    }
-  }
-
-  return teacher as TeacherWithClasses | null;
-}
-
-export default async function TeacherPage() {
-  const session = await getAuthSession();
-  
-  if (!session?.user || session.user.role !== 'PROFESSEUR') {
-      redirect('/login');
-  }
-  const user = session.user;
-
-  const teacher = await getTeacherData(user.id);
   const classes = teacher?.classesEnseignees || [];
 
   return (
@@ -116,7 +75,7 @@ export default async function TeacherPage() {
                       </div>
                       <div>
                         <CardTitle>{classe.nom}</CardTitle>
-                        <CardDescription>{classe._count.eleves} élèves</CardDescription>
+                        <CardDescription>{(classe as any)._count.eleves} élèves</CardDescription>
                       </div>
                     </div>
                   </CardHeader>
