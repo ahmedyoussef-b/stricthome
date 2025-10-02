@@ -41,9 +41,12 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
   
   // Cast the fetched data to our specific client-side type
   const clientClasse: ClasseWithDetails = {
-    ...classe,
+    id: classe.id,
+    nom: classe.nom,
     eleves: classe.eleves.map(e => ({
-      ...e,
+      id: e.id,
+      name: e.name,
+      email: e.email,
       etat: {
         isPunished: e.etat?.isPunished ?? false
       }
