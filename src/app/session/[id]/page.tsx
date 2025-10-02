@@ -1,6 +1,6 @@
 // src/app/session/[id]/page.tsx
 'use client';
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { ArrowLeft, Users, Timer, Star, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,10 +43,16 @@ function SessionPageContent() {
     const role = searchParams.get('role');
     const userId = searchParams.get('userId');
 
-    const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
-    const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
     const [room, setRoom] = useState<Room | null>(null);
+    const roomRef = useRef(room);
+    roomRef.current = room;
+    
+    const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
+    const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<RemoteParticipant | LocalParticipant | null>(null);
+    const spotlightedParticipantRef = useRef(spotlightedParticipant);
+    spotlightedParticipantRef.current = spotlightedParticipant;
+
     const [isLoading, setIsLoading] = useState(true);
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
     const [teacher, setTeacher] = useState<any>(null);
@@ -75,10 +81,13 @@ function SessionPageContent() {
         const channel = pusherClient.subscribe(channelName);
         
         const handleSpotlight = (data: { participantSid: string }) => {
-            if (data.participantSid === localParticipant?.sid) {
-                setSpotlightedParticipant(localParticipant);
+            const currentRoom = roomRef.current;
+            if (!currentRoom) return;
+
+            if (data.participantSid === currentRoom.localParticipant.sid) {
+                setSpotlightedParticipant(currentRoom.localParticipant);
             } else {
-                setSpotlightedParticipant(participants.get(data.participantSid) || null);
+                setSpotlightedParticipant(currentRoom.participants.get(data.participantSid) || null);
             }
         };
 
@@ -89,7 +98,7 @@ function SessionPageContent() {
             pusherClient.unsubscribe(channelName);
         };
 
-    }, [sessionId, localParticipant, participants]);
+    }, [sessionId]);
 
 
     const handleGoBack = async () => {
@@ -112,46 +121,43 @@ function SessionPageContent() {
     const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
-        const remoteParticipantsMap = new Map<string, RemoteParticipant>(newRoom.participants);
-        setParticipants(remoteParticipantsMap);
+        setParticipants(new Map(newRoom.participants));
 
-        // Set default spotlight
         const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
-        if (currentRole === 'student') {
-             const teacherParticipant = Array.from(newRoom.participants.values()).find((p: any) => p.identity.startsWith('teacher-'));
-             if (teacherParticipant) {
-                 setSpotlightedParticipant(teacherParticipant);
-             } else {
-                 setSpotlightedParticipant(newRoom.localParticipant);
-             }
-        } else {
-            // Teacher spotlights themselves by default
-            setSpotlightedParticipant(newRoom.localParticipant);
+        
+        const updateSpotlight = (roomInstance: Room) => {
+             if (currentRole === 'student') {
+                 const teacherParticipant = Array.from(roomInstance.participants.values()).find(p => p.identity.startsWith('teacher-'));
+                 if (teacherParticipant) {
+                     setSpotlightedParticipant(teacherParticipant);
+                 } else {
+                     setSpotlightedParticipant(roomInstance.localParticipant);
+                 }
+            } else {
+                setSpotlightedParticipant(roomInstance.localParticipant);
+            }
         }
 
-        newRoom.on('participantConnected', (participant: RemoteParticipant) => {
+        updateSpotlight(newRoom);
+
+        newRoom.on('participantConnected', (participant) => {
             setParticipants(prev => new Map(prev).set(participant.sid, participant));
-             const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
-             if (currentRole === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipant) {
-                setSpotlightedParticipant(participant);
-            }
+            if (currentRole === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipantRef.current) {
+               setSpotlightedParticipant(participant);
+           }
         });
 
-        newRoom.on('participantDisconnected', (participant: RemoteParticipant) => {
+        newRoom.on('participantDisconnected', (participant) => {
             setParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
                 return newMap;
             });
-
-             const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
-
-            // If the spotlighted participant leaves, the teacher spotlights themselves by default
-            if (spotlightedParticipant?.sid === participant.sid && currentRole !== 'student') {
+            
+            if (spotlightedParticipantRef.current?.sid === participant.sid && currentRole !== 'student') {
                 setSpotlightedParticipant(newRoom.localParticipant); 
             }
             
-            // If the student is connected and the teacher leaves, we end the session for the student.
             if (currentRole === 'student' && participant.identity.startsWith('teacher-')) {
                 toast({
                     title: "Session terminée",
@@ -161,8 +167,7 @@ function SessionPageContent() {
                 router.back();
             }
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [router, toast]);
 
 
     const teacherView = (
