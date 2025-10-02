@@ -39,7 +39,7 @@ export function VideoPlayer({ sessionId, role, onConnected, onParticipantsChange
     }
     setIsLoading(true);
 
-    let localTracks: (LocalTrack | RemoteTrack)[] = [];
+    let localTracks: LocalTrack[] = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       cameraTrackRef.current = new LocalVideoTrack(stream.getVideoTracks()[0]);
@@ -154,7 +154,7 @@ export function VideoPlayer({ sessionId, role, onConnected, onParticipantsChange
         
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            cameraTrackRef.current = new LocalVideoTrack(stream.getVideoTracks()[0]);
+            cameraTrackRef.current = new LocalVideoTrack(stream.getTracks()[0]);
             await room.localParticipant.publishTrack(cameraTrackRef.current);
         } catch (e) {
             console.error("Failed to re-acquire camera", e);
