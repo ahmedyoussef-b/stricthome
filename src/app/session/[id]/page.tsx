@@ -6,16 +6,15 @@ import { ArrowLeft, Users, Timer, Star, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { RemoteParticipant, LocalParticipant } from 'twilio-video';
+import type { RemoteParticipant, LocalParticipant, Room } from 'twilio-video';
 import { Badge } from '@/components/ui/badge';
-import { VideoGrid } from '@/components/VideoGrid';
 import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
-import { getSessionDetails } from '@/lib/actions';
 import { Loader2 } from 'lucide-react';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { StudentWithCareer } from '@/lib/types';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
+import { useToast } from '@/hooks/use-toast';
 
 // This function will fetch the necessary data on the client side
 async function getSessionData(sessionId: string) {
@@ -31,6 +30,7 @@ function SessionPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
+    const { toast } = useToast();
     
     const sessionId = typeof params.id === 'string' ? params.id : '';
     const role = searchParams.get('role');
@@ -38,7 +38,7 @@ function SessionPageContent() {
 
     const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
     const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
-    const [room, setRoom] = useState<any>(null);
+    const [room, setRoom] = useState<Room | null>(null);
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<RemoteParticipant | LocalParticipant | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
@@ -80,9 +80,10 @@ function SessionPageContent() {
         return () => {
             channel.unbind('participant-spotlighted', handleSpotlight);
             pusherClient.unsubscribe(channelName);
+            room?.disconnect();
         };
 
-    }, [sessionId, localParticipant, participants]);
+    }, [sessionId, localParticipant, participants, room]);
 
 
     const handleGoBack = () => {
@@ -90,7 +91,7 @@ function SessionPageContent() {
         router.back();
     };
     
-    const onConnected = useCallback((newRoom: any) => {
+    const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
         const remoteParticipantsMap = new Map<string, RemoteParticipant>(newRoom.participants);
@@ -120,11 +121,21 @@ function SessionPageContent() {
                 newMap.delete(participant.sid);
                 return newMap;
             });
+            // Si le participant en vedette part, le professeur se met en vedette par défaut
             if (spotlightedParticipant?.sid === participant.sid && role !== 'student') {
-                setSpotlightedParticipant(newRoom.localParticipant); // Default to self if spotlighted participant leaves
+                setSpotlightedParticipant(newRoom.localParticipant); 
+            }
+            
+            // Si l'élève est connecté et que le professeur part, on termine la session pour l'élève.
+            if (role === 'student' && participant.identity.startsWith('teacher-')) {
+                toast({
+                    title: "Session terminée",
+                    description: "Le professeur a mis fin à la session.",
+                });
+                handleGoBack();
             }
         });
-    }, [role, spotlightedParticipant]);
+    }, [role, spotlightedParticipant, toast, router, room]);
 
 
     const teacherView = (
@@ -137,7 +148,7 @@ function SessionPageContent() {
                             Salle de classe ({participants.size + 1} en ligne)
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-y-auto">
+                    <CardContent className="flex-1 overflow-y-auto p-4">
                         <ClassroomGrid
                             teacher={teacher}
                             students={classStudents}
