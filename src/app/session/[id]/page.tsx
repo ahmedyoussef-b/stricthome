@@ -12,11 +12,11 @@ import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
 import { StudentWithCareer } from '@/lib/types';
-import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { endCoursSession } from '@/lib/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { StudentPlaceholder } from '@/components/StudentPlaceholder';
 
 // Dynamically import the VideoPlayer component with SSR disabled
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -66,7 +66,7 @@ function SessionPageContent() {
     }, [spotlightedParticipant]);
 
 
-     const onConnected = useCallback((newRoom: Room) => {
+    const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
         
@@ -111,8 +111,8 @@ function SessionPageContent() {
         });
     }, [isTeacher, router, userId, toast]);
 
-
-    useEffect(() => {
+     useEffect(() => {
+        // Only run this once on component mount
         if (!sessionId) return;
         
         const fetchSessionDetails = async () => {
@@ -144,7 +144,9 @@ function SessionPageContent() {
                 ? currentRoom.localParticipant
                 : currentRoom.participants.get(data.participantSid);
             
-            setSpotlightedParticipant(participant || null);
+            if(participant) {
+              setSpotlightedParticipant(participant);
+            }
         };
 
         channel.bind('participant-spotlighted', handleSpotlight);
@@ -152,6 +154,9 @@ function SessionPageContent() {
         return () => {
             channel.unbind('participant-spotlighted', handleSpotlight);
             pusherClient.unsubscribe(channelName);
+             if (roomRef.current) {
+                roomRef.current.disconnect();
+            }
         };
 
     }, [sessionId, toast]);
@@ -166,7 +171,7 @@ function SessionPageContent() {
                     title: "Session terminée",
                     description: "La session a été fermée pour tous les participants."
                 });
-                router.push('/teacher');
+                 router.push('/teacher');
             } catch (error) {
                 toast({
                     variant: "destructive",
@@ -176,12 +181,17 @@ function SessionPageContent() {
                 setIsEndingSession(false);
             }
         } else {
-            router.back();
+             router.back();
         }
     };
 
     const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as TwilioParticipant[];
+    const mainParticipantForView = spotlightedParticipant ?? localParticipant;
     
+    const findParticipantByIdentity = (identity: string) => {
+        return allLiveParticipants.find(p => p.identity === identity);
+    };
+
     const teacherView = (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
             <div className="lg:col-span-3 flex flex-col gap-6">
@@ -210,22 +220,39 @@ function SessionPageContent() {
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
-                            Participants ({allLiveParticipants.length})
+                            Participants ({allLiveParticipants.length}/{classStudents.length})
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2">
                         <ScrollArea className="h-full">
                             <div className="flex flex-col gap-4 p-2">
-                                {allLiveParticipants.map((p) => (
-                                    <Participant
-                                        key={p.sid}
-                                        participant={p}
-                                        isLocal={p === localParticipant}
-                                        isSpotlighted={p.sid === spotlightedParticipant?.sid}
+                                {classStudents.map((student) => {
+                                    const participant = findParticipantByIdentity(`student-${student.id.substring(0, 8)}`);
+                                    if (participant) {
+                                        return (
+                                            <Participant
+                                                key={participant.sid}
+                                                participant={participant}
+                                                isLocal={participant === localParticipant}
+                                                isSpotlighted={participant.sid === spotlightedParticipant?.sid}
+                                                sessionId={sessionId}
+                                                isTeacher={isTeacher}
+                                            />
+                                        );
+                                    }
+                                    return <StudentPlaceholder key={student.id} student={student} isOnline={false} />;
+                                })}
+                                {/* Always show teacher at the top */}
+                                {localParticipant && localParticipant.identity.startsWith('teacher-') && (
+                                     <Participant
+                                        key={localParticipant.sid}
+                                        participant={localParticipant}
+                                        isLocal={true}
+                                        isSpotlighted={localParticipant.sid === spotlightedParticipant?.sid}
                                         sessionId={sessionId}
                                         isTeacher={isTeacher}
                                     />
-                                ))}
+                                )}
                             </div>
                         </ScrollArea>
                     </CardContent>
@@ -245,7 +272,8 @@ function SessionPageContent() {
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
                         isSpotlighted={true}
-                        isTeacher={false}
+                        isTeacher={isTeacher}
+                        sessionId={sessionId}
                     />
                 ) : (
                     <Card className="aspect-video flex items-center justify-center bg-muted">
