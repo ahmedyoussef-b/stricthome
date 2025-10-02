@@ -111,12 +111,13 @@ function SessionPageContent() {
         setParticipants(remoteParticipantsMap);
 
         // Set default spotlight
-        if (role === 'student') {
+        const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
+        if (currentRole === 'student') {
              const teacherParticipant = Array.from(newRoom.participants.values()).find((p: any) => p.identity.startsWith('teacher-'));
              if (teacherParticipant) {
                  setSpotlightedParticipant(teacherParticipant);
              } else {
-                 setSpotlightedParticipant(newRoom.localParticipant)
+                 setSpotlightedParticipant(newRoom.localParticipant);
              }
         } else {
             // Teacher spotlights themselves by default
@@ -125,7 +126,8 @@ function SessionPageContent() {
 
         newRoom.on('participantConnected', (participant: RemoteParticipant) => {
             setParticipants(prev => new Map(prev).set(participant.sid, participant));
-            if (role === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipant) {
+             const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
+             if (currentRole === 'student' && participant.identity.startsWith('teacher-') && !spotlightedParticipant) {
                 setSpotlightedParticipant(participant);
             }
         });
@@ -136,21 +138,26 @@ function SessionPageContent() {
                 newMap.delete(participant.sid);
                 return newMap;
             });
-            // Si le participant en vedette part, le professeur se met en vedette par défaut
-            if (spotlightedParticipant?.sid === participant.sid && role !== 'student') {
+
+             const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
+
+            // If the spotlighted participant leaves, the teacher spotlights themselves by default
+            if (spotlightedParticipant?.sid === participant.sid && currentRole !== 'student') {
                 setSpotlightedParticipant(newRoom.localParticipant); 
             }
             
-            // Si l'élève est connecté et que le professeur part, on termine la session pour l'élève.
-            if (role === 'student' && participant.identity.startsWith('teacher-')) {
+            // If the student is connected and the teacher leaves, we end the session for the student.
+            if (currentRole === 'student' && participant.identity.startsWith('teacher-')) {
                 toast({
                     title: "Session terminée",
                     description: "Le professeur a mis fin à la session.",
                 });
-                handleGoBack();
+                newRoom.disconnect();
+                router.back();
             }
         });
-    }, [role, toast, router, spotlightedParticipant]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
 
     const teacherView = (
