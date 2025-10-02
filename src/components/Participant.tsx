@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Mic, MicOff, Star, VideoOff } from "lucide-react";
+import { Mic, MicOff, Star, Video, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -23,9 +23,10 @@ interface ParticipantProps {
   isLocal: boolean;
   isSpotlighted?: boolean;
   sessionId?: string;
+  isTeacher: boolean;
 }
 
-export function Participant({ participant, isLocal, isSpotlighted, sessionId }: ParticipantProps) {
+export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher }: ParticipantProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
@@ -50,48 +51,61 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
         }
     };
 
-    const videoTrackPublication = [...participant.videoTracks.values()][0];
-    const audioTrackPublication = [...participant.audioTracks.values()][0];
-    
-    const videoTrack = videoTrackPublication?.track;
-    const audioTrack = audioTrackPublication?.track;
-
-    setHasVideo(!!videoTrack && videoTrack.isEnabled);
-    setIsMuted(audioTrack ? !audioTrack.isEnabled : false);
-    
-    if (videoTrack) attachTrack(videoTrack);
-
-    const handleTrackEnabled = (track: Track) => { if (track.kind === 'video') setHasVideo(true); else if (track.kind === 'audio') setIsMuted(false) };
-    const handleTrackDisabled = (track: Track) => { if (track.kind === 'video') setHasVideo(false); else if (track.kind === 'audio') setIsMuted(true) };
-
-    const handleTrackSubscribed = (track: Track) => {
-      if (track.kind === 'video') {
-        setHasVideo(true);
-        attachTrack(track);
-      }
-      track.on('enabled', () => handleTrackEnabled(track));
-      track.on('disabled', () => handleTrackDisabled(track));
+    const handleTrackPublication = (publication: any) => {
+        if (publication.track) {
+            attachTrack(publication.track);
+        }
+        publication.on('subscribed', (track: Track) => {
+            attachTrack(track);
+            updateTrackState(track);
+        });
+        publication.on('unsubscribed', detachTrack);
     };
 
-    participant.on('trackSubscribed', handleTrackSubscribed);
-    participant.tracks.forEach(pub => {
-        if (pub.track) {
-            handleTrackSubscribed(pub.track);
+    const updateTrackState = (track: Track) => {
+      if (track.kind === 'audio') {
+        setIsMuted(!track.isEnabled);
+        track.on('enabled', () => setIsMuted(false));
+        track.on('disabled', () => setIsMuted(true));
+      } else if (track.kind === 'video') {
+        setHasVideo(track.isEnabled);
+        track.on('enabled', () => setHasVideo(true));
+        track.on('disabled', () => setHasVideo(false));
+      }
+    };
+
+    participant.tracks.forEach(publication => {
+        if (publication.track) {
+            attachTrack(publication.track);
+            updateTrackState(publication.track);
+        } else {
+             publication.on('subscribed', track => {
+                attachTrack(track);
+                updateTrackState(track);
+            });
         }
     });
 
+    participant.on('trackSubscribed', (track) => {
+        attachTrack(track);
+        updateTrackState(track);
+    });
+    
+    participant.on('trackUnsubscribed', detachTrack);
+
     return () => {
-      participant.off('trackSubscribed', handleTrackSubscribed);
       participant.tracks.forEach(publication => {
         if (publication.track) {
           detachTrack(publication.track);
         }
       });
+      participant.removeAllListeners('trackSubscribed');
+      participant.removeAllListeners('trackUnsubscribed');
     };
   }, [participant]);
 
   const handleSpotlight = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !isTeacher) return;
     try {
         await spotlightParticipant(sessionId, participant.sid);
         toast({
@@ -106,6 +120,11 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
         })
     }
   }
+
+  // Placeholder functions for controls
+  const toggleMute = () => console.log('Toggle mute for', identity);
+  const toggleVideo = () => console.log('Toggle video for', identity);
+
 
   return (
     <Card className={cn(
@@ -123,21 +142,30 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
             </div>
         )}
        
-        <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-             <div className="flex items-center gap-1">
-                 <div className="bg-background/70 backdrop-blur-sm rounded-md p-1">
-                    {isMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-                 </div>
-                 {!hasVideo && (
-                    <div className="bg-background/70 backdrop-blur-sm rounded-md p-1">
-                        <VideoOff className="h-4 w-4 text-destructive" />
-                    </div>
+        <div className="absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+             <TooltipProvider>
+                 {isTeacher && !isLocal && (
+                     <>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={toggleMute}>
+                                    {isMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{isMuted ? "Activer" : "Couper"} le micro</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={toggleVideo}>
+                                    {hasVideo ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-destructive" />}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{hasVideo ? "Désactiver" : "Activer"} la caméra</p></TooltipContent>
+                        </Tooltip>
+                     </>
                  )}
-             </div>
-             
-             {sessionId && (
-                 <TooltipProvider>
-                    <Tooltip>
+                {isTeacher && (
+                     <Tooltip>
                         <TooltipTrigger asChild>
                              <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={handleSpotlight}>
                                 <Star className={cn("h-4 w-4", isSpotlighted && "fill-amber-500 text-amber-500")} />
@@ -147,12 +175,22 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId }: 
                            <p>Mettre en vedette</p>
                         </TooltipContent>
                     </Tooltip>
-                 </TooltipProvider>
-             )}
+                )}
+             </TooltipProvider>
         </div>
          <p className="absolute bottom-2 left-2 text-xs font-semibold bg-black/50 text-white px-2 py-1 rounded">
             {isLocal ? 'Vous' : identity}
         </p>
+         <div className="absolute top-2 left-2 flex items-center gap-1.5">
+            <div className="bg-background/70 backdrop-blur-sm rounded-md p-1">
+                {isMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4 text-green-500" />}
+            </div>
+            {!hasVideo && (
+                <div className="bg-destructive/80 backdrop-blur-sm rounded-md p-1">
+                    <VideoOff className="h-4 w-4 text-destructive-foreground" />
+                </div>
+            )}
+        </div>
     </Card>
   );
 }

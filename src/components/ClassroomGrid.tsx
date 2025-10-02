@@ -13,6 +13,7 @@ interface ClassroomGridProps {
     localParticipant: LocalParticipant | null;
     remoteParticipants: RemoteParticipant[];
     spotlightedParticipantSid?: string | null;
+    isTeacher: boolean;
 }
 
 export function ClassroomGrid({ 
@@ -21,12 +22,14 @@ export function ClassroomGrid({
     students, 
     localParticipant, 
     remoteParticipants, 
-    spotlightedParticipantSid 
+    spotlightedParticipantSid,
+    isTeacher
 }: ClassroomGridProps) {
 
     const allParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
 
     const findParticipantById = (userId: string) => {
+        // Updated to handle both teacher and student ID formats
         return allParticipants.find(p => p.identity.includes(userId.substring(0, 8)));
     }
 
@@ -34,7 +37,10 @@ export function ClassroomGrid({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {/* Teacher's video */}
             {teacher && (() => {
-                 const teacherParticipant = findParticipantById(teacher.id);
+                 const teacherParticipant = localParticipant?.identity.startsWith('teacher-')
+                    ? localParticipant
+                    : allParticipants.find(p => p.identity.startsWith('teacher-'));
+
                  return teacherParticipant ? (
                      <Participant
                          key={teacherParticipant.sid}
@@ -42,6 +48,7 @@ export function ClassroomGrid({
                          isLocal={teacherParticipant === localParticipant}
                          sessionId={sessionId}
                          isSpotlighted={teacherParticipant.sid === spotlightedParticipantSid}
+                         isTeacher={isTeacher}
                      />
                  ) : (
                      <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={false} />
@@ -58,6 +65,7 @@ export function ClassroomGrid({
                         isLocal={studentParticipant === localParticipant}
                         sessionId={sessionId}
                         isSpotlighted={studentParticipant.sid === spotlightedParticipantSid}
+                        isTeacher={isTeacher}
                     />
                 ) : (
                     <StudentPlaceholder key={student.id} student={student} isOnline={false} />

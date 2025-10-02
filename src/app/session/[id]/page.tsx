@@ -15,8 +15,6 @@ import dynamic from 'next/dynamic';
 import { StudentWithCareer } from '@/lib/types';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession } from '@/lib/actions';
-import { VideoGrid } from '@/components/VideoGrid';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 
@@ -45,6 +43,7 @@ function SessionPageContent() {
     const sessionId = typeof params.id === 'string' ? params.id : '';
     const role = searchParams.get('role');
     const userId = searchParams.get('userId');
+    const isTeacher = role === 'teacher';
 
     const [room, setRoom] = useState<Room | null>(null);
     const roomRef = useRef(room);
@@ -67,65 +66,21 @@ function SessionPageContent() {
     }, [spotlightedParticipant]);
 
 
-     useEffect(() => {
-        if (!sessionId) return;
-        
-        const fetchSessionDetails = async () => {
-            try {
-                const { session, students, teacher } = await getSessionData(sessionId);
-                setClassStudents(students || []);
-                setTeacher(teacher);
-                 // Note: Initial spotlight is now handled inside onConnected to avoid race conditions
-            } catch (error) {
-                console.error("Failed to load session data", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchSessionDetails();
-
-        const channelName = `presence-session-${sessionId}`;
-        const channel = pusherClient.subscribe(channelName);
-        
-        const handleSpotlight = (data: { participantSid: string }) => {
-            const currentRoom = roomRef.current;
-            if (!currentRoom) return;
-
-            if (data.participantSid === currentRoom.localParticipant.sid) {
-                setSpotlightedParticipant(currentRoom.localParticipant);
-            } else {
-                setSpotlightedParticipant(currentRoom.participants.get(data.participantSid) || null);
-            }
-        };
-
-        channel.bind('participant-spotlighted', handleSpotlight);
-
-        return () => {
-            channel.unbind('participant-spotlighted', handleSpotlight);
-            pusherClient.unsubscribe(channelName);
-        };
-
-    }, [sessionId]);
-
-
-    const handleGoBack = async () => {
-        // Disconnect logic is now solely handled by VideoPlayer's cleanup
-        router.back();
-    };
-    
      const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
-        setParticipants(new Map(newRoom.participants));
+        
+        // Set initial participants
+        const remoteParticipants = new Map(newRoom.participants);
+        setParticipants(remoteParticipants);
 
-        const currentRole = newRoom.localParticipant.identity.startsWith('teacher') ? 'teacher' : 'student';
-
-        // Initial spotlight logic
-        if (currentRole === 'teacher') {
+        // Teacher is spotlighted by default
+        if (isTeacher) {
             setSpotlightedParticipant(newRoom.localParticipant);
         } else {
-            // Student defaults to seeing themselves until teacher spotlights someone
-            setSpotlightedParticipant(newRoom.localParticipant);
+             // Find teacher among participants
+            const teacherParticipant = Array.from(remoteParticipants.values()).find(p => p.identity.startsWith('teacher-'));
+            setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant); // Fallback to self
         }
 
         newRoom.on('participantConnected', (participant) => {
@@ -141,9 +96,14 @@ function SessionPageContent() {
                 return newMap;
             });
             
-            // If the spotlighted participant disconnects, teacher defaults to self-view
-            if (spotlightedParticipantRef.current?.sid === participant.sid && currentRole === 'teacher') {
-                setSpotlightedParticipant(newRoom.localParticipant);
+            if (spotlightedParticipantRef.current?.sid === participant.sid) {
+                // If spotlighted participant leaves, default back to teacher or self
+                 if (isTeacher) {
+                    setSpotlightedParticipant(newRoom.localParticipant);
+                } else {
+                    const teacherParticipant = Array.from(newRoom.participants.values()).find(p => p.identity.startsWith('teacher-'));
+                    setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
+                }
             }
         });
 
@@ -152,12 +112,66 @@ function SessionPageContent() {
                 title: "Session terminée",
                 description: "Vous avez été déconnecté de la session.",
             });
-            router.back();
+            if (isTeacher) {
+                router.push('/teacher');
+            } else {
+                router.push(`/student/${userId}`);
+            }
         });
 
-    }, [router, toast]);
+    }, [isTeacher, router, toast, userId]);
 
 
+    useEffect(() => {
+        if (!sessionId) return;
+        
+        const fetchSessionDetails = async () => {
+            try {
+                const { students, teacher } = await getSessionData(sessionId);
+                setClassStudents(students || []);
+                setTeacher(teacher);
+            } catch (error) {
+                console.error("Failed to load session data", error);
+                 toast({
+                    variant: "destructive",
+                    title: "Erreur de chargement",
+                    description: "Impossible de récupérer les détails de la session.",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSessionDetails();
+
+        const channelName = `presence-session-${sessionId}`;
+        const channel = pusherClient.subscribe(channelName);
+        
+        const handleSpotlight = (data: { participantSid: string }) => {
+            const currentRoom = roomRef.current;
+            if (!currentRoom) return;
+
+            const participant = data.participantSid === currentRoom.localParticipant.sid
+                ? currentRoom.localParticipant
+                : currentRoom.participants.get(data.participantSid);
+            
+            setSpotlightedParticipant(participant || null);
+        };
+
+        channel.bind('participant-spotlighted', handleSpotlight);
+
+        return () => {
+            channel.unbind('participant-spotlighted', handleSpotlight);
+            pusherClient.unsubscribe(channelName);
+        };
+
+    }, [sessionId, toast]);
+
+
+    const handleGoBack = async () => {
+        // Disconnect logic is handled by VideoPlayer's cleanup
+        router.back();
+    };
+    
     const teacherView = (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
             <div className="lg:col-span-4 flex flex-col gap-6">
@@ -176,6 +190,7 @@ function SessionPageContent() {
                             remoteParticipants={Array.from(participants.values())}
                             spotlightedParticipantSid={spotlightedParticipant?.sid}
                             sessionId={sessionId}
+                            isTeacher={isTeacher}
                          />
                     </CardContent>
                 </Card>
@@ -216,7 +231,8 @@ function SessionPageContent() {
                         key={mainParticipant.sid}
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
-                        isSpotlighted={true} // The main view is always the "spotlight" for the student
+                        isSpotlighted={true}
+                        isTeacher={false}
                     />
                 ) : (
                     <Card className="aspect-video flex items-center justify-center bg-muted">
