@@ -51,13 +51,13 @@ function SessionPageContent() {
     const userId = searchParams.get('userId');
     const isTeacher = role === 'teacher';
 
+    const roomRef = useRef<Room | null>(null);
     const [room, setRoom] = useState<Room | null>(null);
-    const roomRef = useRef(room);
     
     const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
-    const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
+    const [remoteParticipants, setRemoteParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
+    const spotlightedParticipantRef = useRef<LocalParticipant | RemoteParticipant | null>(null);
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<LocalParticipant | RemoteParticipant | null>(null);
-    const spotlightedParticipantRef = useRef(spotlightedParticipant);
     
     const [isLoading, setIsLoading] = useState(true);
     const [isEndingSession, setIsEndingSession] = useState(false);
@@ -137,21 +137,21 @@ function SessionPageContent() {
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
         
-        const remoteParticipants = new Map(newRoom.participants);
-        setParticipants(remoteParticipants);
+        const remoteParticipantsMap = new Map(newRoom.participants);
+        setRemoteParticipants(remoteParticipantsMap);
 
         const teacherParticipant = newRoom.localParticipant.identity.startsWith('teacher-')
             ? newRoom.localParticipant
-            : Array.from(remoteParticipants.values()).find(p => p.identity.startsWith('teacher-'));
+            : Array.from(remoteParticipantsMap.values()).find(p => p.identity.startsWith('teacher-'));
 
         setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
 
         newRoom.on('participantConnected', (participant) => {
-            setParticipants(prev => new Map(prev).set(participant.sid, participant));
+            setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
         });
 
         newRoom.on('participantDisconnected', (participant) => {
-            setParticipants(prev => {
+            setRemoteParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
                 return newMap;
@@ -168,6 +168,7 @@ function SessionPageContent() {
         newRoom.on('disconnected', () => {
             if (roomRef.current) {
                 roomRef.current.disconnect();
+                roomRef.current = null;
             }
             if (!isTeacher) {
                 toast({
@@ -282,10 +283,11 @@ function SessionPageContent() {
         }
     };
 
-    const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
+    const allLiveParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
+    const allSessionUsers = [teacher, ...classStudents];
     
-    const findParticipantByIdentity = (identity: string) => {
-        return allLiveParticipants.find(p => p.identity.includes(identity.substring(0, 8)));
+    const findUserByParticipant = (participant: TwilioParticipant) => {
+        return allSessionUsers.find(user => participant.identity.includes(user.id.substring(0, 8)));
     };
 
     const teacherView = (
@@ -336,7 +338,7 @@ function SessionPageContent() {
                                 teacher={teacher}
                                 students={classStudents}
                                 localParticipant={localParticipant}
-                                remoteParticipants={Array.from(participants.values())}
+                                remoteParticipants={Array.from(remoteParticipants.values())}
                                 spotlightedParticipantSid={spotlightedParticipant?.sid}
                                 isTeacher={isTeacher}
                             />
@@ -348,6 +350,7 @@ function SessionPageContent() {
     );
     
     const mainParticipant = spotlightedParticipant ?? localParticipant;
+    const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
 
     const studentView = (
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
@@ -360,6 +363,7 @@ function SessionPageContent() {
                         isSpotlighted={true}
                         isTeacher={isTeacher}
                         sessionId={sessionId}
+                        displayName={mainParticipantUser?.name ?? undefined}
                     />
                 ) : (
                     <Card className="aspect-video flex items-center justify-center bg-muted">
@@ -390,14 +394,17 @@ function SessionPageContent() {
                         <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants ({allLiveParticipants.length})</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
-                      {allLiveParticipants.map(p => (
-                          <div key={p.sid} className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarFallback>{p.identity.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium">{p.identity.split('-')[0]} {p === localParticipant ? '(Vous)' : ''}</span>
-                          </div>
-                      ))}
+                      {allLiveParticipants.map(p => {
+                          const user = findUserByParticipant(p);
+                          return (
+                              <div key={p.sid} className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarFallback>{user?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{user?.name ?? p.identity.split('-')[0]} {p === localParticipant ? '(Vous)' : ''}</span>
+                              </div>
+                          )
+                      })}
                     </CardContent>
                 </Card>
              </div>
@@ -441,5 +448,3 @@ export default function SessionPage() {
         </Suspense>
     )
 }
-
-    

@@ -49,6 +49,7 @@ export function ClassroomGrid({
                          sessionId={sessionId}
                          isSpotlighted={teacherParticipant.sid === spotlightedParticipantSid}
                          isTeacher={isTeacher}
+                         displayName={teacher.name}
                      />
                  ) : (
                      <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={false} />
@@ -65,7 +66,8 @@ export function ClassroomGrid({
                         isLocal={studentParticipant === localParticipant}
                         sessionId={sessionId}
                         isSpotlighted={studentParticipant.sid === spotlightedParticipantSid}
-                        isTeacher={isTeacher}
+isTeacher={isTeacher}
+                        displayName={student.name ?? undefined}
                     />
                 ) : (
                     <StudentPlaceholder key={student.id} student={student} isOnline={false} />

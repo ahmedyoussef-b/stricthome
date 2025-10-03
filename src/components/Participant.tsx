@@ -27,15 +27,16 @@ interface ParticipantProps {
   isSpotlighted?: boolean;
   sessionId?: string;
   isTeacher: boolean;
+  displayName?: string; // New prop for display name
 }
 
-export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher }: ParticipantProps) {
+export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher, displayName }: ParticipantProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
   const { toast } = useToast();
 
-  const identity = participant.identity;
+  const nameToDisplay = displayName || participant.identity.split('-')[0];
 
   useEffect(() => {
     const videoElementRef = videoRef.current;
@@ -106,7 +107,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
         await spotlightParticipant(sessionId, participant.sid);
         toast({
             title: "Participant en vedette",
-            description: `${identity} est maintenant visible par tous les élèves.`
+            description: `${nameToDisplay} est maintenant visible par tous les élèves.`
         });
     } catch (e) {
         toast({
@@ -118,8 +119,8 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
   }
 
   // Placeholder functions for controls
-  const toggleMute = () => console.log('Toggle mute for', identity);
-  const toggleVideo = () => console.log('Toggle video for', identity);
+  const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
+  const toggleVideo = () => console.log('Toggle video for', nameToDisplay);
 
 
   return (
@@ -132,9 +133,9 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
         {!hasVideo && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                 <Avatar className="h-16 w-16 text-2xl">
-                    <AvatarFallback>{identity.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{nameToDisplay?.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <p className="text-sm font-semibold">{identity}</p>
+                <p className="text-sm font-semibold">{nameToDisplay}</p>
             </div>
         )}
        
@@ -175,7 +176,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
              </TooltipProvider>
         </div>
          <p className="absolute bottom-2 left-2 text-xs font-semibold bg-black/50 text-white px-2 py-1 rounded">
-            {isLocal ? 'Vous' : identity}
+            {isLocal ? 'Vous' : nameToDisplay}
         </p>
          <div className="absolute top-2 left-2 flex items-center gap-1.5">
             <div className="bg-background/70 backdrop-blur-sm rounded-md p-1">
