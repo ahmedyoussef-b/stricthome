@@ -1,7 +1,7 @@
 // src/components/VideoPlayer.tsx
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Video, { Room, LocalTrack, LocalVideoTrack, LocalAudioTrack } from 'twilio-video';
 
@@ -16,13 +16,13 @@ interface VideoPlayerProps {
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
   const { toast } = useToast();
   
-  const connectToRoom = useCallback(async () => {
+  const connectToRoom = useCallback(async (): Promise<Room | null> => {
     const participantName = `${role}-${userId.substring(0, 8)}`;
     console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la session: ${sessionId.substring(0,8)}`);
 
     if (!participantName || !sessionId) {
         console.warn("⚠️ [VideoPlayer] Nom du participant ou ID de session manquant. Connexion annulée.");
-        return;
+        return null;
     }
 
     let localTracks: LocalTrack[] = [];
