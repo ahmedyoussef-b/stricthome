@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp, Sparkles, Trophy, Image as ImageIcon } from 'lucide-react';
+import { FileUp, Sparkles, Trophy, Gift } from 'lucide-react';
 import { StudentWithStateAndCareer, AnnouncementWithAuthor } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,6 @@ export default function StudentPageClient({
   isTeacherView,
 }: StudentPageClientProps) {
   const [showCard, setShowCard] = useState(false);
-  const [randomImageId] = useState(() => Math.floor(Math.random() * 1000));
   const career = student.etat?.metier;
 
   useEffect(() => {
@@ -107,22 +106,14 @@ export default function StudentPageClient({
              <Card className="border-primary border-2 animate-in fade-in zoom-in-95">
                 <CardHeader>
                     <div className="flex items-center gap-2">
-                         <ImageIcon className="text-primary"/>
-                         <CardTitle>Une carte spéciale du professeur !</CardTitle>
+                         <Gift className="text-primary"/>
+                         <CardTitle>Un message spécial du professeur !</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent>
-                     <p className="text-muted-foreground mb-4">
-                        Voici une image aléatoire juste pour vous.
+                     <p className="text-muted-foreground">
+                        Bravo pour votre excellent travail cette semaine. Continuez comme ça !
                      </p>
-                    <div className="aspect-video relative rounded-lg overflow-hidden">
-                         <Image 
-                            src={`https://picsum.photos/seed/${randomImageId}/600/400`}
-                            alt="Image aléatoire"
-                            fill
-                            className="object-cover"
-                         />
-                    </div>
                 </CardContent>
             </Card>
           )}
