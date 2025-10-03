@@ -13,7 +13,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Identity and room name are required.' }, { status: 400 });
     }
     
-    console.log(`🔑 [Twilio Token API] Demande de jeton pour l'identité "${identity}" dans la salle "${room}"`);
+    // Générer une identité unique pour chaque demande afin d'éviter les problèmes de "duplicate identity"
+    // causés par le double-rendu de React StrictMode en développement.
+    const uniqueIdentity = `${identity}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    console.log(`🔑 [Twilio Token API] Demande de jeton pour l'identité unique "${uniqueIdentity}" dans la salle "${room}"`);
 
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
     const twilioApiKeySid = process.env.TWILIO_API_KEY_SID;
@@ -32,7 +36,7 @@ export async function POST(request: NextRequest) {
       twilioAccountSid,
       twilioApiKeySid, 
       twilioApiKeySecret,
-      { identity: identity, ttl: 3600 }
+      { identity: uniqueIdentity, ttl: 3600 } // Utilisation de l'identité unique
     );
     
     const videoGrant = new VideoGrant({ room });
