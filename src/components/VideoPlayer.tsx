@@ -81,8 +81,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   }, [sessionId, role, userId, toast, onConnected]);
 
   useEffect(() => {
-    // Ensure this only runs on the client and only once
-    if (roomRef.current === null && typeof window !== "undefined") {
+    // Ensure this only runs on the client
+    if (typeof window !== "undefined") {
       connectToRoom();
     }
 
@@ -94,7 +94,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         roomRef.current = null;
       }
     };
-  }, [connectToRoom]);
+  }, []); // Empty dependency array ensures this runs only once on mount and cleans up on unmount
 
 
   // This component handles the logic but doesn't render any visible UI itself.
