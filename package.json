@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit --strict",
+    "postinstall": "prisma generate",
     "validate:stack": "node scripts/validate-stack.js",
     "validate:security": "npm audit --audit-level high",
     "validate:build": "next build --no-lint",
