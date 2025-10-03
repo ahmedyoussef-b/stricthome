@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -429,7 +430,7 @@ const SidebarGroup = React.forwardRef<
 SidebarGroup.displayName = "SidebarGroup"
 
 const SidebarGroupLabel = React.forwardRef<
-  HTMLDivElement,
+  React.ElementRef<"div">,
   React.ComponentProps<"div"> & { asChild?: boolean }
 >(({ className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "div"
@@ -450,7 +451,7 @@ const SidebarGroupLabel = React.forwardRef<
 SidebarGroupLabel.displayName = "SidebarGroupLabel"
 
 const SidebarGroupAction = React.forwardRef<
-  HTMLButtonElement,
+  React.ElementRef<"button">,
   React.ComponentProps<"button"> & { asChild?: boolean }
 >(({ className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
@@ -534,7 +535,7 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
+  React.ElementRef<"button">,
   React.ComponentProps<"button"> & {
     asChild?: boolean
     isActive?: boolean
@@ -593,7 +594,7 @@ const SidebarMenuButton = React.forwardRef<
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 const SidebarMenuAction = React.forwardRef<
-  HTMLButtonElement,
+  React.ElementRef<"button">,
   React.ComponentProps<"button"> & {
     asChild?: boolean
     showOnHover?: boolean
@@ -625,7 +626,7 @@ SidebarMenuAction.displayName = "SidebarMenuAction"
 
 const SidebarMenuBadge = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div">
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -706,7 +707,7 @@ const SidebarMenuSubItem = React.forwardRef<
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 const SidebarMenuSubButton = React.forwardRef<
-  HTMLAnchorElement,
+  React.ElementRef<"a">,
   React.ComponentProps<"a"> & {
     asChild?: boolean
     size?: "sm" | "md"
@@ -761,3 +762,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
