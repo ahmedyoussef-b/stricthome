@@ -229,8 +229,17 @@ function SessionPageContent() {
         const handleTimerTick = (data: { timeLeft: number }) => {
             setTimeLeft(data.timeLeft);
         };
+        
+        const handleSessionEnded = (data: { sessionId: string }) => {
+            if (data.sessionId === sessionId && !isTeacher) {
+                if (roomRef.current) {
+                    roomRef.current.disconnect();
+                }
+            }
+        };
 
         channel.bind('participant-spotlighted', handleSpotlight);
+        channel.bind('session-ended', handleSessionEnded);
 
         if (!isTeacher) {
             channel.bind('timer-start', handleTimerStart);

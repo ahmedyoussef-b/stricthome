@@ -118,13 +118,19 @@ export async function endCoursSession(sessionId: string) {
     data: { endedAt: new Date() },
   });
 
-  // Notify clients in real-time
+  // Notify clients in real-time that session has ended
   const firstParticipant = coursSession.participants[0];
   if (firstParticipant?.classeId) {
       const channelName = `presence-classe-${firstParticipant.classeId}`;
       await pusherServer.trigger(channelName, 'session-ended', { sessionId: updatedSession.id });
       console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal ${channelName}.`);
   }
+
+  // Also broadcast on the session-specific channel to kick people out of the call
+  const sessionChannelName = `presence-session-${sessionId}`;
+  await pusherServer.trigger(sessionChannelName, 'session-ended', { sessionId: updatedSession.id });
+  console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de session ${sessionChannelName}.`);
+
 
   // Revalidate paths for all participants (as a fallback)
   for (const participant of coursSession.participants) {
