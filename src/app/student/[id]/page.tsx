@@ -21,9 +21,9 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
           }
         },
         // S'assurer de ne récupérer STRICTEMENT que les sessions actives.
-        sessionsParticipees: {
+        /* sessionsParticipees: {
           where: { endedAt: null },
-        },
+        }, */
         taskCompletions: true,
         classe: true,
       }
