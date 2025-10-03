@@ -43,8 +43,8 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
 
     const attachTrack = (track: Track) => {
       if (isAttachable(track)) {
-        const videoElement = track.attach();
-        videoElementRef.appendChild(videoElement);
+        const element = track.attach();
+        videoElementRef.appendChild(element);
       }
     };
     
@@ -66,7 +66,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
       }
     };
 
-    // Handle initial tracks
+    // Handle initial tracks that are already published
     participant.tracks.forEach(publication => {
         if (publication.track) {
             attachTrack(publication.track);
@@ -74,13 +74,13 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
         }
     });
 
-    // Handle new tracks
+    // Handle new tracks that are subscribed to later
     const handleTrackSubscribed = (track: Track) => {
         attachTrack(track);
         updateTrackState(track);
     };
 
-    // Handle tracks being removed
+    // Handle tracks that are unsubscribed from
     const handleTrackUnsubscribed = (track: Track) => {
         detachTrack(track);
     };

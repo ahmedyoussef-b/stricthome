@@ -1,17 +1,14 @@
 // app/api/pusher/auth/route.ts
 import { pusherServer } from '@/lib/pusher/server';
 import { getAuthSession } from '@/lib/session';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getAuthSession();
     
     if (!session?.user?.id) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const bodyText = await request.text();
@@ -20,10 +17,7 @@ export async function POST(request: NextRequest) {
     const channelName = params.get('channel_name');
 
     if (!socketId || !channelName) {
-      return new Response(JSON.stringify({ error: 'Missing parameters' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
     
     // Generic authorization for any presence channel
@@ -38,9 +32,7 @@ export async function POST(request: NextRequest) {
       // TODO: Add verification logic to ensure the user is allowed in this specific channel
       // e.g., for presence-classe-xyz, check if user is in classe xyz.
       const authResponse = pusherServer.authorizeChannel(socketId, channelName, userData);
-      return new Response(JSON.stringify(authResponse), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return NextResponse.json(authResponse);
     }
     
     // Autorisation pour les canaux privés (conversations directes)
@@ -52,23 +44,15 @@ export async function POST(request: NextRequest) {
       // Pour la simplicité de ce PoC, nous autorisons l'abonnement
       // si l'utilisateur est authentifié.
       const authResponse = pusherServer.authorizeChannel(socketId, channelName);
-      return new Response(JSON.stringify(authResponse), {
-          headers: { 'Content-Type': 'application/json' }
-      });
+      return NextResponse.json(authResponse);
     }
 
     // Si le canal n'est ni `presence-` ni `private-`, refuser l'accès.
-    return new Response(JSON.stringify({ error: 'Invalid channel type' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-    });
+    return NextResponse.json({ error: 'Invalid channel type' }, { status: 403 });
 
   } catch (error) {
     console.error('💥 [Pusher Auth] Internal Server Error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

@@ -17,9 +17,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:push": "prisma db push",
+    "db:push": "prisma db push --accept-data-loss",
     "db:seed": "prisma db seed",
-    "clean": "rm -rf .next"
+    "clean": "rm -rf .next node_modules package-lock.json"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.1.0",
