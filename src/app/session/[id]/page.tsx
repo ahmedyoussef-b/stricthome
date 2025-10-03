@@ -130,7 +130,7 @@ function SessionPageContent() {
                 clearInterval(timerIntervalRef.current);
             }
         };
-    }, [isTeacher, isTimerRunning]);
+    }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
 
     const onConnected = useCallback((newRoom: Room) => {

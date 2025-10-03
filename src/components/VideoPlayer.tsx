@@ -14,17 +14,11 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
-  const roomRef = useRef<Room | null>(null);
   const { toast } = useToast();
   
   const connectToRoom = useCallback(async () => {
     const participantName = `${role}-${userId.substring(0, 8)}`;
     console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la session: ${sessionId.substring(0,8)}`);
-
-    if (roomRef.current) {
-        console.log(`[VideoPlayer] Déjà connecté à la salle. Annulation.`);
-        return;
-    }
 
     if (!participantName || !sessionId) {
         console.warn("⚠️ [VideoPlayer] Nom du participant ou ID de session manquant. Connexion annulée.");
@@ -47,7 +41,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             title: "Accès Média Refusé",
             description: "Veuillez autoriser l'accès à la caméra et au microphone.",
         });
-        return;
+        return null;
     }
     
     try {
@@ -72,9 +66,10 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             name: sessionId,
             tracks: localTracks,
         });
-        roomRef.current = room;
+
         console.log(`✅ [VideoPlayer] Connecté avec succès à la salle "${sessionId.substring(0,8)}" en tant que "${room.localParticipant.identity}"`);
         onConnected(room);
+        return room;
         
     } catch (error) {
         let description = "Impossible d'établir la connexion à la session vidéo.";
@@ -82,22 +77,22 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         
         console.error(`❌ [VideoPlayer] Erreur de connexion vidéo pour la session: ${sessionId.substring(0,8)}:`, description);
         toast({ variant: 'destructive', title: 'Erreur de Connexion Vidéo', description });
+        return null;
     }
   }, [sessionId, role, userId, toast, onConnected]);
 
    useEffect(() => {
-    // This guard prevents the double-call in StrictMode
-    if (!roomRef.current) {
-         connectToRoom();
+    let room: Room | null = null;
+  
+    const connect = async () => {
+        room = await connectToRoom();
     }
+    connect();
 
-    // The cleanup function should only disconnect if the room was successfully connected
     return () => {
-      const room = roomRef.current;
       if (room && room.state === 'connected') {
         console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${room.name.substring(0,8)}"`);
         room.disconnect();
-        roomRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
