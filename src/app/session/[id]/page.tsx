@@ -55,7 +55,7 @@ function SessionPageContent() {
     
     const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
     const [participants, setParticipants] = useState<Map<string, RemoteParticipant>>(new Map());
-    const [spotlightedParticipant, setSpotlightedParticipant] = useState<TwilioParticipant | null>(null);
+    const [spotlightedParticipant, setSpotlightedParticipant] = useState<LocalParticipant | RemoteParticipant | null>(null);
     const spotlightedParticipantRef = useRef(spotlightedParticipant);
     
     const [isLoading, setIsLoading] = useState(true);
@@ -272,7 +272,7 @@ function SessionPageContent() {
         }
     };
 
-    const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as TwilioParticipant[];
+    const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
     
     const findParticipantByIdentity = (identity: string) => {
         return allLiveParticipants.find(p => p.identity === identity);
