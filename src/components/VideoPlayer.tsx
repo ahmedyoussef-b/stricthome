@@ -16,7 +16,8 @@ interface VideoPlayerProps {
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
   const { toast } = useToast();
   const roomRef = useRef<Room | null>(null);
-  
+  const effectRan = useRef(false);
+
   const connectToRoom = useCallback(async (): Promise<Room | null> => {
     const participantName = `${role}-${userId.substring(0, 8)}`;
     console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la session: ${sessionId.substring(0,8)}`);
@@ -78,26 +79,31 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         
         console.error(`❌ [VideoPlayer] Erreur de connexion vidéo pour la session: ${sessionId.substring(0,8)}:`, description);
         toast({ variant: 'destructive', title: 'Erreur de Connexion Vidéo', description });
+
+        // Stop local tracks if connection failed
+        localTracks.forEach(track => track.stop());
+
         return null;
     }
   }, [sessionId, role, userId, toast, onConnected]);
 
    useEffect(() => {
+    // This check prevents the effect from running twice in development (StrictMode)
+    if (effectRan.current) return;
+    effectRan.current = true;
+
     connectToRoom().then(room => {
       roomRef.current = room;
     });
 
     return () => {
       // This cleanup function will be called on unmount.
-      // In StrictMode, it's called prematurely, but roomRef.current might be null.
-      // On the "real" unmount, roomRef.current will exist.
       if (roomRef.current && roomRef.current.state === 'connected') {
         console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name.substring(0,8)}"`);
         roomRef.current.disconnect();
         roomRef.current = null;
       }
     };
-  // The empty dependency array ensures this effect runs only once on mount and cleans up on unmount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
