@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { toggleSpecialCard } from '@/lib/actions';
 
 export function ToggleButton() {
   const [isActive, setIsActive] = useState(false);
@@ -15,24 +14,34 @@ export function ToggleButton() {
 
   const handleClick = () => {
     const newIsActive = !isActive;
-    setIsActive(newIsActive);
-
+    
     startTransition(async () => {
-      try {
-        await toggleSpecialCard(newIsActive);
-        toast({
-          title: newIsActive ? "Carte spéciale activée" : "Carte spéciale désactivée",
-          description: `La carte est maintenant ${newIsActive ? 'visible' : 'cachée'} pour les élèves.`,
-        });
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Erreur de diffusion",
-          description: "Impossible de mettre à jour l'état pour les élèves.",
-        });
-        // Rollback state on error
-        setIsActive(!newIsActive);
-      }
+        setIsActive(newIsActive); // Optimistic update
+        try {
+            const response = await fetch('/api/trigger-card', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isActive: newIsActive }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Server responded with an error');
+            }
+
+            toast({
+              title: newIsActive ? "Carte spéciale activée" : "Carte spéciale désactivée",
+              description: `La carte est maintenant ${newIsActive ? 'visible' : 'cachée'} pour les élèves.`,
+            });
+
+        } catch (error) {
+            // Rollback state on error
+            setIsActive(!newIsActive);
+            toast({
+              variant: "destructive",
+              title: "Erreur de diffusion",
+              description: "Impossible de mettre à jour l'état pour les élèves.",
+            });
+        }
     });
   };
 
