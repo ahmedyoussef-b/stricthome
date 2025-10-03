@@ -9,9 +9,30 @@ import { ReactionWithUser } from '@/lib/types';
 
 
 export async function getMessages(classeId: string) {
+    const session = await getAuthSession();
+    if (!session?.user) throw new Error("Unauthorized to fetch messages.");
+
     if (!classeId) {
         throw new Error('Classe ID is required.');
     }
+    
+    // Security check: ensure the user is part of the class they are trying to view messages from.
+    // For a teacher, check if they teach the class.
+    // For a student, check if they belong to the class.
+    if (session.user.role === 'PROFESSEUR') {
+        const classe = await prisma.classe.findFirst({
+            where: { id: classeId, professeurId: session.user.id }
+        });
+        if (!classe) throw new Error("Unauthorized: Teacher does not teach this class.");
+    } else if (session.user.role === 'ELEVE') {
+        const user = await prisma.user.findFirst({
+            where: { id: session.user.id, classeId: classeId }
+        });
+        if (!user) throw new Error("Unauthorized: Student does not belong to this class.");
+    } else {
+        throw new Error("Unauthorized: User role is not recognized.");
+    }
+
     const messages = await prisma.message.findMany({
         where: { classeId },
         include: { 

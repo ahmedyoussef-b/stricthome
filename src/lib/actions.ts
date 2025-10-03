@@ -10,6 +10,4 @@ export * from './actions/student.actions';
 export * from './actions/task.actions';
 export * from './actions/conversation.actions';
 export * from './actions/announcement.actions';
-// chat.actions are separated as they are used by client components
-// and bundling them here can cause module poisoning.
-export { sendMessage, deleteChatHistory, toggleReaction } from './actions/chat.actions';
+export * from './actions/chat.actions';
