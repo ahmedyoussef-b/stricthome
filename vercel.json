@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "next.config.ts",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/student/(?<id>[^/]+)",
+      "dest": "/student/[id]"
+    },
+    {
+      "src": "/session/(?<id>[^/]+)",
+      "dest": "/session/[id]"
+    },
+    {
+      "src": "/teacher/class/(?<id>[^/]+)",
+      "dest": "/teacher/class/[id]"
+    }
+  ]
+}
