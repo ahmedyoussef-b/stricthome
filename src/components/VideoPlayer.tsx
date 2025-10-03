@@ -81,7 +81,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   }, [sessionId, role, userId, toast, onConnected]);
 
   useEffect(() => {
-    // Ce guard prévient le double-appel en StrictMode
+    // This guard prevents the double-call in StrictMode
     if (roomRef.current) {
         return;
     }
@@ -93,9 +93,10 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     // The cleanup function should only disconnect if the room was successfully connected
     return () => {
-      if (roomRef.current) {
-        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name.substring(0,8)}"`);
-        roomRef.current.disconnect();
+      const room = roomRef.current;
+      if (room) {
+        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${room.name.substring(0,8)}"`);
+        room.disconnect();
         roomRef.current = null;
       }
     };
