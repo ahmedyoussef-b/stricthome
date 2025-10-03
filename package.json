@@ -4,8 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "rm -rf .next && next dev",
-    "build": "next build",
-    "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit --strict",
     "postinstall": "prisma generate",
