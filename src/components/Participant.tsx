@@ -54,17 +54,6 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
         }
     };
 
-    const handleTrackPublication = (publication: TrackPublication) => {
-        if (publication.track) {
-            attachTrack(publication.track);
-        }
-        publication.on('subscribed', (track: Track) => {
-            attachTrack(track);
-            updateTrackState(track);
-        });
-        publication.on('unsubscribed', detachTrack);
-    };
-
     const updateTrackState = (track: Track) => {
       if (isAudioTrack(track)) {
         setIsMuted(!track.isEnabled);
@@ -77,33 +66,37 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
       }
     };
 
+    // Handle initial tracks
     participant.tracks.forEach(publication => {
         if (publication.track) {
             attachTrack(publication.track);
             updateTrackState(publication.track);
-        } else {
-             publication.on('subscribed', track => {
-                attachTrack(track);
-                updateTrackState(track);
-            });
         }
     });
 
-    participant.on('trackSubscribed', (track) => {
+    // Handle new tracks
+    const handleTrackSubscribed = (track: Track) => {
         attachTrack(track);
         updateTrackState(track);
-    });
-    
-    participant.on('trackUnsubscribed', detachTrack);
+    };
+
+    // Handle tracks being removed
+    const handleTrackUnsubscribed = (track: Track) => {
+        detachTrack(track);
+    };
+
+    participant.on('trackSubscribed', handleTrackSubscribed);
+    participant.on('trackUnsubscribed', handleTrackUnsubscribed);
 
     return () => {
+      // Detach all tracks on cleanup
       participant.tracks.forEach(publication => {
         if (publication.track) {
           detachTrack(publication.track);
         }
       });
-      participant.removeAllListeners('trackSubscribed');
-      participant.removeAllListeners('trackUnsubscribed');
+      participant.off('trackSubscribed', handleTrackSubscribed);
+      participant.off('trackUnsubscribed', handleTrackUnsubscribed);
     };
   }, [participant]);
 
