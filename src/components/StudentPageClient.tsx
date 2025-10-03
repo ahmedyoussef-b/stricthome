@@ -33,7 +33,7 @@ export default function StudentPageClient({
   allCareers,
   isTeacherView,
 }: StudentPageClientProps) {
-  const [showSpecialCard, setShowSpecialCard] = useState(false);
+  const [showCard, setShowCard] = useState(false);
   const [randomImageId] = useState(() => Math.floor(Math.random() * 1000));
   const career = student.etat?.metier;
 
@@ -44,12 +44,14 @@ export default function StudentPageClient({
     try {
       const channel = pusherClient.subscribe(channelName);
 
-      channel.bind('special-card-toggle', (data: { isActive: boolean }) => {
-        setShowSpecialCard(data.isActive);
+      channel.bind('card-trigger', (data: { isActive: boolean }) => {
+        // La logique ici peut être adaptée. Par exemple, forcer l'affichage ou le masquage.
+        // Pour un simple toggle comme dans votre exemple :
+        setShowCard(prev => !prev);
       });
 
       return () => {
-        channel.unbind('special-card-toggle');
+        channel.unbind_all();
         pusherClient.unsubscribe(channelName);
       };
     } catch (error) {
@@ -101,7 +103,7 @@ export default function StudentPageClient({
         </Card>
 
         <div className="md:col-span-2 space-y-8">
-          {showSpecialCard && (
+          {showCard && (
              <Card className="border-primary border-2 animate-in fade-in zoom-in-95">
                 <CardHeader>
                     <div className="flex items-center gap-2">

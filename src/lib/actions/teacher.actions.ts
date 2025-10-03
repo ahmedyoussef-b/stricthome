@@ -22,7 +22,7 @@ export async function toggleSpecialCard(isActive: boolean) {
         // Create a batch of events to send to Pusher
         const events = classes.map(classe => ({
             channel: `presence-classe-${classe.id}`,
-            name: 'special-card-toggle',
+            name: 'card-trigger',
             data: { isActive }
         }));
         
