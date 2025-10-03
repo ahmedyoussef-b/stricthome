@@ -13,6 +13,8 @@ module.exports = {
         code: ['monospace'],
       },
       colors: {
+        'orange-custom': '#F59E0B', // amber-500
+        'red-custom': '#EF4444', // red-500
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

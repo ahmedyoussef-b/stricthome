@@ -10,6 +10,7 @@ import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
+import { ToggleButton } from '@/components/ToggleButton';
 
 export default async function TeacherPage() {
   const session = await getAuthSession();
@@ -48,6 +49,7 @@ export default async function TeacherPage() {
             <p className="text-muted-foreground">Gérez vos classes et démarrez des sessions interactives.</p>
           </div>
           <div className="flex items-center gap-2">
+            <ToggleButton />
             <CreateAnnouncementForm classes={classes} />
             <AddClassForm teacherId={user.id} />
           </div>
