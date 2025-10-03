@@ -285,7 +285,7 @@ function SessionPageContent() {
     const allLiveParticipants = [localParticipant, ...Array.from(participants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
     
     const findParticipantByIdentity = (identity: string) => {
-        return allLiveParticipants.find(p => p.identity === identity);
+        return allLiveParticipants.find(p => p.identity.includes(identity.substring(0, 8)));
     };
 
     const teacherView = (
