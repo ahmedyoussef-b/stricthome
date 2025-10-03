@@ -55,11 +55,12 @@ export default function StudentPageClient({
       channel.bind('session-started', (data: { sessionId: string, invitedStudentIds: string[] }) => {
         if (data.invitedStudentIds.includes(student.id)) {
             const newSession: CoursSession = {
-                id: data.sessionId,
-                professeurId: '',
-                createdAt: new Date(),
-                endedAt: null,
-                spotlightedParticipantSid: null,
+              id: data.sessionId,
+              professeurId: '',
+              createdAt: new Date(),
+              endedAt: null,
+              spotlightedParticipantSid: null,
+              classeId: null
             };
             setActiveSession(newSession);
         }

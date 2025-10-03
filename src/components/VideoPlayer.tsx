@@ -94,7 +94,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         roomRef.current = null;
       }
     };
-  }, []); // Empty dependency array ensures this runs only once on mount and cleans up on unmount
+  }, [connectToRoom]); 
 
 
   // This component handles the logic but doesn't render any visible UI itself.
