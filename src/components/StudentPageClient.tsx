@@ -48,22 +48,30 @@ export default function StudentPageClient({
       const channel = pusherClient.subscribe(channelName);
 
       channel.bind('card-trigger', (data: { isActive: boolean }) => {
-        setShowCard(prev => !prev);
+        // Correction: la carte ne doit s'afficher/se cacher que si le statut change
+        setShowCard(data.isActive);
       });
 
       channel.bind('session-started', (data: { sessionId: string, invitedStudentIds: string[] }) => {
         if (data.invitedStudentIds.includes(student.id)) {
-            // Créer un semblant d'objet CoursSession, car nous n'avons pas toutes les données.
-            // L'ID est la seule chose nécessaire pour construire le lien.
             const newSession: CoursSession = {
                 id: data.sessionId,
-                professeurId: '', // Non nécessaire pour le client
+                professeurId: '',
                 createdAt: new Date(),
                 endedAt: null,
                 spotlightedParticipantSid: null,
             };
             setActiveSession(newSession);
         }
+      });
+      
+      channel.bind('session-ended', (data: { sessionId: string }) => {
+        setActiveSession(currentSession => {
+            if (currentSession && currentSession.id === data.sessionId) {
+                return null; // Fait disparaître la carte
+            }
+            return currentSession;
+        });
       });
 
 

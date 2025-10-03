@@ -105,7 +105,7 @@ export async function endCoursSession(sessionId: string) {
         professeurId: session.user.id,
         endedAt: null, // S'assurer qu'on ne termine pas une session déjà terminée
     },
-    include: { participants: true },
+    include: { participants: { select: { id: true, classeId: true } } },
   });
 
   if (!coursSession) {
@@ -118,11 +118,18 @@ export async function endCoursSession(sessionId: string) {
     data: { endedAt: new Date() },
   });
 
-  // Revalidate paths for all participants
+  // Notify clients in real-time
+  const firstParticipant = coursSession.participants[0];
+  if (firstParticipant?.classeId) {
+      const channelName = `presence-classe-${firstParticipant.classeId}`;
+      await pusherServer.trigger(channelName, 'session-ended', { sessionId: updatedSession.id });
+      console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal ${channelName}.`);
+  }
+
+  // Revalidate paths for all participants (as a fallback)
   for (const participant of coursSession.participants) {
     revalidatePath(`/student/${participant.id}`);
   }
-  // Revalidate teacher's path too, just in case
   revalidatePath(`/teacher`);
 
   console.log(`✅ [Session End] Session ${sessionId} terminée par le professeur ${session.user.id}.`);
