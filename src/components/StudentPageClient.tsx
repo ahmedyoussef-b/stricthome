@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp, Sparkles, Trophy, Gift } from 'lucide-react';
+import { FileUp, Sparkles, Trophy, Gift, Video } from 'lucide-react';
 import { StudentWithStateAndCareer, AnnouncementWithAuthor } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ export default function StudentPageClient({
 }: StudentPageClientProps) {
   const [showCard, setShowCard] = useState(false);
   const career = student.etat?.metier;
+  const activeSession = student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null;
 
   useEffect(() => {
     if (isTeacherView || !student.classeId) return;
@@ -102,6 +103,25 @@ export default function StudentPageClient({
         </Card>
 
         <div className="md:col-span-2 space-y-8">
+          {activeSession && !isTeacherView && (
+            <Card className="border-primary border-2 animate-in fade-in zoom-in-95">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                         <Video className="text-primary"/>
+                         <CardTitle>Invitation à une session !</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                     <p className="text-muted-foreground flex-grow">
+                        Votre professeur vous a invité à rejoindre une session d'apprentissage en direct.
+                     </p>
+                     <Button asChild>
+                        <Link href={`/session/${activeSession.id}?role=student&userId=${student.id}`}>Rejoindre la session</Link>
+                     </Button>
+                </CardContent>
+            </Card>
+          )}
+
           {showCard && (
              <Card className="border-primary border-2 animate-in fade-in zoom-in-95">
                 <CardHeader>

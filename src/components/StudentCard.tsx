@@ -42,7 +42,7 @@ export function StudentCard({
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Prevent click on card from triggering when clicking on a button inside
-    if ((e.target as HTMLElement).closest('button, a')) {
+    if ((e.target as HTMLElement).closest('button, a, label')) {
         return;
     }
     if (isEffectivelySelectable) {
@@ -81,7 +81,9 @@ export function StudentCard({
             checked={isSelected}
             onClick={(e) => {
                 e.stopPropagation();
-                onSelectionChange(student.id, !isSelected);
+                if (isEffectivelySelectable) {
+                  onSelectionChange(student.id, !isSelected);
+                }
             }}
             aria-label={`Sélectionner ${student.name}`}
             disabled={!isEffectivelySelectable}
