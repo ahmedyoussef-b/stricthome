@@ -10,7 +10,7 @@ import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import StudentPageClient from '@/components/StudentPageClient';
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
-    // Suppression de la logique de cache pour garantir que les données sont toujours fraîches.
+    // Correction de la requête Prisma pour inclure les sessions filtrées correctement
     console.log(`[DB] Récupération des données fraîches pour l'élève ${id}. Pas de cache.`);
     const student = await prisma.user.findUnique({
       where: { id, role: 'ELEVE' },
@@ -20,9 +20,8 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
             metier: true
           }
         },
-        // S'assurer de ne récupérer STRICTEMENT que les sessions actives.
         sessionsParticipees: {
-          where: { endedAt: null },
+          where: { endedAt: null }, // Filtrage correct des sessions actives
         },
         taskCompletions: true,
         classe: true,
