@@ -4,7 +4,7 @@
 import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
-import { startOfDay, startOfWeek, startOfMonth } from 'date-fns';
+import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 
 export async function completeTask(taskId: string) {
   const session = await getAuthSession();
