@@ -14,7 +14,7 @@ import { TeacherCareerSelector } from '@/components/TeacherCareerSelector';
 import { TaskList } from '@/components/TaskList';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
 import { StudentHeaderContent } from '@/components/StudentHeaderContent';
-import { Task, Metier } from '@prisma/client';
+import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 
@@ -34,8 +34,11 @@ export default function StudentPageClient({
   isTeacherView,
 }: StudentPageClientProps) {
   const [showCard, setShowCard] = useState(false);
+  const [activeSession, setActiveSession] = useState<CoursSession | null>(
+    student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null
+  );
   const career = student.etat?.metier;
-  const activeSession = student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null;
+  
 
   useEffect(() => {
     if (isTeacherView || !student.classeId) return;
@@ -45,10 +48,24 @@ export default function StudentPageClient({
       const channel = pusherClient.subscribe(channelName);
 
       channel.bind('card-trigger', (data: { isActive: boolean }) => {
-        // La logique ici peut être adaptée. Par exemple, forcer l'affichage ou le masquage.
-        // Pour un simple toggle comme dans votre exemple :
         setShowCard(prev => !prev);
       });
+
+      channel.bind('session-started', (data: { sessionId: string, invitedStudentIds: string[] }) => {
+        if (data.invitedStudentIds.includes(student.id)) {
+            // Créer un semblant d'objet CoursSession, car nous n'avons pas toutes les données.
+            // L'ID est la seule chose nécessaire pour construire le lien.
+            const newSession: CoursSession = {
+                id: data.sessionId,
+                professeurId: '', // Non nécessaire pour le client
+                createdAt: new Date(),
+                endedAt: null,
+                spotlightedParticipantSid: null,
+            };
+            setActiveSession(newSession);
+        }
+      });
+
 
       return () => {
         channel.unbind_all();
@@ -57,7 +74,7 @@ export default function StudentPageClient({
     } catch (error) {
       console.error("Pusher subscription failed:", error);
     }
-  }, [student.classeId, isTeacherView]);
+  }, [student.id, student.classeId, isTeacherView]);
 
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">

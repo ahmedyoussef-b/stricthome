@@ -23,13 +23,29 @@ export async function createCoursSession(professeurId: string, studentIds: strin
         },
     });
 
-    console.log(`✅ [DB] Session ${session.id} créée. Invitation envoyée aux élèves.`);
+    console.log(`✅ [DB] Session ${session.id} créée. Envoi de la notification Pusher...`);
+    
+    // Récupérer la classe des élèves pour cibler le bon canal Pusher
+    const firstStudent = await prisma.user.findUnique({
+        where: { id: studentIds[0] },
+        select: { classeId: true }
+    });
 
-    // Revalidate the paths for each student participating in the session
+    if (firstStudent?.classeId) {
+        const channelName = `presence-classe-${firstStudent.classeId}`;
+        await pusherServer.trigger(channelName, 'session-started', {
+            sessionId: session.id,
+            invitedStudentIds: studentIds,
+        });
+        console.log(`✅ [Pusher] Événement 'session-started' envoyé sur le canal ${channelName}.`);
+    }
+
+
+    // La révalidation reste utile si l'élève n'était pas sur la page au moment de l'invitation.
     studentIds.forEach(id => {
         revalidatePath(`/student/${id}`);
     });
-    console.log(`🔄 [Revalidation] Pages des élèves invalidées pour afficher l'invitation.`);
+    console.log(`🔄 [Revalidation] Pages des élèves invalidées pour garantir la fraîcheur des données.`);
 
     return session;
 }
