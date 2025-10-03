@@ -29,6 +29,9 @@ export default async function TeacherPage() {
             select: { eleves: true },
           },
         },
+        orderBy: {
+          nom: 'asc',
+        },
       },
     },
   });
