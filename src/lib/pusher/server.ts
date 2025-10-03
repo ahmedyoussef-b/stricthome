@@ -1,4 +1,5 @@
 // lib/pusher/server.ts
+import 'dotenv/config'; // Assure le chargement des variables d'environnement
 import PusherServer from 'pusher';
 
 if (!process.env.PUSHER_APP_ID || !process.env.NEXT_PUBLIC_PUSHER_KEY || !process.env.PUSHER_SECRET || !process.env.NEXT_PUBLIC_PUSHER_CLUSTER) {
