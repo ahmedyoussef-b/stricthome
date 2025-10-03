@@ -430,13 +430,11 @@ const SidebarGroup = React.forwardRef<
 SidebarGroup.displayName = "SidebarGroup"
 
 const SidebarGroupLabel = React.forwardRef<
-  React.ElementRef<"div">,
-  React.ComponentProps<"div"> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "div"
-
+  HTMLDivElement,
+  Omit<React.ComponentProps<"div">, "ref">
+>(({ className, ...props }, ref) => {
   return (
-    <Comp
+    <div
       ref={ref}
       data-sidebar="group-label"
       className={cn(
@@ -451,13 +449,11 @@ const SidebarGroupLabel = React.forwardRef<
 SidebarGroupLabel.displayName = "SidebarGroupLabel"
 
 const SidebarGroupAction = React.forwardRef<
-  React.ElementRef<"button">,
-  React.ComponentProps<"button"> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button"
-
+  HTMLButtonElement,
+  Omit<React.ComponentProps<"button">, "ref">
+>(({ className, ...props }, ref) => {
   return (
-    <Comp
+    <button
       ref={ref}
       data-sidebar="group-action"
       className={cn(
@@ -535,8 +531,8 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  React.ElementRef<"button">,
-  React.ComponentProps<"button"> & {
+  HTMLButtonElement,
+  Omit<React.ComponentProps<"button">, "ref"> & {
     asChild?: boolean
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
@@ -594,8 +590,8 @@ const SidebarMenuButton = React.forwardRef<
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 const SidebarMenuAction = React.forwardRef<
-  React.ElementRef<"button">,
-  React.ComponentProps<"button"> & {
+  HTMLButtonElement,
+  Omit<React.ComponentProps<"button">, "ref"> & {
     asChild?: boolean
     showOnHover?: boolean
   }
@@ -707,8 +703,8 @@ const SidebarMenuSubItem = React.forwardRef<
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 const SidebarMenuSubButton = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentProps<"a"> & {
+  HTMLAnchorElement,
+  Omit<React.ComponentProps<"a">, "ref"> & {
     asChild?: boolean
     size?: "sm" | "md"
     isActive?: boolean
@@ -762,5 +758,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
