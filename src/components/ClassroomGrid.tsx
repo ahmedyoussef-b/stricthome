@@ -1,10 +1,10 @@
 // src/components/ClassroomGrid.tsx
 'use client';
 
-import { LocalParticipant, RemoteParticipant, Room } from "twilio-video";
+import { LocalParticipant, RemoteParticipant } from "twilio-video";
 import { Participant } from "./Participant";
 import { StudentPlaceholder } from "./StudentPlaceholder";
-import type { StudentWithCareer, UserWithClasse } from "@/lib/types";
+import type { StudentWithCareer } from "@/lib/types";
 
 interface ClassroomGridProps {
     sessionId: string;
@@ -34,7 +34,7 @@ export function ClassroomGrid({
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-2">
             {/* Teacher's video */}
             {teacher && (() => {
                  const teacherParticipant = localParticipant?.identity.startsWith('teacher-')

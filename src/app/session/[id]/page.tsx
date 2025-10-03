@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { endCoursSession } from '@/lib/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentPlaceholder } from '@/components/StudentPlaceholder';
+import { ClassroomGrid } from '@/components/ClassroomGrid';
 
 // Dynamically import the VideoPlayer component with SSR disabled
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -321,34 +322,15 @@ function SessionPageContent() {
                     </CardHeader>
                     <CardContent className="flex-1 p-2">
                         <ScrollArea className="h-full">
-                            <div className="flex flex-col gap-4 p-2">
-                                {localParticipant && localParticipant.identity.startsWith('teacher-') && (
-                                     <Participant
-                                        key={localParticipant.sid}
-                                        participant={localParticipant}
-                                        isLocal={true}
-                                        isSpotlighted={localParticipant.sid === spotlightedParticipant?.sid}
-                                        sessionId={sessionId}
-                                        isTeacher={isTeacher}
-                                    />
-                                )}
-                                {classStudents.map((student) => {
-                                    const participant = findParticipantByIdentity(`student-${student.id.substring(0, 8)}`);
-                                    if (participant) {
-                                        return (
-                                            <Participant
-                                                key={participant.sid}
-                                                participant={participant}
-                                                isLocal={participant === localParticipant}
-                                                isSpotlighted={participant.sid === spotlightedParticipant?.sid}
-                                                sessionId={sessionId}
-                                                isTeacher={isTeacher}
-                                            />
-                                        );
-                                    }
-                                    return <StudentPlaceholder key={student.id} student={student} isOnline={false} />;
-                                })}
-                            </div>
+                            <ClassroomGrid
+                                sessionId={sessionId}
+                                teacher={teacher}
+                                students={classStudents}
+                                localParticipant={localParticipant}
+                                remoteParticipants={Array.from(participants.values())}
+                                spotlightedParticipantSid={spotlightedParticipant?.sid}
+                                isTeacher={isTeacher}
+                            />
                         </ScrollArea>
                     </CardContent>
                 </Card>
@@ -421,7 +403,7 @@ function SessionPageContent() {
                 userId={userId ?? ''}
                 onConnected={onConnected}
             />
-            <header className="border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
+            <header className="border-b bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                     <h1 className="text-xl font-bold">Session en direct: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
                     <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>

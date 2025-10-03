@@ -9,9 +9,10 @@ interface VideoGridProps {
     localParticipant: LocalParticipant | null;
     participants: RemoteParticipant[];
     spotlightedParticipantSid?: string | null;
+    isTeacher: boolean;
 }
 
-export function VideoGrid({ sessionId, localParticipant, participants, spotlightedParticipantSid }: VideoGridProps) {
+export function VideoGrid({ sessionId, localParticipant, participants, spotlightedParticipantSid, isTeacher }: VideoGridProps) {
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
@@ -22,6 +23,7 @@ export function VideoGrid({ sessionId, localParticipant, participants, spotlight
                     isLocal={true}
                     sessionId={sessionId}
                     isSpotlighted={localParticipant.sid === spotlightedParticipantSid}
+                    isTeacher={isTeacher}
                 />
             )}
             {participants.map(p => (
@@ -31,6 +33,7 @@ export function VideoGrid({ sessionId, localParticipant, participants, spotlight
                     isLocal={false}
                     sessionId={sessionId}
                     isSpotlighted={p.sid === spotlightedParticipantSid}
+                    isTeacher={isTeacher}
                 />
             ))}
         </div>
