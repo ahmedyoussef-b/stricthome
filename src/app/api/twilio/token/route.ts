@@ -1,21 +1,22 @@
+
 // app/api/twilio/token/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
+import { generateUniqueUserId } from '@/lib/utils';
 
 const AccessToken = twilio.jwt.AccessToken;
 const VideoGrant = AccessToken.VideoGrant;
 
 export async function POST(request: NextRequest) {
   try {
-    const { identity, room } = await request.json();
+    const { identity, room, role } = await request.json();
     
-    if (!identity || !room) {
-        return NextResponse.json({ error: 'Identity and room name are required.' }, { status: 400 });
+    if (!identity || !room || !role) {
+        return NextResponse.json({ error: 'Identity, room name, and role are required.' }, { status: 400 });
     }
     
-    // Générer une identité unique pour chaque demande afin d'éviter les problèmes de "duplicate identity"
-    // causés par le double-rendu de React StrictMode en développement.
-    const uniqueIdentity = `${identity}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // Générer une identité unique côté serveur pour chaque demande de jeton.
+    const uniqueIdentity = generateUniqueUserId(role, identity);
 
     console.log(`🔑 [Twilio Token API] Demande de jeton pour l'identité unique "${uniqueIdentity}" dans la salle "${room}"`);
 
@@ -23,15 +24,11 @@ export async function POST(request: NextRequest) {
     const twilioApiKeySid = process.env.TWILIO_API_KEY_SID;
     const twilioApiKeySecret = process.env.TWILIO_API_KEY_SECRET;
 
-    console.log('🔍 [Twilio Token API] Vérification des variables d\'environnement...');
-
     if (!twilioAccountSid || !twilioApiKeySid || !twilioApiKeySecret) {
       console.error('❌ [Twilio Token API] Erreur: Une ou plusieurs variables d\'environnement Twilio sont manquantes.');
       return NextResponse.json({ error: 'Configuration serveur Twilio incomplète. Veuillez vérifier les variables d\'environnement.' }, { status: 500 });
     }
     
-    console.log('✅ [Twilio Token API] Variables d\'environnement trouvées.');
-
     const token = new AccessToken(
       twilioAccountSid,
       twilioApiKeySid, 
