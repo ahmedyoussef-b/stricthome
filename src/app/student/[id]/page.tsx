@@ -183,7 +183,7 @@ export default async function StudentPage({
                         </CardContent>
                     </Card>
 
-                    {activeSession && (
+                    {/* {activeSession && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export default async function StudentPage({
                             </Button>
                         </CardContent>
                     </Card>
-                    )}
+                    )} */}
                     
                     <Card>
                         <CardHeader>
