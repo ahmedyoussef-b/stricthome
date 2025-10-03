@@ -81,6 +81,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   }, [sessionId, role, userId, toast, onConnected]);
 
   useEffect(() => {
+    // Ce guard prévient le double-appel en StrictMode
+    if (roomRef.current) {
+        return;
+    }
+
     // Ensure this only runs on the client
     if (typeof window !== "undefined") {
       connectToRoom();
