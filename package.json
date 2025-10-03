@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": " next dev",
+    "dev": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -18,7 +18,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:push": "prisma db push --accept-data-loss",
-    "db:seed": "prisma db seed",
+    "db:seed": "ts-node prisma/seed.ts",
     "clean": "rm -rf .next"
   },
   "dependencies": {
