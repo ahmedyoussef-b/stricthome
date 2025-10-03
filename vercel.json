@@ -1,23 +1,19 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "next.config.ts",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/student/(?<id>[^/]+)",
-      "dest": "/student/[id]"
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "app/student/[id]/page.tsx": {
+      "maxDuration": 30
     },
-    {
-      "src": "/session/(?<id>[^/]+)",
-      "dest": "/session/[id]"
+    "app/session/[id]/page.tsx": {
+      "maxDuration": 30
     },
-    {
-      "src": "/teacher/class/(?<id>[^/]+)",
-      "dest": "/teacher/class/[id]"
+    "app/teacher/class/[id]/page.tsx": {
+      "maxDuration": 30
     }
-  ]
+  }
 }
