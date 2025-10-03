@@ -87,7 +87,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         toast({ variant: 'destructive', title: 'Erreur de Connexion Vidéo', description });
 
         // Arrêter les pistes locales si la connexion a échoué
-        localTracks.forEach(track => track.stop());
+        localTracks.forEach(track => {
+            if (track.stop) {
+                track.stop();
+            }
+        });
 
         return null;
     }

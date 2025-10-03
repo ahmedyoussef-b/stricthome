@@ -7,6 +7,8 @@ import { Inter } from 'next/font/google';
 
 const inter = Inter({
   subsets: ['latin'],
+  display: 'swap',
+  preload: false, // Désactive le préchargement problématique
 });
 
 export const metadata: Metadata = {
