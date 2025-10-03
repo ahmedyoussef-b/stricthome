@@ -3,7 +3,6 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { redis } from '../redis';
 
 export async function createClass(formData: FormData) {
     const nom = formData.get('nom') as string;
@@ -19,11 +18,6 @@ export async function createClass(formData: FormData) {
             professeurId,
         },
     });
-
-    if (redis) {
-      await redis.del(`teacher:${professeurId}`);
-      await redis.del(`teacher-classes:${professeurId}`);
-    }
 
     revalidatePath('/teacher');
 
@@ -71,10 +65,6 @@ export async function addStudentToClass(formData: FormData) {
                 isPunished: false,
             },
         });
-    }
-
-    if (redis) {
-      await redis.del(`teacher-classes:${classe.professeurId}`);
     }
 
     revalidatePath(`/teacher/class/${classeId}`);

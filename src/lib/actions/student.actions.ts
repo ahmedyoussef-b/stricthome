@@ -2,7 +2,6 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { redis } from '@/lib/redis';
 import { revalidatePath } from 'next/cache';
 
 export async function setStudentCareer(studentId: string, careerId: string | null) {
@@ -26,11 +25,6 @@ export async function setStudentCareer(studentId: string, careerId: string | nul
         },
     });
     
-    // Invalidate student cache
-    if (redis) {
-      await redis.del(`student:${studentId}`);
-    }
-
     // Revalidate the student's page to show the changes
     revalidatePath(`/student/${studentId}`);
 }
