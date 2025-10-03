@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,9 @@ type AttachableTrack = LocalVideoTrack | RemoteVideoTrack | LocalAudioTrack | Re
 const isAttachable = (track: Track | null): track is AttachableTrack => {
   return track !== null && typeof (track as any).attach === 'function';
 };
+
+const isAudioTrack = (track: Track): track is AudioTrack => track.kind === 'audio';
+const isVideoTrack = (track: Track): track is VideoTrack => track.kind === 'video';
 
 interface ParticipantProps {
   participant: RemoteParticipant | LocalParticipant;
@@ -63,11 +66,11 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
     };
 
     const updateTrackState = (track: Track) => {
-      if (track.kind === 'audio') {
+      if (isAudioTrack(track)) {
         setIsMuted(!track.isEnabled);
         track.on('enabled', () => setIsMuted(false));
         track.on('disabled', () => setIsMuted(true));
-      } else if (track.kind === 'video') {
+      } else if (isVideoTrack(track)) {
         setHasVideo(track.isEnabled);
         track.on('enabled', () => setHasVideo(true));
         track.on('disabled', () => setHasVideo(false));
