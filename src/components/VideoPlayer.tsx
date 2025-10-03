@@ -18,8 +18,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   const { toast } = useToast();
   
   useEffect(() => {
+    let isConnecting = true;
+    const participantName = `${role}-${userId.substring(0, 8)}`;
+    let room: Room | null = null;
+
     const connectToRoom = async () => {
-        const participantName = `${role}-${userId.substring(0, 8)}`;
         console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la session: ${sessionId.substring(0,8)}`);
 
         if (!participantName || !sessionId) {
@@ -63,8 +66,10 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             const token = data.token;
             console.log(`✅ [VideoPlayer] Jeton Twilio reçu pour la session: ${sessionId.substring(0,8)}.`);
             
+            if (!isConnecting) return;
+            
             console.log(`🚪 [VideoPlayer] Connexion à la salle Twilio "${sessionId.substring(0,8)}"...`);
-            const room = await Video.connect(token, {
+            room = await Video.connect(token, {
                 name: sessionId,
                 tracks: localTracks,
             });
@@ -72,8 +77,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             console.log(`✅ [VideoPlayer] Connecté avec succès à la salle "${sessionId.substring(0,8)}" en tant que "${room.localParticipant.identity}"`);
             onConnected(room);
             
-            window.addEventListener('beforeunload', () => room.disconnect());
-
         } catch (error) {
             let description = "Impossible d'établir la connexion à la session vidéo.";
             if (error instanceof Error) description = error.message;
@@ -86,9 +89,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     connectToRoom();
 
     return () => {
-      if(roomRef.current) {
+      isConnecting = false;
+      if (roomRef.current) {
         console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name.substring(0,8)}"`);
         roomRef.current.disconnect();
+        roomRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
