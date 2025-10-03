@@ -13,7 +13,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['pusher', 'twilio'],
+    serverComponentsExternalPackages: ['@prisma/client', 'pusher', 'twilio'],
   },
 }
 
