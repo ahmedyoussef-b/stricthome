@@ -79,7 +79,7 @@ function SessionPageContent() {
         spotlightedParticipantRef.current = spotlightedParticipant;
     }, [spotlightedParticipant]);
 
-    const broadcastTimerEvent = async (event: string, data?: any) => {
+    const broadcastTimerEvent = useCallback(async (event: string, data?: any) => {
         try {
             await fetch('/api/pusher/timer', {
                 method: 'POST',
@@ -90,7 +90,7 @@ function SessionPageContent() {
             console.error(`Failed to broadcast timer event ${event}`, error);
             toast({ variant: 'destructive', title: 'Erreur de synchronisation', description: 'Le minuteur n\'a pas pu être synchronisé.' });
         }
-    };
+    }, [sessionId, toast]);
 
     const handleStartTimer = () => {
         setIsTimerRunning(true);
@@ -441,3 +441,5 @@ export default function SessionPage() {
         </Suspense>
     )
 }
+
+    
