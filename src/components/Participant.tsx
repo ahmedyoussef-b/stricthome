@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, TrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
         }
     };
 
-    const handleTrackPublication = (publication: any) => {
+    const handleTrackPublication = (publication: TrackPublication) => {
         if (publication.track) {
             attachTrack(publication.track);
         }
