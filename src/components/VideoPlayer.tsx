@@ -21,6 +21,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     const participantName = `${role}-${userId.substring(0, 8)}`;
     console.log(`🔌 [VideoPlayer] Début de la connexion pour "${participantName}" à la session: ${sessionId.substring(0,8)}`);
 
+    if (roomRef.current) {
+        console.log(`[VideoPlayer] Déjà connecté à la salle. Annulation.`);
+        return;
+    }
+
     if (!participantName || !sessionId) {
         console.warn("⚠️ [VideoPlayer] Nom du participant ou ID de session manquant. Connexion annulée.");
         return;
@@ -80,27 +85,23 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     }
   }, [sessionId, role, userId, toast, onConnected]);
 
-  useEffect(() => {
+   useEffect(() => {
     // This guard prevents the double-call in StrictMode
-    if (roomRef.current) {
-        return;
-    }
-
-    // Ensure this only runs on the client
-    if (typeof window !== "undefined") {
-      connectToRoom();
+    if (!roomRef.current) {
+         connectToRoom();
     }
 
     // The cleanup function should only disconnect if the room was successfully connected
     return () => {
       const room = roomRef.current;
-      if (room) {
+      if (room && room.state === 'connected') {
         console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${room.name.substring(0,8)}"`);
         room.disconnect();
         roomRef.current = null;
       }
     };
-  }, [connectToRoom]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
 
   // This component handles the logic but doesn't render any visible UI itself.
