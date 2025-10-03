@@ -23,7 +23,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     const cleanupTracks = () => {
       localTracksRef.current.forEach(track => {
-        if (track.stop) {
+        // Type guard to ensure track has a stop method
+        if (track.kind === 'audio' || track.kind === 'video') {
             track.stop();
         }
       });
