@@ -81,11 +81,12 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   }, [sessionId, role, userId, toast, onConnected]);
 
   useEffect(() => {
-    // Ensure this only runs on the client
-    if (typeof window !== "undefined") {
+    // Ensure this only runs on the client and only once
+    if (roomRef.current === null && typeof window !== "undefined") {
       connectToRoom();
     }
 
+    // The cleanup function should only disconnect if the room was successfully connected
     return () => {
       if (roomRef.current) {
         console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name.substring(0,8)}"`);
