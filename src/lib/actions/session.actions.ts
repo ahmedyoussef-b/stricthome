@@ -5,7 +5,6 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getAuthSession } from '../session';
 import { pusherServer } from '../pusher/server';
-import { redis } from '../redis';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
     console.log(`🚀 [Action Server] Démarrage de la création de session pour ${studentIds.length} élève(s).`);
