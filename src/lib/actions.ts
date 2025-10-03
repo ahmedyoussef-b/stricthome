@@ -11,3 +11,4 @@ export * from './actions/task.actions';
 export * from './actions/conversation.actions';
 export * from './actions/announcement.actions';
 export * from './actions/chat.actions';
+export * from './actions/teacher.actions';
