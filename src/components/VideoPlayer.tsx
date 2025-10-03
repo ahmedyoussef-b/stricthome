@@ -1,7 +1,7 @@
 // src/components/VideoPlayer.tsx
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Video, { Room, LocalTrack, LocalVideoTrack, LocalAudioTrack } from 'twilio-video';
 
@@ -15,6 +15,7 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
   const { toast } = useToast();
+  const roomRef = useRef<Room | null>(null);
   
   const connectToRoom = useCallback(async (): Promise<Room | null> => {
     const participantName = `${role}-${userId.substring(0, 8)}`;
@@ -82,19 +83,21 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   }, [sessionId, role, userId, toast, onConnected]);
 
    useEffect(() => {
-    let room: Room | null = null;
-  
-    const connect = async () => {
-        room = await connectToRoom();
-    }
-    connect();
+    connectToRoom().then(room => {
+      roomRef.current = room;
+    });
 
     return () => {
-      if (room && room.state === 'connected') {
-        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${room.name.substring(0,8)}"`);
-        room.disconnect();
+      // This cleanup function will be called on unmount.
+      // In StrictMode, it's called prematurely, but roomRef.current might be null.
+      // On the "real" unmount, roomRef.current will exist.
+      if (roomRef.current && roomRef.current.state === 'connected') {
+        console.log(`🚪 [VideoPlayer] Déconnexion de la salle "${roomRef.current.name.substring(0,8)}"`);
+        roomRef.current.disconnect();
+        roomRef.current = null;
       }
     };
+  // The empty dependency array ensures this effect runs only once on mount and cleans up on unmount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
