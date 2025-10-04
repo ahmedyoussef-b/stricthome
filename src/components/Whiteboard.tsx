@@ -7,11 +7,15 @@ import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pen, Eraser, Palette, Minus, Plus } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
+import { Slider } from './ui/slider';
 
 interface WhiteboardProps {
   sessionId: string;
 }
+
+type Tool = 'pen' | 'eraser';
 
 interface DrawData {
   x0: number;
@@ -19,28 +23,33 @@ interface DrawData {
   x1: number;
   y1: number;
   color: string;
+  lineWidth: number;
+  tool: Tool;
   senderId?: string;
 }
+
+const COLORS = [
+  '#000000', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'
+];
 
 export function Whiteboard({ sessionId }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const { data: session } = useSession();
+
   const [isDrawing, setIsDrawing] = useState(false);
-  const [color] = useState('#000000'); // La couleur est fixe pour l'instant
+  const [tool, setTool] = useState<Tool>('pen');
+  const [color, setColor] = useState('#000000');
+  const [lineWidth, setLineWidth] = useState(2);
+  
+  const currentPos = useRef<{x:number, y:number} | null>(null);
 
   const broadcastDraw = useCallback(async (data: Omit<DrawData, 'senderId'>) => {
     try {
       await fetch('/api/whiteboard', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId,
-          event: 'draw',
-          data,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, event: 'draw', data }),
       });
     } catch (error) {
       console.error('Failed to broadcast draw event:', error);
@@ -48,20 +57,19 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   }, [sessionId]);
 
   const onDraw = useCallback((data: DrawData) => {
-    if (!contextRef.current) return;
+    if (!contextRef.current || !canvasRef.current) return;
     const context = contextRef.current;
-    
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
     const w = canvas.width;
     const h = canvas.height;
+
+    context.globalCompositeOperation = data.tool === 'eraser' ? 'destination-out' : 'source-over';
+    context.strokeStyle = data.color;
+    context.lineWidth = data.lineWidth;
 
     context.beginPath();
     context.moveTo(data.x0 * w, data.y0 * h);
     context.lineTo(data.x1 * w, data.y1 * h);
-    context.strokeStyle = data.color;
-    context.lineWidth = 2;
     context.stroke();
     context.closePath();
   }, []);
@@ -73,7 +81,6 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     
     context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     
-    // Broadcast clear event
     try {
       await fetch('/api/whiteboard', {
         method: 'POST',
@@ -90,7 +97,6 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Set canvas dimensions based on parent container size
     const resizeCanvas = () => {
         const parent = canvas.parentElement;
         if (parent) {
@@ -98,10 +104,8 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
             canvas.height = parent.clientHeight;
         }
     }
-    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-
 
     const context = canvas.getContext('2d');
     if (!context) return;
@@ -109,9 +113,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     context.lineJoin = 'round';
     contextRef.current = context;
 
-    return () => {
-        window.removeEventListener('resize', resizeCanvas);
-    }
+    return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
 
   useEffect(() => {
@@ -120,16 +122,13 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     const channel = pusherClient.subscribe(channelName);
     
     const drawHandler = (data: DrawData) => {
-      // Don't draw events sent by the current user
-      if (data.senderId !== session?.user.id) {
-        onDraw(data);
-      }
+      if (data.senderId !== session?.user.id) onDraw(data);
     };
 
     const clearHandler = () => {
         if(canvasRef.current) {
             const context = canvasRef.current.getContext('2d');
-            context?.clearRect(0,0, canvasRef.current.width, canvasRef.current.height);
+            context?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         }
     }
 
@@ -137,8 +136,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     channel.bind('clear', clearHandler);
 
     return () => {
-      channel.unbind('draw', drawHandler);
-      channel.unbind('clear', clearHandler);
+      channel.unbind_all();
       pusherClient.unsubscribe(channelName);
     };
   }, [sessionId, session?.user.id, onDraw]);
@@ -146,37 +144,35 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   const startDrawing = ({ nativeEvent }: React.MouseEvent<HTMLCanvasElement>) => {
     const { offsetX, offsetY } = nativeEvent;
     setIsDrawing(true);
-    if (contextRef.current) {
-      contextRef.current.beginPath();
-      contextRef.current.moveTo(offsetX, offsetY);
-    }
+    currentPos.current = { x: offsetX, y: offsetY };
   };
 
   const finishDrawing = () => {
     setIsDrawing(false);
-    if (contextRef.current) {
-      contextRef.current.closePath();
-    }
+    currentPos.current = null;
   };
 
   const draw = ({ nativeEvent }: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !contextRef.current || !canvasRef.current) {
-      return;
-    }
+    if (!isDrawing || !contextRef.current || !canvasRef.current || !currentPos.current) return;
+    
     const { offsetX, offsetY } = nativeEvent;
     const w = canvasRef.current.width;
     const h = canvasRef.current.height;
 
     const data: Omit<DrawData, 'senderId'> = {
-      x0: (offsetX - nativeEvent.movementX) / w,
-      y0: (offsetY - nativeEvent.movementY) / h,
+      x0: currentPos.current.x / w,
+      y0: currentPos.current.y / h,
       x1: offsetX / w,
       y1: offsetY / h,
       color,
+      lineWidth,
+      tool,
     };
     
-    onDraw({ ...data, color: data.color, senderId: session?.user.id });
+    onDraw({ ...data, senderId: session?.user.id });
     broadcastDraw(data);
+
+    currentPos.current = { x: offsetX, y: offsetY };
   };
 
 
@@ -189,14 +185,59 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
             <span className='sr-only'>Effacer le tableau</span>
         </Button>
       </CardHeader>
-      <CardContent className="flex-grow p-0 relative">
+      <CardContent className="flex-grow p-0 relative flex">
+         <div className="p-2 border-r bg-muted/50 flex flex-col gap-2 items-center">
+            <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')}>
+                <Pen />
+            </Button>
+            <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')}>
+                <Eraser />
+            </Button>
+            
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon"><Palette /></Button>
+                </PopoverTrigger>
+                <PopoverContent side="right" className="w-auto p-2">
+                    <div className="flex gap-1">
+                        {COLORS.map(c => (
+                            <button
+                                key={c}
+                                onClick={() => setColor(c)}
+                                className={cn("h-6 w-6 rounded-full border-2", color === c ? 'border-primary' : 'border-transparent')}
+                                style={{ backgroundColor: c }}
+                            />
+                        ))}
+                    </div>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <div className="h-full w-full flex items-center justify-center relative">
+                            <div style={{width: `${lineWidth/2}px`, height: `${lineWidth/2}px`}} className="bg-foreground rounded-full"/>
+                        </div>
+                    </Button>
+                </PopoverTrigger>
+                 <PopoverContent side="right" className="w-40 p-2">
+                    <Slider 
+                        min={1} 
+                        max={20} 
+                        step={1}
+                        value={[lineWidth]}
+                        onValueChange={(value) => setLineWidth(value[0])}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
           onMouseUp={finishDrawing}
           onMouseOut={finishDrawing}
           onMouseMove={draw}
-          className={cn('h-full w-full touch-none rounded-b-lg')}
+          className={cn('h-full w-full touch-none rounded-b-lg', tool === 'pen' ? 'cursor-crosshair' : 'cursor-grab')}
         />
       </CardContent>
     </Card>
