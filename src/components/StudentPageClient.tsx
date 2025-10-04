@@ -130,7 +130,7 @@ export default function StudentPageClient({
 
         <div className="md:col-span-2 space-y-8">
           {activeSession && !isTeacherView && (
-            <Card className="border-primary border-2 animate-in fade-in zoom-in-95">
+            <Card className="animate-pulse-border border-primary border-2 animate-in fade-in zoom-in-95">
                 <CardHeader>
                     <div className="flex items-center gap-2">
                          <Video className="text-primary"/>
