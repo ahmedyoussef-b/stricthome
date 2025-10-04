@@ -7,7 +7,7 @@ import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Trash2, Pen, Eraser, Palette } from 'lucide-react';
+import { Trash2, Pen, Eraser, Palette, Undo2, Redo2 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 
 interface WhiteboardProps {
@@ -24,8 +24,14 @@ interface DrawData {
   color: string;
   lineWidth: number;
   tool: Tool;
-  senderId?: string;
 }
+
+interface HistoryEntry {
+    type: 'draw' | 'clear' | 'undo' | 'redo';
+    data?: DrawData | DrawData[];
+    senderId: string;
+}
+
 
 const COLORS = [
   '#000000', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'
@@ -71,21 +77,44 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(5);
   
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const currentLine = useRef<DrawData[]>([]);
+
   const currentPos = useRef<{x:number, y:number} | null>(null);
 
-  const broadcastDraw = useCallback(async (data: Omit<DrawData, 'senderId'>) => {
+  const broadcastEvent = useCallback(async (event: string, data: any) => {
     try {
       await fetch('/api/whiteboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, event: 'draw', data }),
+        body: JSON.stringify({ sessionId, event, data }),
       });
     } catch (error) {
-      console.error('Failed to broadcast draw event:', error);
+      console.error(`Failed to broadcast ${event} event:`, error);
     }
   }, [sessionId]);
+  
+  
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const context = contextRef.current;
+    if (!canvas || !context) return;
+    
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
-  const onDraw = useCallback((data: DrawData) => {
+    for (let i = 0; i <= historyIndex; i++) {
+        const entry = history[i];
+        if (entry.type === 'draw' && entry.data) {
+             const lines = Array.isArray(entry.data) ? entry.data : [entry.data];
+             lines.forEach(line => onDraw(line, false));
+        } else if (entry.type === 'clear') {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+  }, [history, historyIndex]);
+
+  const onDraw = useCallback((data: DrawData, addToHistory: boolean) => {
     if (!contextRef.current || !canvasRef.current) return;
     const context = contextRef.current;
     const canvas = canvasRef.current;
@@ -101,26 +130,37 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     context.lineTo(data.x1 * w, data.y1 * h);
     context.stroke();
     context.closePath();
+    
   }, []);
 
-  const handleClearCanvas = async () => {
-    if(!canvasRef.current) return;
-    const context = canvasRef.current.getContext('2d');
-    if(!context) return;
+  const handleClearCanvas = () => {
+    if (!session?.user.id) return;
+    const newEntry: HistoryEntry = { type: 'clear', senderId: session.user.id };
     
-    context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    
-    try {
-      await fetch('/api/whiteboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, event: 'clear', data: {} }),
-      });
-    } catch (error) {
-      console.error('Failed to broadcast clear event:', error);
-    }
+    // Truncate history if we are in the middle of it
+    const newHistory = history.slice(0, historyIndex + 1);
+    setHistory([...newHistory, newEntry]);
+    setHistoryIndex(newHistory.length);
+
+    broadcastEvent('history-update', { history: [...newHistory, newEntry], index: newHistory.length });
+    redrawCanvas();
   };
 
+ const handleUndo = () => {
+    if (historyIndex < 0 || !session?.user.id) return;
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
+    broadcastEvent('history-update', { history, index: newIndex });
+    redrawCanvas();
+  }
+
+  const handleRedo = () => {
+    if (historyIndex >= history.length - 1 || !session?.user.id) return;
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
+    broadcastEvent('history-update', { history, index: newIndex });
+    redrawCanvas();
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -132,6 +172,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
             canvas.width = parent.clientWidth;
             canvas.height = parent.clientHeight;
         }
+        redrawCanvas();
     }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -143,42 +184,56 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     contextRef.current = context;
 
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, []);
+  }, [redrawCanvas]);
 
   useEffect(() => {
     if (!sessionId) return;
     const channelName = `presence-whiteboard-${sessionId}`;
     const channel = pusherClient.subscribe(channelName);
     
-    const drawHandler = (data: DrawData) => {
-      if (data.senderId !== session?.user.id) onDraw(data);
+    const historyUpdateHandler = (data: { history: HistoryEntry[], index: number, senderId: string }) => {
+        if (data.senderId !== session?.user.id) {
+            setHistory(data.history);
+            setHistoryIndex(data.index);
+            redrawCanvas();
+        }
     };
 
-    const clearHandler = () => {
-        if(canvasRef.current) {
-            const context = canvasRef.current.getContext('2d');
-            context?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        }
-    }
-
-    channel.bind('draw', drawHandler);
-    channel.bind('clear', clearHandler);
+    channel.bind('history-update', historyUpdateHandler);
 
     return () => {
       channel.unbind_all();
       pusherClient.unsubscribe(channelName);
     };
-  }, [sessionId, session?.user.id, onDraw]);
+  }, [sessionId, session?.user.id, redrawCanvas]);
 
   const startDrawing = ({ nativeEvent }: React.MouseEvent<HTMLCanvasElement>) => {
     const { offsetX, offsetY } = nativeEvent;
     setIsDrawing(true);
     currentPos.current = { x: offsetX, y: offsetY };
+    currentLine.current = [];
   };
 
   const finishDrawing = () => {
+    if (!isDrawing || !session?.user.id || currentLine.current.length === 0) {
+      setIsDrawing(false);
+      return;
+    }
     setIsDrawing(false);
     currentPos.current = null;
+    
+    const newEntry: HistoryEntry = { type: 'draw', data: currentLine.current, senderId: session.user.id };
+    
+    const newHistory = history.slice(0, historyIndex + 1);
+    const finalHistory = [...newHistory, newEntry];
+
+    setHistory(finalHistory);
+    const newIndex = finalHistory.length - 1;
+    setHistoryIndex(newIndex);
+    
+    broadcastEvent('history-update', { history: finalHistory, index: newIndex });
+
+    currentLine.current = [];
   };
 
   const draw = ({ nativeEvent }: React.MouseEvent<HTMLCanvasElement>) => {
@@ -188,7 +243,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     const w = canvasRef.current.width;
     const h = canvasRef.current.height;
 
-    const data: Omit<DrawData, 'senderId'> = {
+    const data: DrawData = {
       x0: currentPos.current.x / w,
       y0: currentPos.current.y / h,
       x1: offsetX / w,
@@ -198,8 +253,8 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
       tool,
     };
     
-    onDraw({ ...data, senderId: session?.user.id });
-    broadcastDraw(data);
+    onDraw(data, false);
+    currentLine.current.push(data);
 
     currentPos.current = { x: offsetX, y: offsetY };
   };
@@ -209,10 +264,6 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     <Card className="h-full flex flex-col">
       <CardHeader className='flex-row items-center justify-between'>
         <CardTitle>Tableau Blanc</CardTitle>
-        <Button variant="destructive" size="icon" onClick={handleClearCanvas}>
-            <Trash2 className='h-4 w-4' />
-            <span className='sr-only'>Effacer le tableau</span>
-        </Button>
       </CardHeader>
       <CardContent className="flex-grow p-0 relative flex">
          <div className="p-2 border-r bg-muted/50 flex flex-col gap-2 items-center">
@@ -253,6 +304,19 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
                     <ThicknessPicker current={lineWidth} onChange={setLineWidth} />
                 </PopoverContent>
             </Popover>
+            
+            <div className="mt-auto flex flex-col gap-2">
+                 <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0}>
+                    <Undo2 />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
+                    <Redo2 />
+                </Button>
+                 <Button variant="destructive" size="icon" onClick={handleClearCanvas}>
+                    <Trash2 className='h-4 w-4' />
+                    <span className='sr-only'>Effacer le tableau</span>
+                </Button>
+            </div>
         </div>
         <canvas
           ref={canvasRef}
