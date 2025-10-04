@@ -7,29 +7,42 @@ import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Trash2, Pen, Eraser, Palette, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, Pen, Eraser, Palette, Undo2, Redo2, Square, Circle, MousePointer2 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 
 interface WhiteboardProps {
   sessionId: string;
 }
 
-type Tool = 'pen' | 'eraser';
+type Tool = 'select' | 'pen' | 'eraser' | 'rectangle' | 'circle';
 
-interface DrawData {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-  color: string;
-  lineWidth: number;
-  tool: Tool;
+interface Point {
+    x: number;
+    y: number;
 }
 
+interface DrawAction {
+    type: 'draw';
+    path: Point[];
+    color: string;
+    lineWidth: number;
+}
+
+interface ShapeAction {
+    type: 'rectangle' | 'circle';
+    start: Point;
+    end: Point;
+    color: string;
+    lineWidth: number;
+}
+
+
+type Action = DrawAction | ShapeAction;
+
 interface HistoryEntry {
-    type: 'draw' | 'clear' | 'undo' | 'redo';
-    data?: DrawData | DrawData[];
+    id: string; // Unique ID for the action, e.g., `${senderId}-${Date.now()}`
     senderId: string;
+    action: Action;
 }
 
 
@@ -41,7 +54,7 @@ const THICKNESSES = [
     { label: 'Fin', value: 2 },
     { label: 'Moyen', value: 5 },
     { label: 'Épais', value: 10 },
-    { label: 'Très épais', value: 15 },
+    { label: 'Très épais', value: 20 },
 ]
 
 function ThicknessPicker({ current, onChange }: { current: number, onChange: (value: number) => void }) {
@@ -68,20 +81,19 @@ function ThicknessPicker({ current, onChange }: { current: number, onChange: (va
 
 
 export function Whiteboard({ sessionId }: WhiteboardProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
+  const mainCanvasRef = useRef<HTMLCanvasElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const { data: session } = useSession();
 
-  const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(5);
   
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const currentLine = useRef<DrawData[]>([]);
-
-  const currentPos = useRef<{x:number, y:number} | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const drawingAction = useRef<DrawAction | ShapeAction | null>(null);
+  const startPoint = useRef<Point | null>(null);
 
   const broadcastEvent = useCallback(async (event: string, data: any) => {
     try {
@@ -94,97 +106,197 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
       console.error(`Failed to broadcast ${event} event:`, error);
     }
   }, [sessionId]);
-  
-  
-  const redrawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const context = contextRef.current;
-    if (!canvas || !context) return;
-    
-    context.clearRect(0, 0, canvas.width, canvas.height);
 
-    for (let i = 0; i <= historyIndex; i++) {
-        const entry = history[i];
-        if (entry.type === 'draw' && entry.data) {
-             const lines = Array.isArray(entry.data) ? entry.data : [entry.data];
-             lines.forEach(line => onDraw(line, false));
-        } else if (entry.type === 'clear') {
-            context.clearRect(0, 0, canvas.width, canvas.height);
+  const drawActionOnCanvas = (ctx: CanvasRenderingContext2D, action: Action) => {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = action.lineWidth;
+    ctx.strokeStyle = action.color;
+    ctx.globalCompositeOperation = 'source-over';
+
+    if (action.type === 'draw') {
+        ctx.beginPath();
+        action.path.forEach((point, index) => {
+            if (index === 0) {
+                ctx.moveTo(point.x, point.y);
+            } else {
+                ctx.lineTo(point.x, point.y);
+            }
+        });
+        ctx.stroke();
+    } else if (action.type === 'rectangle' || action.type === 'circle') {
+        const width = action.end.x - action.start.x;
+        const height = action.end.y - action.start.y;
+        if (action.type === 'rectangle') {
+             ctx.strokeRect(action.start.x, action.start.y, width, height);
+        } else { // circle
+             const radiusX = Math.abs(width) / 2;
+             const radiusY = Math.abs(height) / 2;
+             const centerX = action.start.x + width / 2;
+             const centerY = action.start.y + height / 2;
+             ctx.beginPath();
+             ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+             ctx.stroke();
         }
     }
-  }, [history, historyIndex]);
+  };
 
-  const onDraw = useCallback((data: DrawData, addToHistory: boolean) => {
-    if (!contextRef.current || !canvasRef.current) return;
-    const context = contextRef.current;
-    const canvas = canvasRef.current;
-    const w = canvas.width;
-    const h = canvas.height;
 
-    context.globalCompositeOperation = data.tool === 'eraser' ? 'destination-out' : 'source-over';
-    context.strokeStyle = data.tool === 'eraser' ? 'rgba(0,0,0,1)' : data.color;
-    context.lineWidth = data.lineWidth;
-
-    context.beginPath();
-    context.moveTo(data.x0 * w, data.y0 * h);
-    context.lineTo(data.x1 * w, data.y1 * h);
-    context.stroke();
-    context.closePath();
+  const redrawCanvas = useCallback((canvas: HTMLCanvasElement | null, upToIndex: number) => {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i <= upToIndex; i++) {
+            if (history[i]) {
+                drawActionOnCanvas(ctx, history[i].action);
+            }
+        }
+    }, [history]);
     
-  }, []);
+   useEffect(() => {
+        redrawCanvas(mainCanvasRef.current, historyIndex);
+   }, [historyIndex, history, redrawCanvas]);
+
+  const pushToHistory = (action: Action) => {
+    if (!session?.user?.id) return;
+    const newEntry: HistoryEntry = {
+        id: `${session.user.id}-${Date.now()}`,
+        senderId: session.user.id,
+        action,
+    };
+    
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newEntry);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    
+    broadcastEvent('history-update', { history: newHistory, index: newHistory.length - 1 });
+  };
+
 
   const handleClearCanvas = () => {
-    if (!session?.user.id) return;
-    const newEntry: HistoryEntry = { type: 'clear', senderId: session.user.id };
-    
-    // Truncate history if we are in the middle of it
-    const newHistory = history.slice(0, historyIndex + 1);
-    setHistory([...newHistory, newEntry]);
-    setHistoryIndex(newHistory.length);
-
-    broadcastEvent('history-update', { history: [...newHistory, newEntry], index: newHistory.length });
-    redrawCanvas();
+    setHistory([]);
+    setHistoryIndex(-1);
+    broadcastEvent('history-update', { history: [], index: -1 });
+    redrawCanvas(mainCanvasRef.current, -1);
   };
 
  const handleUndo = () => {
-    if (historyIndex < 0 || !session?.user.id) return;
+    if (historyIndex < 0) return;
     const newIndex = historyIndex - 1;
     setHistoryIndex(newIndex);
     broadcastEvent('history-update', { history, index: newIndex });
-    redrawCanvas();
   }
 
   const handleRedo = () => {
-    if (historyIndex >= history.length - 1 || !session?.user.id) return;
+    if (historyIndex >= history.length - 1) return;
     const newIndex = historyIndex + 1;
     setHistoryIndex(newIndex);
     broadcastEvent('history-update', { history, index: newIndex });
-    redrawCanvas();
   }
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
+    const canvas = mainCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+    };
+  };
 
-    const resizeCanvas = () => {
-        const parent = canvas.parentElement;
-        if (parent) {
-            canvas.width = parent.clientWidth;
-            canvas.height = parent.clientHeight;
-        }
-        redrawCanvas();
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const point = getCanvasPoint(e);
+    setIsDrawing(true);
+    startPoint.current = point;
+
+    if (tool === 'pen' || tool === 'eraser') {
+        drawingAction.current = {
+            type: 'draw',
+            path: [point],
+            color: tool === 'eraser' ? '#FFFFFF' : color, // Use background color for eraser
+            lineWidth: lineWidth,
+        };
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+  };
 
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    contextRef.current = context;
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !startPoint.current) return;
+    const currentPoint = getCanvasPoint(e);
+    const previewCtx = previewCanvasRef.current?.getContext('2d');
+    if (!previewCtx || !previewCanvasRef.current) return;
 
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, [redrawCanvas]);
+    previewCtx.clearRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
+    
+    if (tool === 'pen' || tool === 'eraser') {
+        const action = drawingAction.current as DrawAction;
+        if (!action) return;
+        action.path.push(currentPoint);
+        drawActionOnCanvas(previewCtx, action);
+    } else if (tool === 'rectangle' || tool === 'circle') {
+        previewCtx.setLineDash([5, 5]);
+        const shapeAction: ShapeAction = {
+            type: tool,
+            start: startPoint.current,
+            end: currentPoint,
+            color: color,
+            lineWidth: lineWidth
+        };
+        drawActionOnCanvas(previewCtx, shapeAction);
+        previewCtx.setLineDash([]);
+    }
+  };
+
+  const finishDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !startPoint.current) return;
+    const endPoint = getCanvasPoint(e);
+
+    const previewCtx = previewCanvasRef.current?.getContext('2d');
+    if (previewCtx && previewCanvasRef.current) {
+        previewCtx.clearRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
+    }
+
+    if (tool === 'pen' || tool === 'eraser') {
+        const action = drawingAction.current as DrawAction;
+        if (action && action.path.length > 1) {
+            pushToHistory(action);
+        }
+    } else if (tool === 'rectangle' || tool === 'circle') {
+         const shapeAction: ShapeAction = {
+            type: tool,
+            start: startPoint.current,
+            end: endPoint,
+            color: color,
+            lineWidth: lineWidth
+        };
+        pushToHistory(shapeAction);
+    }
+    
+    setIsDrawing(false);
+    startPoint.current = null;
+    drawingAction.current = null;
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+        [mainCanvasRef.current, previewCanvasRef.current].forEach(canvas => {
+            if (canvas) {
+                const parent = canvas.parentElement;
+                if (parent) {
+                    canvas.width = parent.clientWidth;
+                    canvas.height = parent.clientHeight;
+                }
+            }
+        });
+        redrawCanvas(mainCanvasRef.current, historyIndex);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial size
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [redrawCanvas, historyIndex]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -195,7 +307,6 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
         if (data.senderId !== session?.user.id) {
             setHistory(data.history);
             setHistoryIndex(data.index);
-            redrawCanvas();
         }
     };
 
@@ -205,60 +316,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
       channel.unbind_all();
       pusherClient.unsubscribe(channelName);
     };
-  }, [sessionId, session?.user.id, redrawCanvas]);
-
-  const startDrawing = ({ nativeEvent }: React.MouseEvent<HTMLCanvasElement>) => {
-    const { offsetX, offsetY } = nativeEvent;
-    setIsDrawing(true);
-    currentPos.current = { x: offsetX, y: offsetY };
-    currentLine.current = [];
-  };
-
-  const finishDrawing = () => {
-    if (!isDrawing || !session?.user.id || currentLine.current.length === 0) {
-      setIsDrawing(false);
-      return;
-    }
-    setIsDrawing(false);
-    currentPos.current = null;
-    
-    const newEntry: HistoryEntry = { type: 'draw', data: currentLine.current, senderId: session.user.id };
-    
-    const newHistory = history.slice(0, historyIndex + 1);
-    const finalHistory = [...newHistory, newEntry];
-
-    setHistory(finalHistory);
-    const newIndex = finalHistory.length - 1;
-    setHistoryIndex(newIndex);
-    
-    broadcastEvent('history-update', { history: finalHistory, index: newIndex });
-
-    currentLine.current = [];
-  };
-
-  const draw = ({ nativeEvent }: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !contextRef.current || !canvasRef.current || !currentPos.current) return;
-    
-    const { offsetX, offsetY } = nativeEvent;
-    const w = canvasRef.current.width;
-    const h = canvasRef.current.height;
-
-    const data: DrawData = {
-      x0: currentPos.current.x / w,
-      y0: currentPos.current.y / h,
-      x1: offsetX / w,
-      y1: offsetY / h,
-      color,
-      lineWidth,
-      tool,
-    };
-    
-    onDraw(data, false);
-    currentLine.current.push(data);
-
-    currentPos.current = { x: offsetX, y: offsetY };
-  };
-
+  }, [sessionId, session?.user.id]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -266,17 +324,26 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
         <CardTitle>Tableau Blanc</CardTitle>
       </CardHeader>
       <CardContent className="flex-grow p-0 relative flex">
-         <div className="p-2 border-r bg-muted/50 flex flex-col gap-2 items-center">
-            <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')}>
+         <div className="p-2 border-r bg-muted/50 flex flex-col gap-1 items-center">
+            <Button variant={tool === 'select' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('select')} title="Sélectionner">
+                <MousePointer2 />
+            </Button>
+            <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')} title="Crayon">
                 <Pen />
             </Button>
-            <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')}>
+            <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')} title="Gomme">
                 <Eraser />
+            </Button>
+            <Button variant={tool === 'rectangle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('rectangle')} title="Rectangle">
+                <Square />
+            </Button>
+            <Button variant={tool === 'circle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('circle')} title="Cercle">
+                <Circle />
             </Button>
             
             <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon"><Palette /></Button>
+                    <Button variant="ghost" size="icon" title="Couleur"><Palette /></Button>
                 </PopoverTrigger>
                 <PopoverContent side="right" className="w-auto p-2">
                     <div className="flex gap-1">
@@ -294,7 +361,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
 
             <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" title="Épaisseur">
                         <div className="h-full w-full flex items-center justify-center relative">
                             <div style={{width: `${lineWidth/2}px`, height: `${lineWidth/2}px`}} className="bg-foreground rounded-full"/>
                         </div>
@@ -305,27 +372,37 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
                 </PopoverContent>
             </Popover>
             
-            <div className="mt-auto flex flex-col gap-2">
-                 <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0}>
+            <div className="mt-auto flex flex-col gap-1">
+                 <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0} title="Annuler">
                     <Undo2 />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
+                <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Rétablir">
                     <Redo2 />
                 </Button>
-                 <Button variant="destructive" size="icon" onClick={handleClearCanvas}>
+                 <Button variant="destructive" size="icon" onClick={handleClearCanvas} title="Tout effacer">
                     <Trash2 className='h-4 w-4' />
-                    <span className='sr-only'>Effacer le tableau</span>
                 </Button>
             </div>
         </div>
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseUp={finishDrawing}
-          onMouseOut={finishDrawing}
-          onMouseMove={draw}
-          className={cn('h-full w-full touch-none rounded-b-lg', tool === 'pen' ? 'cursor-crosshair' : 'cursor-grab')}
-        />
+        <div className="relative w-full h-full">
+            <canvas
+              ref={mainCanvasRef}
+              className="absolute top-0 left-0 h-full w-full touch-none rounded-b-lg"
+            />
+             <canvas
+                ref={previewCanvasRef}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={finishDrawing}
+                onMouseLeave={finishDrawing}
+                className={cn('absolute top-0 left-0 h-full w-full touch-none rounded-b-lg', 
+                    tool === 'pen' && 'cursor-crosshair',
+                    tool === 'eraser' && 'cursor-grab',
+                    (tool === 'rectangle' || tool === 'circle') && 'cursor-crosshair',
+                    tool === 'select' && 'cursor-default'
+                )}
+            />
+        </div>
       </CardContent>
     </Card>
   );
