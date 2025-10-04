@@ -19,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentPlaceholder } from '@/components/StudentPlaceholder';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { cn } from '@/lib/utils';
+import type { PresenceChannel } from 'pusher-js';
+
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
     ssr: false,
@@ -66,6 +68,7 @@ function SessionPageContent() {
     const [teacher, setTeacher] = useState<any>(null);
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
     const [sessionView, setSessionView] = useState<SessionView>('camera');
+    const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
 
     const [duration, setDuration] = useState(300); // 5 minutes
@@ -205,7 +208,16 @@ function SessionPageContent() {
         fetchSessionDetails();
 
         const channelName = `presence-session-${sessionId}`;
-        const channel = pusherClient.subscribe(channelName);
+        const channel = pusherClient.subscribe(channelName) as PresenceChannel;
+        
+        const updateOnlineUsers = () => {
+            const userIds = Object.keys(channel.members.members).map(id => channel.members.members[id].user_id);
+            setOnlineUsers(userIds);
+        }
+
+        channel.bind('pusher:subscription_succeeded', updateOnlineUsers);
+        channel.bind('pusher:member_added', updateOnlineUsers);
+        channel.bind('pusher:member_removed', updateOnlineUsers);
         
         const handleSpotlight = (data: { participantSid: string }) => {
             const currentRoom = roomRef.current;
@@ -307,7 +319,7 @@ function SessionPageContent() {
         }
     };
 
-    const allLiveParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
+    const allVideoParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
     const allSessionUsers = [teacher, ...classStudents].filter(Boolean);
     
     const findUserByParticipant = (participant: TwilioParticipant) => {
@@ -319,7 +331,6 @@ function SessionPageContent() {
 
     const mainParticipant = spotlightedParticipant ?? localParticipant;
     const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
-    const otherParticipants = allLiveParticipants.filter(p => p.sid !== mainParticipant?.sid);
     
     const viewLayout = {
         camera: "grid-cols-1 lg:grid-cols-3",
@@ -413,7 +424,7 @@ function SessionPageContent() {
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
-                            Participants ({allLiveParticipants.length}/{isTeacher ? classStudents.length : ''})
+                            Participants ({onlineUsers.length}/{classStudents.length})
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2">
@@ -425,6 +436,7 @@ function SessionPageContent() {
                                 localParticipant={localParticipant}
                                 remoteParticipants={Array.from(remoteParticipants.values())}
                                 spotlightedParticipantSid={spotlightedParticipant?.sid}
+                                onlineUserIds={onlineUsers}
                                 isTeacher={isTeacher}
                                 onGiveWhiteboardControl={handleGiveWhiteboardControl}
                                 whiteboardControllerId={whiteboardControllerId}

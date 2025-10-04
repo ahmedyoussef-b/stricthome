@@ -20,9 +20,21 @@ export function StudentPlaceholder({ student, isOnline }: StudentPlaceholderProp
         !isOnline && "opacity-70"
       )}
     >
-        <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-background/50 text-xs px-2 py-1 rounded-full">
-            <VideoOff className="h-3 w-3" />
-            <span>Hors ligne</span>
+        <div className={cn(
+            "absolute top-2 right-2 flex items-center gap-1.5 text-xs px-2 py-1 rounded-full",
+             isOnline ? "bg-green-500/20 text-green-700" : "bg-background/50"
+        )}>
+            {isOnline ? (
+                <>
+                    <div className="w-2 h-2 rounded-full bg-green-500"/>
+                    <span>En ligne</span>
+                </>
+            ) : (
+                <>
+                    <VideoOff className="h-3 w-3" />
+                    <span>Hors ligne</span>
+                </>
+            )}
         </div>
         <Avatar className="h-12 w-12 text-xl mb-2">
             <AvatarFallback>{student.name?.charAt(0)}</AvatarFallback>

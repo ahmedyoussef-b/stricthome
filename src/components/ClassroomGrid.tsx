@@ -13,6 +13,7 @@ interface ClassroomGridProps {
     localParticipant: LocalParticipant | null;
     remoteParticipants: RemoteParticipant[];
     spotlightedParticipantSid?: string | null;
+    onlineUserIds: string[];
     isTeacher: boolean;
     whiteboardControllerId: string | null;
     onGiveWhiteboardControl: (userId: string) => void;
@@ -25,15 +26,20 @@ export function ClassroomGrid({
     localParticipant, 
     remoteParticipants, 
     spotlightedParticipantSid,
+    onlineUserIds,
     isTeacher,
     whiteboardControllerId,
     onGiveWhiteboardControl,
 }: ClassroomGridProps) {
 
-    const allParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
+    const allVideoParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
 
-    const findParticipantById = (userId: string) => {
-        return allParticipants.find(p => p.identity.includes(userId.substring(0, 8)));
+    const findParticipantByUserId = (userId: string) => {
+        return allVideoParticipants.find(p => p.identity.includes(userId.substring(0, 8)));
+    }
+    
+    const isUserOnline = (userId: string) => {
+        return onlineUserIds.includes(userId);
     }
 
     return (
@@ -41,7 +47,9 @@ export function ClassroomGrid({
             {teacher && (() => {
                  const teacherParticipant = localParticipant?.identity.startsWith('teacher-')
                     ? localParticipant
-                    : allParticipants.find(p => p.identity.startsWith('teacher-'));
+                    : allVideoParticipants.find(p => p.identity.startsWith('teacher-'));
+                 
+                 const isOnline = teacherParticipant ? true : isUserOnline(teacher.id);
 
                  return teacherParticipant ? (
                      <Participant
@@ -57,12 +65,14 @@ export function ClassroomGrid({
                          onGiveWhiteboardControl={onGiveWhiteboardControl}
                      />
                  ) : (
-                     <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={false} />
+                     <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={isOnline} />
                  );
             })()}
 
             {students.map(student => {
-                const studentParticipant = findParticipantById(student.id);
+                const studentParticipant = findParticipantByUserId(student.id);
+                const isOnline = studentParticipant ? true : isUserOnline(student.id);
+                
                 return studentParticipant ? (
                     <Participant
                         key={studentParticipant.sid}
@@ -77,7 +87,7 @@ export function ClassroomGrid({
                         onGiveWhiteboardControl={onGiveWhiteboardControl}
                     />
                 ) : (
-                    <StudentPlaceholder key={student.id} student={student} isOnline={false} />
+                    <StudentPlaceholder key={student.id} student={student} isOnline={isOnline} />
                 )
             })}
         </div>
