@@ -1,194 +1,204 @@
+// prisma/schema.prisma
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // REMOVE: relationMode = "prisma"
+}
+
+// ==================================================================
+// MODÈLES DE L'APPLICATION
+// ==================================================================
+
+enum Role {
+  ELEVE
+  PROFESSEUR
 }
 
 model User {
-  id                  String    @id @default(cuid())
+  id                  String          @id @default(cuid())
   name                String?
-  email               String?   @unique
+  email               String?         @unique
   emailVerified       DateTime?
   image               String?
-  role                Role      @default(ELEVE)
-  points              Int       @default(0)
+  role                Role
+  points              Int             @default(0)
   ambition            String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  // Relations
   classeId            String?
-  classe              Classe?   @relation("ClasseEleves", fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  // RELATIONS
+  classe              Classe?         @relation(fields: [classeId], references: [id])
   etat                EtatEleve?
-
-  sessionsEnseignees  CoursSession[] @relation("SessionProfesseur")
-  sessionsParticipees CoursSession[] @relation("SessionParticipants")
+  sessionsEnseignees  CoursSession[]  @relation("SessionProfesseur")
+  sessionsParticipees CoursSession[]  @relation("SessionParticipants")
+  classesEnseignees   Classe[]        @relation("ClasseProfesseur") // Champ de relation inverse pour les classes enseignées
   
-  classesEnseignees   Classe[] @relation("ClasseProfesseur")
-  
-  taskCompletions     TaskCompletion[]
-  messages            Message[]
+  annoncesCrees       Annonce[]
+  messagesEnvoyes     Message[]
   reactions           Reaction[]
-  annonces            Annonce[]
+  taskCompletions     TaskCompletion[]
 
-  // For direct messaging
-  conversationsInitiated Conversation[] @relation("Initiator")
-  conversationsReceived  Conversation[] @relation("Receiver")
-  
+  conversationInitiated Conversation[] @relation("Initiator")
+  conversationReceived  Conversation[] @relation("Receiver")
+
   @@map("users")
 }
 
-model Classe {
-  id            String    @id @default(cuid())
-  nom           String
-  
-  eleves        User[]    @relation("ClasseEleves")
-  
-  professeur    User      @relation("ClasseProfesseur", fields: [professeurId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  professeurId  String
-  
-  messages      Message[]
-  annonces      Annonce[]
-  sessions      CoursSession[]
-  
-  @@map("classes")
-}
 
 model EtatEleve {
-  id          String  @id @default(cuid())
-  eleveId     String  @unique
-  eleve       User    @relation(fields: [eleveId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  isPunished  Boolean @default(false)
+  id          String    @id @default(cuid())
+  eleve       User      @relation(fields: [eleveId], references: [id])
+  eleveId     String    @unique
+  isPunished  Boolean   @default(false)
+  
   metierId    String?
-  metier      Metier? @relation(fields: [metierId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  metier      Metier?   @relation(fields: [metierId], references: [id])
 
   @@map("etats_eleves")
 }
 
 model Metier {
-  id           String      @id @default(cuid())
-  nom          String
-  description  String
-  icon         String?
-  theme        Json
-  etatsEleves  EtatEleve[]
+  id          String      @id @default(cuid())
+  nom         String
+  description String
+  icon        String?
+  theme       Json // Storing theme as a JSON object
+  eleves      EtatEleve[]
 
   @@map("metiers")
 }
 
-model CoursSession {
-  id                      String    @id @default(cuid())
-  professeur              User      @relation("SessionProfesseur", fields: [professeurId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  professeurId            String
-  participants            User[]    @relation("SessionParticipants")
-  createdAt               DateTime  @default(now())
-  endedAt                 DateTime?
-  spotlightedParticipantSid String?
-  whiteboardControllerId  String?
-
-  classe    Classe? @relation(fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  classeId  String?
+model Classe {
+  id            String    @id @default(cuid())
+  nom           String
+  professeurId  String
   
-  @@map("sessions_cours")
+  // RELATIONS
+  professeur    User      @relation("ClasseProfesseur", fields: [professeurId], references: [id])
+  eleves        User[]
+  sessions      CoursSession[]
+  annonces      Annonce[]
+  messages      Message[]
+
+  @@map("classes")
 }
 
-model Task {
-  id              String           @id @default(cuid())
-  title           String
-  description     String
-  points          Int
-  type            TaskType
-  completions     TaskCompletion[]
+model CoursSession {
+  id                        String    @id @default(cuid())
+  professeurId              String
+  classeId                  String?
+  createdAt                 DateTime  @default(now())
+  endedAt                   DateTime?
+  spotlightedParticipantSid String?
+  whiteboardControllerId    String?
 
-  @@map("tasks")
+  // RELATIONS
+  professeur                User      @relation("SessionProfesseur", fields: [professeurId], references: [id])
+  participants              User[]    @relation("SessionParticipants")
+  classe                    Classe?   @relation(fields: [classeId], references: [id])
+
+  @@map("cours_sessions")
 }
 
-model TaskCompletion {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  taskId        String
-  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  completedAt   DateTime @default(now())
 
-  @@unique([userId, taskId, completedAt])
-  @@map("task_completions")
-}
-
-model Conversation {
+model Annonce {
   id          String    @id @default(cuid())
-  initiatorId String
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  receiverId  String
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  messages    Message[]
+  title       String
+  content     String
+  authorId    String
+  classeId    String?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
 
-  @@unique([initiatorId, receiverId])
-  @@map("conversations")
+  // RELATIONS
+  author      User      @relation(fields: [authorId], references: [id])
+  classe      Classe?   @relation(fields: [classeId], references: [id])
+
+  @@map("annonces")
 }
 
 model Message {
   id              String      @id @default(cuid())
   message         String
   senderId        String
-  sender          User        @relation(fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   senderName      String
-  
   classeId        String?
-  classe          Classe?     @relation(fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-
   conversationId  String?
-  conversation    Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-
   createdAt       DateTime    @default(now())
+
+  // RELATIONS
+  sender          User        @relation(fields: [senderId], references: [id])
+  classe          Classe?     @relation(fields: [classeId], references: [id])
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
   reactions       Reaction[]
 
   @@map("messages")
 }
 
 model Reaction {
-  id        String   @id @default(cuid())
-  emoji     String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  messageId String
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id          String   @id @default(cuid())
+  emoji       String
+  messageId   String
+  userId      String
 
-  @@unique([userId, messageId, emoji])
+  // RELATIONS
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
   @@map("reactions")
 }
 
-model Annonce {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  classeId    String?
-  classe      Classe?  @relation(fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  createdAt   DateTime @default(now())
+model Conversation {
+  id            String    @id @default(cuid())
+  initiatorId   String
+  receiverId    String
+  createdAt     DateTime  @default(now())
 
-  @@map("annonces")
-}
+  // RELATIONS
+  initiator     User      @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  receiver      User      @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  messages      Message[]
 
-enum Role {
-  ELEVE
-  PROFESSEUR
-  ADMIN
+  @@unique([initiatorId, receiverId])
+  @@map("conversations")
 }
 
 enum TaskType {
   DAILY
   WEEKLY
   MONTHLY
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  points      Int
+  type        TaskType
+  
+  completions TaskCompletion[]
+
+  @@map("tasks")
+}
+
+model TaskCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  taskId      String
+  completedAt DateTime @default(now())
+
+  // RELATIONS
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId, completedAt])
+  @@map("task_completions")
 }
