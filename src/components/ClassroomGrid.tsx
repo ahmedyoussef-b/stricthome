@@ -14,6 +14,8 @@ interface ClassroomGridProps {
     remoteParticipants: RemoteParticipant[];
     spotlightedParticipantSid?: string | null;
     isTeacher: boolean;
+    whiteboardControllerId: string | null;
+    onGiveWhiteboardControl: (userId: string) => void;
 }
 
 export function ClassroomGrid({ 
@@ -23,7 +25,9 @@ export function ClassroomGrid({
     localParticipant, 
     remoteParticipants, 
     spotlightedParticipantSid,
-    isTeacher
+    isTeacher,
+    whiteboardControllerId,
+    onGiveWhiteboardControl,
 }: ClassroomGridProps) {
 
     const allParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
@@ -49,6 +53,8 @@ export function ClassroomGrid({
                          isTeacher={isTeacher}
                          displayName={teacher.name}
                          participantUserId={teacher.id}
+                         isWhiteboardController={teacher.id === whiteboardControllerId}
+                         onGiveWhiteboardControl={onGiveWhiteboardControl}
                      />
                  ) : (
                      <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={false} />
@@ -67,6 +73,8 @@ export function ClassroomGrid({
                         isTeacher={isTeacher}
                         displayName={student.name ?? undefined}
                         participantUserId={student.id}
+                        isWhiteboardController={student.id === whiteboardControllerId}
+                        onGiveWhiteboardControl={onGiveWhiteboardControl}
                     />
                 ) : (
                     <StudentPlaceholder key={student.id} student={student} isOnline={false} />

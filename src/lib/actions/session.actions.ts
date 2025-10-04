@@ -68,7 +68,34 @@ export async function getSessionDetails(sessionId: string) {
     });
 }
 
-export async function spotlightParticipant(sessionId: string, participantSid: string, participantUserId: string) {
+export async function setWhiteboardController(sessionId: string, participantUserId: string) {
+    const session = await getAuthSession();
+    if (session?.user.role !== 'PROFESSEUR') {
+        throw new Error("Unauthorized: Only teachers can set whiteboard controller.");
+    }
+
+     const coursSession = await prisma.coursSession.findFirst({
+        where: {
+            id: sessionId,
+            professeurId: session.user.id
+        }
+    });
+     if (!coursSession) {
+        throw new Error("Session not found or you are not the host.");
+    }
+
+    await prisma.coursSession.update({
+        where: { id: sessionId },
+        data: { whiteboardControllerId: participantUserId }
+    });
+
+    const channelName = `presence-session-${sessionId}`;
+    await pusherServer.trigger(channelName, 'whiteboard-control-changed', { controllerId: participantUserId });
+
+    revalidatePath(`/session/${sessionId}`);
+}
+
+export async function spotlightParticipant(sessionId: string, participantSid: string) {
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized: Only teachers can spotlight participants.");
@@ -85,22 +112,16 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
         throw new Error("Session not found or you are not the host.");
     }
     
-    // If the spotlighted participant is the teacher, give control back to teacher
-    const controllerId = participantUserId;
-
     await prisma.coursSession.update({
         where: { id: sessionId },
         data: { 
             spotlightedParticipantSid: participantSid,
-            whiteboardControllerId: controllerId
         }
     });
 
     const channelName = `presence-session-${sessionId}`;
     await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
-    await pusherServer.trigger(channelName, 'whiteboard-control-changed', { controllerId });
-
-
+    
     revalidatePath(`/session/${sessionId}`);
 }
 

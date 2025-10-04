@@ -2,7 +2,7 @@
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw, Monitor, WhiteboardIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,10 +14,11 @@ import dynamic from 'next/dynamic';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { endCoursSession } from '@/lib/actions';
+import { endCoursSession, setWhiteboardController } from '@/lib/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentPlaceholder } from '@/components/StudentPlaceholder';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
+import { cn } from '@/lib/utils';
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
     ssr: false,
@@ -37,6 +38,8 @@ function formatTime(seconds: number) {
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
+
+type SessionView = 'camera' | 'whiteboard';
 
 function SessionPageContent() {
     const router = useRouter();
@@ -62,6 +65,7 @@ function SessionPageContent() {
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
     const [teacher, setTeacher] = useState<any>(null);
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
+    const [sessionView, setSessionView] = useState<SessionView>('camera');
 
 
     const [duration, setDuration] = useState(300); // 5 minutes
@@ -286,6 +290,23 @@ function SessionPageContent() {
         }
     };
 
+    const handleGiveWhiteboardControl = async (participantUserId: string) => {
+        if (!isTeacher) return;
+        try {
+            await setWhiteboardController(sessionId, participantUserId);
+            toast({
+                title: "Contrôle du tableau donné",
+                description: "Le participant a maintenant le contrôle du tableau blanc."
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Erreur',
+                description: "Impossible de donner le contrôle du tableau."
+            });
+        }
+    };
+
     const allLiveParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
     const allSessionUsers = [teacher, ...classStudents].filter(Boolean);
     
@@ -296,17 +317,60 @@ function SessionPageContent() {
     const isControlledByCurrentUser = whiteboardControllerId === userId;
     const controllerUser = allSessionUsers.find(u => u.id === whiteboardControllerId);
 
-    const teacherView = (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-            <div className="lg:col-span-3 flex flex-col gap-6">
-               <div className="flex-grow min-h-[400px]">
-                 <Whiteboard
-                    sessionId={sessionId}
-                    isControlledByCurrentUser={isControlledByCurrentUser}
-                    controllerName={controllerUser?.name}
-                 />
-               </div>
-                 <Card>
+    const mainParticipant = spotlightedParticipant ?? localParticipant;
+    const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
+    const otherParticipants = allLiveParticipants.filter(p => p.sid !== mainParticipant?.sid);
+    
+    const viewLayout = {
+        camera: "grid-cols-1 lg:grid-cols-3",
+        whiteboard: "grid-cols-1 lg:grid-cols-4",
+    };
+    
+    const mainContentLayout = {
+        camera: "lg:col-span-2",
+        whiteboard: "lg:col-span-3",
+    }
+
+    const sidebarLayout = {
+        camera: "lg:col-span-1",
+        whiteboard: "lg:col-span-1",
+    }
+
+
+    const content = (
+         <div className={cn("grid gap-6 h-full", viewLayout[sessionView])}>
+            <div className={cn("flex flex-col gap-6", mainContentLayout[sessionView])}>
+                {sessionView === 'camera' && mainParticipant ? (
+                     <Participant 
+                        key={mainParticipant.sid}
+                        participant={mainParticipant}
+                        isLocal={mainParticipant === localParticipant}
+                        isSpotlighted={true}
+                        isTeacher={isTeacher}
+                        sessionId={sessionId}
+                        displayName={mainParticipantUser?.name ?? undefined}
+                        participantUserId={mainParticipantUser?.id ?? ''}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                        isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
+                    />
+                ) : sessionView === 'camera' && !mainParticipant ? (
+                     <Card className="aspect-video flex items-center justify-center bg-muted">
+                        <div className="text-center">
+                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                        </div>
+                    </Card>
+                ) : null}
+
+                 <div className="flex-grow min-h-[300px]">
+                   <Whiteboard
+                        sessionId={sessionId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerName={controllerUser?.name}
+                   />
+                </div>
+                
+                 {isTeacher && <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Timer />
@@ -330,15 +394,26 @@ function SessionPageContent() {
                             </Button>
                         </div>
                     </CardContent>
-                </Card>
-            </div>
+                </Card>}
 
-            <div className="lg:col-span-1 flex flex-col gap-6">
-                 <Card className="flex-1 flex flex-col">
+            </div>
+             <div className={cn("flex flex-col space-y-4", sidebarLayout[sessionView])}>
+                {!isTeacher && <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Timer />
+                            Temps restant
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
+                    </CardContent>
+                </Card>}
+                <Card className="flex-1 flex flex-col">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
-                            Participants ({allLiveParticipants.length}/{classStudents.length})
+                            Participants ({allLiveParticipants.length}/{isTeacher ? classStudents.length : ''})
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2">
@@ -351,75 +426,10 @@ function SessionPageContent() {
                                 remoteParticipants={Array.from(remoteParticipants.values())}
                                 spotlightedParticipantSid={spotlightedParticipant?.sid}
                                 isTeacher={isTeacher}
+                                onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                                whiteboardControllerId={whiteboardControllerId}
                             />
                         </ScrollArea>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
-    
-    const mainParticipant = spotlightedParticipant ?? localParticipant;
-    const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
-
-    const studentView = (
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            <div className="lg:col-span-2 flex flex-col gap-6">
-                 {mainParticipant ? (
-                    <Participant 
-                        key={mainParticipant.sid}
-                        participant={mainParticipant}
-                        isLocal={mainParticipant === localParticipant}
-                        isSpotlighted={true}
-                        isTeacher={isTeacher}
-                        sessionId={sessionId}
-                        displayName={mainParticipantUser?.name ?? undefined}
-                        participantUserId={mainParticipantUser?.id ?? ''}
-                    />
-                ) : (
-                    <Card className="aspect-video flex items-center justify-center bg-muted">
-                        <div className="text-center">
-                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
-                        </div>
-                    </Card>
-                )}
-                 <div className="flex-grow">
-                   <Whiteboard
-                        sessionId={sessionId}
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerName={controllerUser?.name}
-                   />
-                </div>
-            </div>
-             <div className="flex flex-col space-y-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Timer />
-                            Temps restant
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants ({allLiveParticipants.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
-                      {allLiveParticipants.map(p => {
-                          const user = findUserByParticipant(p);
-                          return (
-                              <div key={p.sid} className="flex items-center gap-3">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarFallback>{user?.name?.charAt(0) ?? '?'}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm font-medium">{user?.name ?? p.identity.split('-')[0]} {p === localParticipant ? '(Vous)' : ''}</span>
-                              </div>
-                          )
-                      })}
                     </CardContent>
                 </Card>
              </div>
@@ -436,7 +446,21 @@ function SessionPageContent() {
             />
             <header className="border-b bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-                    <h1 className="text-xl font-bold">Session en direct: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
+                    <div className='flex items-center gap-4'>
+                        <h1 className="text-xl font-bold">Session: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
+                         {isTeacher && (
+                            <div className='flex items-center gap-2 rounded-md bg-muted p-1'>
+                                <Button size="sm" variant={sessionView === 'camera' ? 'secondary' : 'ghost'} onClick={() => setSessionView('camera')}>
+                                    <Monitor className="mr-2 h-4 w-4"/>
+                                    Vue Caméra
+                                </Button>
+                                <Button size="sm" variant={sessionView === 'whiteboard' ? 'secondary' : 'ghost'} onClick={() => setSessionView('whiteboard')}>
+                                    <WhiteboardIcon className="mr-2 h-4 w-4"/>
+                                    Vue Tableau
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                     <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
                          {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
                         Quitter la session
@@ -449,7 +473,7 @@ function SessionPageContent() {
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
                     </div>
                 ) : (
-                    role === 'teacher' ? teacherView : studentView
+                    content
                 )}
             </main>
         </div>

@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, TrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Mic, MicOff, Star, Video, VideoOff } from "lucide-react";
+import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -29,9 +29,21 @@ interface ParticipantProps {
   isTeacher: boolean;
   displayName?: string;
   participantUserId: string;
+  isWhiteboardController?: boolean;
+  onGiveWhiteboardControl: (userId: string) => void;
 }
 
-export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher, displayName, participantUserId }: ParticipantProps) {
+export function Participant({ 
+    participant, 
+    isLocal, 
+    isSpotlighted, 
+    sessionId, 
+    isTeacher, 
+    displayName, 
+    participantUserId,
+    isWhiteboardController,
+    onGiveWhiteboardControl,
+}: ParticipantProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
@@ -101,10 +113,10 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
   const handleSpotlight = async () => {
     if (!sessionId || !isTeacher || !participantUserId) return;
     try {
-        await spotlightParticipant(sessionId, participant.sid, participantUserId);
+        await spotlightParticipant(sessionId, participant.sid);
         toast({
-            title: "Mise à jour de la vedette",
-            description: `${nameToDisplay} contrôle maintenant la session.`
+            title: "Participant en vedette",
+            description: `${nameToDisplay} est maintenant en vedette.`
         });
     } catch (e) {
         toast({
@@ -158,6 +170,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
                      </>
                  )}
                 {isTeacher && (
+                    <>
                      <Tooltip>
                         <TooltipTrigger asChild>
                              <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={handleSpotlight}>
@@ -165,9 +178,20 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                           <p>Mettre en vedette / Donner le contrôle</p>
+                           <p>Mettre en vedette</p>
                         </TooltipContent>
                     </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                             <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={() => onGiveWhiteboardControl(participantUserId)}>
+                                <Pen className={cn("h-4 w-4", isWhiteboardController && "fill-blue-500 text-blue-500")} />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                           <p>Donner le contrôle du tableau</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    </>
                 )}
              </TooltipProvider>
         </div>
@@ -182,6 +206,20 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
                 <div className="bg-destructive/80 backdrop-blur-sm rounded-md p-1">
                     <VideoOff className="h-4 w-4 text-destructive-foreground" />
                 </div>
+            )}
+            {isWhiteboardController && (
+                 <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                           <div className="bg-blue-500/80 backdrop-blur-sm rounded-md p-1">
+                                <Pen className="h-4 w-4 text-white" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                           <p>Contrôle le tableau</p>
+                        </TooltipContent>
+                    </Tooltip>
+                 </TooltipProvider>
             )}
         </div>
     </Card>
