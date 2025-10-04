@@ -7,14 +7,14 @@ import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Trash2, Pen, Eraser, Palette, Undo2, Redo2, Square, Circle, MousePointer2 } from 'lucide-react';
+import { Trash2, Pen, Eraser, Palette, Undo2, Redo2, Square, Circle, MousePointer2, Minus } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 
 interface WhiteboardProps {
   sessionId: string;
 }
 
-type Tool = 'select' | 'pen' | 'eraser' | 'rectangle' | 'circle';
+type Tool = 'select' | 'pen' | 'eraser' | 'rectangle' | 'circle' | 'line';
 
 interface Point {
     x: number;
@@ -29,7 +29,7 @@ interface DrawAction {
 }
 
 interface ShapeAction {
-    type: 'rectangle' | 'circle';
+    type: 'rectangle' | 'circle' | 'line';
     start: Point;
     end: Point;
     color: string;
@@ -112,7 +112,8 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     ctx.lineJoin = 'round';
     ctx.lineWidth = action.lineWidth;
     ctx.strokeStyle = action.color;
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalCompositeOperation = action.type === 'draw' && action.color === '#FFFFFF' ? 'destination-out' : 'source-over';
+
 
     if (action.type === 'draw') {
         ctx.beginPath();
@@ -124,12 +125,12 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
             }
         });
         ctx.stroke();
-    } else if (action.type === 'rectangle' || action.type === 'circle') {
+    } else if (action.type === 'rectangle' || action.type === 'circle' || action.type === 'line') {
         const width = action.end.x - action.start.x;
         const height = action.end.y - action.start.y;
         if (action.type === 'rectangle') {
              ctx.strokeRect(action.start.x, action.start.y, width, height);
-        } else { // circle
+        } else if (action.type === 'circle') {
              const radiusX = Math.abs(width) / 2;
              const radiusY = Math.abs(height) / 2;
              const centerX = action.start.x + width / 2;
@@ -137,6 +138,11 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
              ctx.beginPath();
              ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
              ctx.stroke();
+        } else if (action.type === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(action.start.x, action.start.y);
+            ctx.lineTo(action.end.x, action.end.y);
+            ctx.stroke();
         }
     }
   };
@@ -215,7 +221,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
         drawingAction.current = {
             type: 'draw',
             path: [point],
-            color: tool === 'eraser' ? '#FFFFFF' : color, // Use background color for eraser
+            color: tool === 'eraser' ? '#FFFFFF' : color,
             lineWidth: lineWidth,
         };
     }
@@ -234,7 +240,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
         if (!action) return;
         action.path.push(currentPoint);
         drawActionOnCanvas(previewCtx, action);
-    } else if (tool === 'rectangle' || tool === 'circle') {
+    } else if (tool === 'rectangle' || tool === 'circle' || tool === 'line') {
         previewCtx.setLineDash([5, 5]);
         const shapeAction: ShapeAction = {
             type: tool,
@@ -262,7 +268,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
         if (action && action.path.length > 1) {
             pushToHistory(action);
         }
-    } else if (tool === 'rectangle' || tool === 'circle') {
+    } else if (tool === 'rectangle' || tool === 'circle' || tool === 'line') {
          const shapeAction: ShapeAction = {
             type: tool,
             start: startPoint.current,
@@ -340,6 +346,9 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
             <Button variant={tool === 'circle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('circle')} title="Cercle">
                 <Circle />
             </Button>
+            <Button variant={tool === 'line' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('line')} title="Ligne">
+                <Minus />
+            </Button>
             
             <Popover>
                 <PopoverTrigger asChild>
@@ -398,7 +407,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
                 className={cn('absolute top-0 left-0 h-full w-full touch-none rounded-b-lg', 
                     tool === 'pen' && 'cursor-crosshair',
                     tool === 'eraser' && 'cursor-grab',
-                    (tool === 'rectangle' || tool === 'circle') && 'cursor-crosshair',
+                    (tool === 'rectangle' || tool === 'circle' || tool === 'line') && 'cursor-crosshair',
                     tool === 'select' && 'cursor-default'
                 )}
             />
