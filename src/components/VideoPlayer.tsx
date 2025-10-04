@@ -10,11 +10,9 @@ interface VideoPlayerProps {
   role: string;
   userId: string;
   onConnected: (room: Room) => void;
-  setRoom: (room: Room | null) => void;
-  setLocalParticipant: (participant: LocalParticipant | null) => void;
 }
 
-export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, setLocalParticipant }: VideoPlayerProps) {
+export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
   const { toast } = useToast();
   const roomRef = useRef<Room | null>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
@@ -92,8 +90,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, set
         
         console.log(`✅ [VideoPlayer] Connecté à la salle "${room.name.substring(0,8)}" en tant que "${room.localParticipant.identity}"`);
         roomRef.current = room;
-        setRoom(room);
-        setLocalParticipant(room.localParticipant);
         onConnected(room);
         isConnectingRef.current = false;
 
@@ -118,8 +114,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, set
         
         cleanupTracks();
         isConnectingRef.current = false;
-        setRoom(null);
-        setLocalParticipant(null);
       }
     };
 

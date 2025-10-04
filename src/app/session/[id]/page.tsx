@@ -189,6 +189,8 @@ function SessionPageContent() {
 
 
     const onConnected = useCallback((newRoom: Room) => {
+        setRoom(newRoom);
+        setLocalParticipant(newRoom.localParticipant);
         const remoteParticipantsMap = new Map(newRoom.participants);
         setRemoteParticipants(remoteParticipantsMap);
 
@@ -221,8 +223,10 @@ function SessionPageContent() {
 
         newRoom.on('disconnected', () => {
             if (roomRef.current) {
-                roomRef.current.disconnect();
+                // roomRef.current.disconnect(); // This is handled by VideoPlayer's cleanup
                 roomRef.current = null;
+                setRoom(null);
+                setLocalParticipant(null);
             }
             if (!isTeacher) {
                 toast({
@@ -234,8 +238,19 @@ function SessionPageContent() {
         });
     }, [isTeacher, router, userId, toast]);
 
+    const handleEndSession = useCallback(() => {
+        if (!isTeacher) {
+            toast({
+                title: "Session terminée",
+                description: "Le professeur a mis fin à la session.",
+            });
+            router.push(`/student/${userId}`);
+        }
+    }, [isTeacher, router, toast, userId]);
+
      useEffect(() => {
         if (!sessionId) return;
+        let channel: PresenceChannel;
         
         const fetchSessionDetails = async () => {
             try {
@@ -257,7 +272,7 @@ function SessionPageContent() {
         fetchSessionDetails();
 
         const channelName = `presence-session-${sessionId}`;
-        const channel = pusherClient.subscribe(channelName) as PresenceChannel;
+        channel = pusherClient.subscribe(channelName) as PresenceChannel;
         
         const updateOnlineUsers = () => {
             const userIds = Object.keys(channel.members.members).map(id => channel.members.members[id].user_id);
@@ -299,10 +314,11 @@ function SessionPageContent() {
         };
         
         const handleSessionEnded = (data: { sessionId: string }) => {
-            if (data.sessionId === sessionId && !isTeacher) {
-                if (roomRef.current) {
+            if (data.sessionId === sessionId) {
+                 if (roomRef.current) {
                     roomRef.current.disconnect();
                 }
+                handleEndSession();
             }
         };
 
@@ -318,14 +334,16 @@ function SessionPageContent() {
         }
 
         return () => {
-            channel.unbind_all();
-            pusherClient.unsubscribe(channelName);
+            if (channel) {
+                channel.unbind_all();
+                pusherClient.unsubscribe(channelName);
+            }
              if (roomRef.current) {
                 roomRef.current.disconnect();
             }
         };
 
-    }, [sessionId, toast, isTeacher]);
+    }, [sessionId, toast, isTeacher, handleEndSession]);
 
 
     const handleGoBack = async () => {
@@ -397,7 +415,7 @@ function SessionPageContent() {
         whiteboard: "lg:col-span-1",
     }
     
-    const showCameraStatus = isTeacher && (sessionView === 'camera' && !mainParticipant || hasCameraPermission === false);
+    const showCameraStatus = isTeacher && (sessionView === 'camera' && (!mainParticipant || hasCameraPermission === false));
 
 
     const content = (
@@ -522,8 +540,6 @@ function SessionPageContent() {
                     role={role ?? 'student'}
                     userId={userId ?? ''}
                     onConnected={onConnected}
-                    setRoom={setRoom}
-                    setLocalParticipant={setLocalParticipant}
                 />
             )}
             <header className="border-b bg-background/95 backdrop-blur-sm z-10">
