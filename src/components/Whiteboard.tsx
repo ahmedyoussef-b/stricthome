@@ -122,7 +122,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     const h = canvas.height;
 
     context.globalCompositeOperation = data.tool === 'eraser' ? 'destination-out' : 'source-over';
-    context.strokeStyle = data.color;
+    context.strokeStyle = data.tool === 'eraser' ? 'rgba(0,0,0,1)' : data.color;
     context.lineWidth = data.lineWidth;
 
     context.beginPath();
