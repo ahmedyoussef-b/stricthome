@@ -39,7 +39,9 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       console.log(`🔌 [VideoPlayer] Début de la connexion pour "${userId}"`);
 
       try {
-        console.log("🎥 [VideoPlayer] Demande d'accès média...");
+        // NOTE: Permissions are now requested in the parent component.
+        // We still request media here to establish the tracks for Twilio.
+        console.log("🎥 [VideoPlayer] Demande d'accès média pour les pistes...");
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         
         if (!isMounted) {
@@ -129,9 +131,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       cleanupTracks();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, role, userId]);
+  }, [sessionId, role, userId, toast, onConnected]);
 
   return null;
 }
-
-    
