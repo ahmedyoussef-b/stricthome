@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
         user_info: {
           name: session.user.name || 'Utilisateur',
           email: session.user.email || 'user@example.com',
+          user_id: session.user.id, // Add user_id here as well
         },
       };
       // TODO: Add verification logic to ensure the user is allowed in this specific channel
