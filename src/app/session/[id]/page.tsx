@@ -2,7 +2,7 @@
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw, Monitor, WhiteboardIcon } from 'lucide-react';
+import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw, Monitor, PenSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -455,7 +455,7 @@ function SessionPageContent() {
                                     Vue Caméra
                                 </Button>
                                 <Button size="sm" variant={sessionView === 'whiteboard' ? 'secondary' : 'ghost'} onClick={() => setSessionView('whiteboard')}>
-                                    <WhiteboardIcon className="mr-2 h-4 w-4"/>
+                                    <PenSquare className="mr-2 h-4 w-4"/>
                                     Vue Tableau
                                 </Button>
                             </div>
