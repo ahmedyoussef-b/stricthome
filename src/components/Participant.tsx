@@ -84,7 +84,7 @@ export function Participant({
 
     // Attach existing tracks
     participant.tracks.forEach(publication => {
-        if (publication.track) {
+        if (publication.isSubscribed && publication.track) {
             attachTrack(publication.track);
             updateTrackState(publication.track);
         }
@@ -229,3 +229,5 @@ export function Participant({
     </Card>
   );
 }
+
+    

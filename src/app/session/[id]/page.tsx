@@ -257,7 +257,7 @@ function SessionPageContent() {
                 setClassStudents(students || []);
                 setTeacher(teacher);
                 setWhiteboardControllerId(session.whiteboardControllerId);
-            } catch (error) {
+            } catch (error) => {
                 console.error("Failed to load session data", error);
                  toast({
                     variant: "destructive",
@@ -584,5 +584,7 @@ export default function SessionPage() {
         </Suspense>
     )
 }
+
+    
 
     
