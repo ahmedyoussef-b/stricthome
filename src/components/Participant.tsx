@@ -59,6 +59,12 @@ export function Participant({
       if (isAttachable(track)) {
         const element = track.attach();
         videoElementRef.appendChild(element);
+        
+        // Ensure video elements play on all browsers
+        if (element.tagName === "VIDEO") {
+          element.muted = true; // Mute remote audio on video elements if you handle audio separately
+          element.play().catch(e => console.error("Video play failed:", e));
+        }
       }
     };
     
@@ -80,6 +86,7 @@ export function Participant({
       }
     };
 
+    // Attach existing tracks
     participant.tracks.forEach(publication => {
         if (publication.track) {
             attachTrack(publication.track);
@@ -87,6 +94,7 @@ export function Participant({
         }
     });
 
+    // Handle new tracks that are subscribed to later
     const handleTrackSubscribed = (track: Track) => {
         attachTrack(track);
         updateTrackState(track);
