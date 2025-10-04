@@ -187,6 +187,15 @@ function SessionPageContent() {
         };
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
+    const handleEndSession = useCallback(() => {
+        if (!isTeacher) {
+            toast({
+                title: "Session terminée",
+                description: "Le professeur a mis fin à la session.",
+            });
+            if (userId) router.push(`/student/${userId}`);
+        }
+    }, [isTeacher, router, toast, userId]);
 
     const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
@@ -227,25 +236,9 @@ function SessionPageContent() {
                 setRoom(null);
                 setLocalParticipant(null);
             }
-            if (!isTeacher) {
-                toast({
-                    title: "Session terminée",
-                    description: "Le professeur a mis fin à la session.",
-                });
-                router.push(`/student/${userId}`);
-            }
+            handleEndSession();
         });
-    }, [isTeacher, router, userId, toast]);
-
-    const handleEndSession = useCallback(() => {
-        if (!isTeacher) {
-            toast({
-                title: "Session terminée",
-                description: "Le professeur a mis fin à la session.",
-            });
-            if (userId) router.push(`/student/${userId}`);
-        }
-    }, [isTeacher, router, toast, userId]);
+    }, [handleEndSession]);
 
      useEffect(() => {
         if (!sessionId) return;
@@ -342,7 +335,7 @@ function SessionPageContent() {
             }
         };
 
-    }, [sessionId, toast, isTeacher, handleEndSession]);
+    }, [sessionId, toast, isTeacher, handleEndSession, onConnected]);
 
 
     const handleGoBack = async () => {
@@ -400,13 +393,13 @@ function SessionPageContent() {
     const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
     
     const viewLayout = {
-        camera: "grid-cols-1 lg:grid-cols-3",
-        whiteboard: "grid-cols-1 lg:grid-cols-4",
+        camera: isTeacher ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1",
+        whiteboard: isTeacher ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1",
     };
     
     const mainContentLayout = {
-        camera: "lg:col-span-2",
-        whiteboard: "lg:col-span-3",
+        camera: isTeacher ? "lg:col-span-2" : "lg:col-span-1",
+        whiteboard: isTeacher ? "lg:col-span-3" : "lg:col-span-1",
     }
 
     const sidebarLayout = {
@@ -483,7 +476,7 @@ function SessionPageContent() {
                 </Card>}
 
             </div>
-             <div className={cn("flex flex-col space-y-4", sidebarLayout[sessionView])}>
+             {isTeacher && <div className={cn("flex flex-col space-y-4", sidebarLayout[sessionView])}>
                 {!isTeacher && <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -527,7 +520,7 @@ function SessionPageContent() {
                         </ScrollArea>
                     </CardContent>
                 </Card>
-             </div>
+             </div>}
         </div>
     );
 
@@ -584,7 +577,3 @@ export default function SessionPage() {
         </Suspense>
     )
 }
-
-    
-
-    
