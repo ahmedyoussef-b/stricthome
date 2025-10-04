@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
-import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
+import { StudentWithCareer, CoursSessionWithRelations, UserWithClasse } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { endCoursSession, setWhiteboardController } from '@/lib/actions';
@@ -21,6 +21,7 @@ import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { cn } from '@/lib/utils';
 import type { PresenceChannel } from 'pusher-js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { VideoGrid } from '@/components/VideoGrid';
 
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -90,7 +91,7 @@ function SessionPageContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isEndingSession, setIsEndingSession] = useState(false);
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
-    const [teacher, setTeacher] = useState<any>(null);
+    const [teacher, setTeacher] = useState<UserWithClasse | null>(null);
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
     const [sessionView, setSessionView] = useState<SessionView>('camera');
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
@@ -105,10 +106,8 @@ function SessionPageContent() {
     useEffect(() => {
         const getCameraPermission = async () => {
           try {
-            // Ask for permission silently first
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             setHasCameraPermission(true);
-            // Stop tracks immediately, they will be requested again by VideoPlayer
             stream.getTracks().forEach(track => track.stop());
           } catch (error) {
             console.error('Initial camera access failed:', error);
@@ -188,14 +187,17 @@ function SessionPageContent() {
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
     const handleEndSession = useCallback(() => {
-        if (!isTeacher) {
-            toast({
-                title: "Session terminée",
-                description: "Le professeur a mis fin à la session.",
-            });
-            if (userId) router.push(`/student/${userId}`);
+        toast({
+            title: "Session terminée",
+            description: "Le professeur a mis fin à la session.",
+        });
+        if (userId) {
+            if (role === 'teacher') router.push('/teacher');
+            else router.push(`/student/${userId}`);
+        } else {
+            router.push('/');
         }
-    }, [isTeacher, router, toast, userId]);
+    }, [router, toast, userId, role]);
 
     const onConnected = useCallback((newRoom: Room) => {
         setRoom(newRoom);
@@ -210,12 +212,10 @@ function SessionPageContent() {
         setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
 
         newRoom.on('participantConnected', (participant) => {
-            console.log(`[Session Page] Participant connected: ${participant.identity}`);
             setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
         });
 
         newRoom.on('participantDisconnected', (participant) => {
-            console.log(`[Session Page] Participant disconnected: ${participant.identity}`);
             setRemoteParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
@@ -251,7 +251,7 @@ function SessionPageContent() {
                 setTeacher(teacher);
                 setWhiteboardControllerId(session.whiteboardControllerId);
             } catch (error) {
-                console.error("Failed to load session data", error);
+                 console.error("Failed to load session data", error);
                  toast({
                     variant: "destructive",
                     title: "Erreur de chargement",
@@ -330,36 +330,33 @@ function SessionPageContent() {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
             }
-             if (roomRef.current) {
-                roomRef.current.disconnect();
-            }
         };
 
-    }, [sessionId, toast, isTeacher, handleEndSession, onConnected]);
+    }, [sessionId, toast, isTeacher, handleEndSession]);
 
 
-    const handleGoBack = async () => {
+    const handleGoBack = useCallback(async () => {
         if (isTeacher) {
             setIsEndingSession(true);
             try {
                 await endCoursSession(sessionId);
-                toast({
-                    title: "Session terminée",
-                    description: "La session a été fermée pour tous les participants."
-                });
-                 router.push('/teacher');
+                // The handleEndSession callback will be triggered by pusher
             } catch (error) {
                 toast({
                     variant: "destructive",
                     title: "Erreur",
-                    description: "Impossible de terminer la session."
+                    description: "Impossible de terminer la session.",
                 });
                 setIsEndingSession(false);
             }
         } else {
-             router.back();
+             if (roomRef.current) {
+                roomRef.current.disconnect();
+            } else {
+                router.back();
+            }
         }
-    };
+    }, [isTeacher, sessionId, toast, router]);
 
     const handleGiveWhiteboardControl = async (participantUserId: string) => {
         if (!isTeacher) return;
@@ -411,15 +408,15 @@ function SessionPageContent() {
 
 
     const content = (
-         <div className={cn("grid gap-6 h-full", viewLayout[sessionView])}>
-            <div className={cn("flex flex-col gap-6", mainContentLayout[sessionView])}>
+         <div className={cn("grid gap-6 h-full", isTeacher ? "lg:grid-cols-3" : "grid-cols-1")}>
+            <div className={cn("flex flex-col gap-6", isTeacher ? "lg:col-span-2" : "")}>
                 {sessionView === 'camera' && mainParticipant && hasCameraPermission ? (
                      <Participant 
                         key={mainParticipant.sid}
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
                         isSpotlighted={true}
-                        isTeacher={isTeacher}
+                        isTeacher={mainParticipantUser?.role === 'PROFESSEUR'}
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
                         participantUserId={mainParticipantUser?.id ?? ''}
@@ -432,7 +429,7 @@ function SessionPageContent() {
                         room={room}
                         localParticipant={localParticipant} 
                      />
-                ) : sessionView === 'camera' && !isTeacher ? (
+                ) : sessionView === 'camera' ? (
                     <Card className="aspect-video flex items-center justify-center bg-muted">
                         <div className="text-center">
                             <Loader2 className="animate-spin h-8 w-8 mx-auto" />
@@ -440,6 +437,20 @@ function SessionPageContent() {
                         </div>
                     </Card>
                 ) : null}
+
+                 {!isTeacher && sessionView === 'camera' && allVideoParticipants.length > 1 &&
+                    <div className="h-24">
+                        <VideoGrid 
+                            sessionId={sessionId}
+                            localParticipant={localParticipant}
+                            participants={Array.from(remoteParticipants.values())}
+                            isTeacher={isTeacher}
+                            spotlightedParticipantSid={spotlightedParticipant?.sid}
+                            onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                            allSessionUsers={allSessionUsers}
+                        />
+                    </div>
+                }
 
                  <div className="flex-grow min-h-[300px]">
                    <Whiteboard
@@ -474,20 +485,8 @@ function SessionPageContent() {
                         </div>
                     </CardContent>
                 </Card>}
-
             </div>
-             {isTeacher && <div className={cn("flex flex-col space-y-4", sidebarLayout[sessionView])}>
-                {!isTeacher && <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Timer />
-                            Temps restant
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
-                    </CardContent>
-                </Card>}
+             {isTeacher && <div className="lg:col-span-1 flex flex-col space-y-4">
                 <Card className="flex-1 flex flex-col">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -496,14 +495,6 @@ function SessionPageContent() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2">
-                         {hasCameraPermission === false && !isTeacher && (
-                           <Alert variant="destructive" className="mb-2">
-                                <AlertTitle>Accès Caméra/Micro Refusé</AlertTitle>
-                                <AlertDescription>
-                                    Vous devez autoriser l'accès pour participer. Rechargez la page et autorisez l'accès.
-                                </AlertDescription>
-                           </Alert>
-                        )}
                         <ScrollArea className="h-full">
                             <ClassroomGrid
                                 sessionId={sessionId}
@@ -526,11 +517,11 @@ function SessionPageContent() {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
-            {hasCameraPermission && (
+            {hasCameraPermission && userId && (
                 <VideoPlayer 
                     sessionId={sessionId}
                     role={role ?? 'student'}
-                    userId={userId ?? ''}
+                    userId={userId}
                     onConnected={onConnected}
                 />
             )}
@@ -553,11 +544,19 @@ function SessionPageContent() {
                     </div>
                     <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
                          {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
-                        Quitter la session
+                        {isTeacher ? "Terminer pour tous" : "Quitter la session"}
                     </Button>
                 </div>
             </header>
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {!isTeacher && (
+                           <Alert variant="destructive" className="mb-4">
+                                <AlertTitle>Accès Caméra/Micro Refusé</AlertTitle>
+                                <AlertDescription>
+                                    Vous devez autoriser l'accès pour participer. Rechargez la page et autorisez l'accès.
+                                </AlertDescription>
+                           </Alert>
+                        )}
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
