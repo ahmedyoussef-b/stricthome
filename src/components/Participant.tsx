@@ -82,42 +82,57 @@ export function Participant({
       }
     };
 
-    // Attach existing tracks
-    participant.tracks.forEach(publication => {
-        if (publication.track) {
-            // For RemoteParticipants, we must wait for the track to be subscribed.
-            if ('isSubscribed' in publication && publication.isSubscribed) {
-                attachTrack(publication.track);
-                updateTrackState(publication.track);
-            } else if (!('isSubscribed' in publication)) { // It's a LocalTrackPublication
-                 attachTrack(publication.track);
-                 updateTrackState(publication.track);
-            }
-        }
-    });
+    // --- Start of Corrected Logic ---
 
-    // Handle new tracks that are subscribed to later
-    const handleTrackSubscribed = (track: Track) => {
+    // Handle tracks for a remote participant
+    if (participant instanceof RemoteParticipant) {
+      const handleTrackSubscribed = (track: RemoteVideoTrack | RemoteAudioTrack) => {
         attachTrack(track);
         updateTrackState(track);
-    };
+      };
+      
+      const handleTrackUnsubscribed = (track: RemoteVideoTrack | RemoteAudioTrack) => {
+          detachTrack(track);
+      };
 
-    const handleTrackUnsubscribed = (track: Track) => {
-        detachTrack(track);
-    };
-
-    participant.on('trackSubscribed', handleTrackSubscribed);
-    participant.on('trackUnsubscribed', handleTrackUnsubscribed);
-
-    return () => {
       participant.tracks.forEach(publication => {
-        if (publication.track) {
-          detachTrack(publication.track);
+        if (publication.isSubscribed && publication.track) {
+          handleTrackSubscribed(publication.track);
         }
       });
-      participant.off('trackSubscribed', handleTrackSubscribed);
-      participant.off('trackUnsubscribed', handleTrackUnsubscribed);
-    };
+      
+      participant.on('trackSubscribed', handleTrackSubscribed);
+      participant.on('trackUnsubscribed', handleTrackUnsubscribed);
+
+      return () => {
+        participant.off('trackSubscribed', handleTrackSubscribed);
+        participant.off('trackUnsubscribed', handleTrackUnsubscribed);
+        participant.tracks.forEach(publication => {
+          if (publication.track) {
+            detachTrack(publication.track);
+          }
+        });
+      };
+    } 
+    // Handle tracks for a local participant
+    else {
+      participant.tracks.forEach(publication => {
+        if (publication.track) {
+          attachTrack(publication.track);
+          updateTrackState(publication.track);
+        }
+      });
+      
+      return () => {
+         participant.tracks.forEach(publication => {
+          if (publication.track) {
+            detachTrack(publication.track);
+          }
+        });
+      }
+    }
+    // --- End of Corrected Logic ---
+    
   }, [participant]);
 
   const handleSpotlight = async () => {
