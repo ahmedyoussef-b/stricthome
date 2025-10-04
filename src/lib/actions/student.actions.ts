@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function setStudentCareer(studentId: string, careerId: string | null) {
     
-    // Find or create the student's state
+    // Find or create the student's state based on the user ID
     let etatEleve = await prisma.etatEleve.findUnique({
         where: { eleveId: studentId },
     });

@@ -59,13 +59,24 @@ export const authOptions: NextAuthOptions = {
           });
     
           if (!dbUser) {
-            dbUser = await prisma.user.create({
-              data: {
-                email: profile.email,
-                name: profile.name,
-                image: (profile as any).picture, // Use type assertion to access picture
-                role: Role.ELEVE, // Default role for new Google sign-ups
-              },
+            // Create user and their state in a transaction
+            dbUser = await prisma.$transaction(async (tx) => {
+              const newUser = await tx.user.create({
+                data: {
+                  email: profile.email,
+                  name: profile.name,
+                  image: (profile as any).picture,
+                  role: Role.ELEVE, // Default role for new Google sign-ups
+                },
+              });
+
+              await tx.etatEleve.create({
+                data: {
+                  eleveId: newUser.id,
+                }
+              });
+
+              return newUser;
             });
           }
           // Ensure the user object passed along has the correct id and role for the session callback

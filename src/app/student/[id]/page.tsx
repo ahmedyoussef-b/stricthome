@@ -10,7 +10,6 @@ import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import StudentPageClient from '@/components/StudentPageClient';
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
-    // Correction de la requête Prisma pour inclure les sessions filtrées correctement
     const student = await prisma.user.findUnique({
       where: { id, role: 'ELEVE' },
       include: {
@@ -20,7 +19,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
           }
         },
         sessionsParticipees: {
-          where: { endedAt: null }, // Filtrage correct des sessions actives
+          where: { endedAt: null },
         },
         taskCompletions: true,
         classe: true,
@@ -29,7 +28,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
 
     if (!student) return null;
 
-    // Si l'élève est puni, ne pas retourner le thème de carrière
+    // If the student is punished, do not return the career theme
     if (student.etat?.isPunished && student.etat.metier) {
         return {
             ...student,
@@ -63,7 +62,7 @@ export default async function StudentPage({
     notFound();
   }
   
-  // Sécurité: un élève ne peut voir que sa propre page
+  // Security: a student can only see their own page
   if (session.user.role === 'ELEVE' && student.id !== session.user.id) {
       notFound();
   }

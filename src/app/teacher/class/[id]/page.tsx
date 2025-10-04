@@ -18,10 +18,7 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       where: { id: classeId, professeurId: session.user.id },
       include: {
         eleves: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+          include: {
             etat: {
               select: {
                 isPunished: true,

@@ -138,19 +138,7 @@ async function main() {
   for (const classe of classes) {
       for (let i = 0; i < 10; i++) {
           const name = studentNames[studentIndex];
-          
-          let metierId: string | undefined = undefined;
-          if (i % 3 === 0) metierId = pompier.id;
-          else if (i % 3 === 1) metierId = astronaute.id;
-
-          const etatEleve = await prisma.etatEleve.create({
-            data: {
-              isPunished: false,
-              metierId: metierId,
-            }
-          });
-          
-          await prisma.user.create({
+          const student = await prisma.user.create({
               data: {
                   name: name,
                   email: `${name.toLowerCase()}@example.com`,
@@ -158,10 +146,20 @@ async function main() {
                   ambition: `devenir ${name === 'Fatima' ? 'médecin' : 'ingénieur'}`,
                   points: Math.floor(Math.random() * 250),
                   classeId: classe.id,
-                  etatEleveId: etatEleve.id
               },
           });
-
+          
+          let metierId: string | undefined = undefined;
+          if (i % 3 === 0) metierId = pompier.id;
+          else if (i % 3 === 1) metierId = astronaute.id;
+          
+          await prisma.etatEleve.create({
+              data: {
+                  eleveId: student.id,
+                  isPunished: false,
+                  metierId: metierId,
+              },
+          });
           studentIndex++;
       }
   }
