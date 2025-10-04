@@ -2,7 +2,7 @@
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw, Monitor, PenSquare } from 'lucide-react';
+import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw, Monitor, PenSquare, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Whiteboard } from '@/components/Whiteboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,30 @@ function formatTime(seconds: number) {
 
 type SessionView = 'camera' | 'whiteboard';
 
+function CameraStatus({ hasCameraPermission, room, localParticipant }: { hasCameraPermission: boolean | null, room: Room | null, localParticipant: LocalParticipant | null }) {
+    const StatusItem = ({ label, status }: { label: string; status: boolean | null }) => (
+        <div className="flex items-center justify-between p-3 bg-background/50 rounded-md">
+            <span className="font-medium">{label}</span>
+            {status === null && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+            {status === true && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+            {status === false && <XCircle className="h-5 w-5 text-destructive" />}
+        </div>
+    );
+
+    return (
+        <Card className="aspect-video flex flex-col justify-center bg-muted p-4">
+            <CardHeader className="p-2">
+                <CardTitle className="text-center">Statut Technique de la Caméra</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 p-2">
+                <StatusItem label="Permission Caméra/Micro" status={hasCameraPermission} />
+                <StatusItem label="Connexion à la salle" status={room !== null} />
+                <StatusItem label="Participant local créé" status={localParticipant !== null} />
+            </CardContent>
+        </Card>
+    );
+}
+
 function SessionPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -69,12 +93,28 @@ function SessionPageContent() {
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
     const [sessionView, setSessionView] = useState<SessionView>('camera');
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
 
     const [duration, setDuration] = useState(300); // 5 minutes
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (isTeacher) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(() => setHasCameraPermission(true))
+                .catch(() => {
+                    setHasCameraPermission(false);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Accès Caméra/Micro refusé',
+                        description: 'Veuillez autoriser l\'accès dans votre navigateur pour continuer.',
+                    });
+                });
+        }
+    }, [isTeacher, toast]);
 
 
     useEffect(() => {
@@ -365,12 +405,20 @@ function SessionPageContent() {
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
                 ) : sessionView === 'camera' && !mainParticipant ? (
-                     <Card className="aspect-video flex items-center justify-center bg-muted">
-                        <div className="text-center">
-                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
-                        </div>
-                    </Card>
+                     isTeacher ? (
+                        <CameraStatus 
+                            hasCameraPermission={hasCameraPermission} 
+                            room={room}
+                            localParticipant={localParticipant} 
+                        />
+                     ) : (
+                        <Card className="aspect-video flex items-center justify-center bg-muted">
+                            <div className="text-center">
+                                <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                                <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                            </div>
+                        </Card>
+                     )
                 ) : null}
 
                  <div className="flex-grow min-h-[300px]">
