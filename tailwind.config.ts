@@ -88,15 +88,15 @@ module.exports = {
             height: '0',
           },
         },
-        'background-shine': {
-          'from': { backgroundPosition: '0 0' },
-          'to': { backgroundPosition: '-200% 0' },
+        'subtle-pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.4)' },
+          '50%': { boxShadow: '0 0 0 4px hsl(var(--primary) / 0)' },
         },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'background-shine': 'background-shine 4s linear infinite',
+        'subtle-pulse': 'subtle-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },

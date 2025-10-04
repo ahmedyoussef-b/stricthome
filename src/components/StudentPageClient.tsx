@@ -131,22 +131,18 @@ export default function StudentPageClient({
 
         <div className="md:col-span-2 space-y-8">
           {activeSession && !isTeacherView && (
-            <Card className={cn(
-                "animate-in fade-in zoom-in-95",
-                "bg-gradient-to-r from-primary via-blue-400 to-primary",
-                "bg-[length:200%_auto] animate-background-shine"
-              )}>
+            <Card className="border border-primary bg-background/80 animate-subtle-pulse">
                 <CardHeader>
-                    <div className="flex items-center gap-2 text-primary-foreground">
+                    <div className="flex items-center gap-2 text-primary">
                          <Video />
                          <CardTitle>Invitation à une session !</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                     <p className="text-primary-foreground/90 flex-grow">
+                     <p className="text-foreground/90 flex-grow">
                         Votre professeur vous a invité à rejoindre une session d'apprentissage en direct.
                      </p>
-                     <Button asChild variant="secondary">
+                     <Button asChild variant="default">
                         <Link href={`/session/${activeSession.id}?role=student&userId=${student.id}`}>Rejoindre la session</Link>
                      </Button>
                 </CardContent>
