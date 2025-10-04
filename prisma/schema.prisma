@@ -1,4 +1,3 @@
-
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -7,11 +6,10 @@ generator client {
 }
 
 datasource db {
-  provider     = "postgresql"
-  url          = env("DATABASE_URL")
-  relationMode = "prisma"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // REMOVE: relationMode = "prisma"
 }
-
 
 model User {
   id                  String    @id @default(cuid())
@@ -27,7 +25,7 @@ model User {
 
   // Relations
   classeId            String?
-  classe              Classe?   @relation("ClasseEleves", fields: [classeId], references: [id])
+  classe              Classe?   @relation("ClasseEleves", fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   
   etat                EtatEleve?
 
@@ -54,7 +52,7 @@ model Classe {
   
   eleves        User[]    @relation("ClasseEleves")
   
-  professeur    User      @relation("ClasseProfesseur", fields: [professeurId], references: [id])
+  professeur    User      @relation("ClasseProfesseur", fields: [professeurId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   professeurId  String
   
   messages      Message[]
@@ -64,14 +62,13 @@ model Classe {
   @@map("classes")
 }
 
-
 model EtatEleve {
   id          String  @id @default(cuid())
   eleveId     String  @unique
-  eleve       User    @relation(fields: [eleveId], references: [id])
+  eleve       User    @relation(fields: [eleveId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   isPunished  Boolean @default(false)
   metierId    String?
-  metier      Metier? @relation(fields: [metierId], references: [id])
+  metier      Metier? @relation(fields: [metierId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@map("etats_eleves")
 }
@@ -87,11 +84,9 @@ model Metier {
   @@map("metiers")
 }
 
-
-// models/cours-session.prisma
 model CoursSession {
   id                      String    @id @default(cuid())
-  professeur              User      @relation("SessionProfesseur", fields: [professeurId], references: [id])
+  professeur              User      @relation("SessionProfesseur", fields: [professeurId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   professeurId            String
   participants            User[]    @relation("SessionParticipants")
   createdAt               DateTime  @default(now())
@@ -99,12 +94,11 @@ model CoursSession {
   spotlightedParticipantSid String?
   whiteboardControllerId  String?
 
-  classe    Classe? @relation(fields: [classeId], references: [id])
+  classe    Classe? @relation(fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   classeId  String?
   
   @@map("sessions_cours")
 }
-
 
 model Task {
   id              String           @id @default(cuid())
@@ -120,9 +114,9 @@ model Task {
 model TaskCompletion {
   id            String   @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   taskId        String
-  task          Task     @relation(fields: [taskId], references: [id])
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   completedAt   DateTime @default(now())
 
   @@unique([userId, taskId, completedAt])
@@ -132,9 +126,9 @@ model TaskCompletion {
 model Conversation {
   id          String    @id @default(cuid())
   initiatorId String
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
+  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   receiverId  String
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
+  receiver    User      @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   messages    Message[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -143,19 +137,18 @@ model Conversation {
   @@map("conversations")
 }
 
-
 model Message {
   id              String      @id @default(cuid())
   message         String
   senderId        String
-  sender          User        @relation(fields: [senderId], references: [id])
+  sender          User        @relation(fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   senderName      String
   
   classeId        String?
-  classe          Classe?     @relation(fields: [classeId], references: [id])
+  classe          Classe?     @relation(fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   conversationId  String?
-  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  conversation    Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   createdAt       DateTime    @default(now())
   reactions       Reaction[]
@@ -167,9 +160,9 @@ model Reaction {
   id        String   @id @default(cuid())
   emoji     String
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   messageId String
-  message   Message  @relation(fields: [messageId], references: [id])
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([userId, messageId, emoji])
   @@map("reactions")
@@ -180,14 +173,13 @@ model Annonce {
   title       String
   content     String
   authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
-  classeId    String?  // Nullable for public announcements
-  classe      Classe?  @relation(fields: [classeId], references: [id])
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  classeId    String?
+  classe      Classe?  @relation(fields: [classeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   createdAt   DateTime @default(now())
 
   @@map("annonces")
 }
-
 
 enum Role {
   ELEVE
