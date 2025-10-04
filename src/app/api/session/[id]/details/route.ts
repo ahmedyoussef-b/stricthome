@@ -18,8 +18,25 @@ export async function GET(
     const coursSession = await prisma.coursSession.findUnique({
       where: { id: sessionId },
       include: {
-        participants: true,
+        participants: { select: { id: true } }, // Select only IDs for security check
         professeur: true,
+        classe: {
+            include: {
+                eleves: {
+                     select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        etat: {
+                            select: {
+                                metier: true
+                            }
+                        }
+                    },
+                    orderBy: { name: 'asc' }
+                }
+            }
+        }
       },
     });
 
@@ -34,38 +51,9 @@ export async function GET(
     if (!isParticipant && !isTeacher) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-
-    // Find the classe associated with this session.
-    // We can get it from the first participant.
-    const firstStudentId = coursSession.participants[0]?.id;
-    if (!firstStudentId) {
-        return NextResponse.json({ session: coursSession, students: [], teacher: coursSession.professeur });
-    }
-
-    const studentWithClass = await prisma.user.findUnique({
-        where: { id: firstStudentId },
-        select: { classeId: true }
-    });
-
-    if (!studentWithClass?.classeId) {
-       return NextResponse.json({ session: coursSession, students: [], teacher: coursSession.professeur });
-    }
     
-    const studentsInClass = await prisma.user.findMany({
-        where: { classeId: studentWithClass.classeId },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            etat: {
-                select: {
-                    metier: true
-                }
-            }
-        },
-        orderBy: { name: 'asc' }
-    });
-
+    // The class and its students are now included in the initial query
+    const studentsInClass = coursSession.classe?.eleves || [];
 
     return NextResponse.json({ 
         session: coursSession, 

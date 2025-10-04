@@ -12,6 +12,16 @@ export async function createCoursSession(professeurId: string, studentIds: strin
         throw new Error('Teacher ID and at least one student ID are required.');
     }
 
+    // Récupérer la classe des élèves pour la lier à la session
+    const firstStudent = await prisma.user.findUnique({
+        where: { id: studentIds[0] },
+        select: { classeId: true }
+    });
+
+    if (!firstStudent?.classeId) {
+        throw new Error("Could not determine the class for the session.");
+    }
+
     const session = await prisma.coursSession.create({
         data: {
             professeur: {
@@ -20,25 +30,20 @@ export async function createCoursSession(professeurId: string, studentIds: strin
             participants: {
                 connect: studentIds.map(id => ({ id }))
             },
+            classe: {
+                connect: { id: firstStudent.classeId }
+            }
         },
     });
 
     console.log(`✅ [DB] Session ${session.id} créée. Envoi de la notification Pusher...`);
     
-    // Récupérer la classe des élèves pour cibler le bon canal Pusher
-    const firstStudent = await prisma.user.findUnique({
-        where: { id: studentIds[0] },
-        select: { classeId: true }
+    const channelName = `presence-classe-${firstStudent.classeId}`;
+    await pusherServer.trigger(channelName, 'session-started', {
+        sessionId: session.id,
+        invitedStudentIds: studentIds,
     });
-
-    if (firstStudent?.classeId) {
-        const channelName = `presence-classe-${firstStudent.classeId}`;
-        await pusherServer.trigger(channelName, 'session-started', {
-            sessionId: session.id,
-            invitedStudentIds: studentIds,
-        });
-        console.log(`✅ [Pusher] Événement 'session-started' envoyé sur le canal ${channelName}.`);
-    }
+    console.log(`✅ [Pusher] Événement 'session-started' envoyé sur le canal ${channelName}.`);
 
 
     // La révalidation reste utile si l'élève n'était pas sur la page au moment de l'invitation.
