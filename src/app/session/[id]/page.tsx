@@ -102,19 +102,14 @@ function SessionPageContent() {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (isTeacher) {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                .then(() => setHasCameraPermission(true))
-                .catch(() => {
-                    setHasCameraPermission(false);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Accès Caméra/Micro refusé',
-                        description: 'Veuillez autoriser l\'accès dans votre navigateur pour continuer.',
-                    });
-                });
+        if (isTeacher && hasCameraPermission === false) {
+             toast({
+                variant: 'destructive',
+                title: 'Accès Caméra/Micro refusé',
+                description: 'Veuillez autoriser l\'accès dans votre navigateur pour continuer.',
+            });
         }
-    }, [isTeacher, toast]);
+    }, [isTeacher, hasCameraPermission, toast]);
 
 
     useEffect(() => {
@@ -179,9 +174,6 @@ function SessionPageContent() {
 
 
     const onConnected = useCallback((newRoom: Room) => {
-        setRoom(newRoom);
-        setLocalParticipant(newRoom.localParticipant);
-        
         const remoteParticipantsMap = new Map(newRoom.participants);
         setRemoteParticipants(remoteParticipantsMap);
 
@@ -503,6 +495,9 @@ function SessionPageContent() {
                 role={role ?? 'student'}
                 userId={userId ?? ''}
                 onConnected={onConnected}
+                setRoom={setRoom}
+                setLocalParticipant={setLocalParticipant}
+                setHasCameraPermission={setHasCameraPermission}
             />
             <header className="border-b bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">

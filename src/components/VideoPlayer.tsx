@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Video, { Room, LocalTrack, LocalVideoTrack, LocalAudioTrack } from 'twilio-video';
+import Video, { Room, LocalTrack, LocalVideoTrack, LocalAudioTrack, LocalParticipant } from 'twilio-video';
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
@@ -10,9 +10,12 @@ interface VideoPlayerProps {
   role: string;
   userId: string;
   onConnected: (room: Room) => void;
+  setRoom: (room: Room | null) => void;
+  setLocalParticipant: (participant: LocalParticipant | null) => void;
+  setHasCameraPermission: (hasPermission: boolean | null) => void;
 }
 
-export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
+export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, setLocalParticipant, setHasCameraPermission }: VideoPlayerProps) {
   const { toast } = useToast();
   const roomRef = useRef<Room | null>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
@@ -23,7 +26,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     const cleanupTracks = () => {
       localTracksRef.current.forEach(track => {
-        // Type guard to ensure track has a stop method
         if (track.kind === 'audio' || track.kind === 'video') {
             track.stop();
         }
@@ -49,11 +51,13 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             return;
         }
 
+        setHasCameraPermission(true);
+        console.log("✅ [VideoPlayer] Permission média obtenue.");
+
         localTracksRef.current = [
             new LocalVideoTrack(stream.getVideoTracks()[0]),
             new LocalAudioTrack(stream.getAudioTracks()[0])
         ];
-        console.log("✅ [VideoPlayer] Accès média obtenu.");
         
         console.log("🔑 [VideoPlayer] Récupération du jeton Twilio...");
         const response = await fetch('/api/twilio/token', {
@@ -90,10 +94,13 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         
         console.log(`✅ [VideoPlayer] Connecté à la salle "${room.name.substring(0,8)}" en tant que "${room.localParticipant.identity}"`);
         roomRef.current = room;
+        setRoom(room);
+        setLocalParticipant(room.localParticipant);
         onConnected(room);
         isConnectingRef.current = false;
 
       } catch (error) {
+        setHasCameraPermission(false);
         if (!isMounted) {
             isConnectingRef.current = false;
             return;
@@ -103,8 +110,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         if (error instanceof Error) {
             if (error.message.includes('53118')) {
                 description = "Un utilisateur avec la même identité est déjà connecté.";
-            } else if (error.message.includes('media')) {
-                description = "Veuillez autoriser l'accès à la caméra et au microphone.";
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError' || error.message.includes('media')) {
+                description = "Veuillez autoriser l'accès à la caméra et au microphone dans votre navigateur.";
             }
         }
         
@@ -113,6 +120,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         
         cleanupTracks();
         isConnectingRef.current = false;
+        setRoom(null);
+        setLocalParticipant(null);
       }
     };
 
