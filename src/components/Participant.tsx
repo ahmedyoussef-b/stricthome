@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, RemoteTrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,9 +84,15 @@ export function Participant({
 
     // Attach existing tracks
     participant.tracks.forEach(publication => {
-        if (publication.isSubscribed && publication.track) {
-            attachTrack(publication.track);
-            updateTrackState(publication.track);
+        if (publication.track) {
+            // For RemoteParticipants, we must wait for the track to be subscribed.
+            if ('isSubscribed' in publication && publication.isSubscribed) {
+                attachTrack(publication.track);
+                updateTrackState(publication.track);
+            } else if (!('isSubscribed' in publication)) { // It's a LocalTrackPublication
+                 attachTrack(publication.track);
+                 updateTrackState(publication.track);
+            }
         }
     });
 
@@ -229,5 +235,3 @@ export function Participant({
     </Card>
   );
 }
-
-    
