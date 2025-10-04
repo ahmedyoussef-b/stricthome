@@ -7,9 +7,8 @@ import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Trash2, Pen, Eraser, Palette, Minus, Plus } from 'lucide-react';
+import { Trash2, Pen, Eraser, Palette } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
-import { Slider } from './ui/slider';
 
 interface WhiteboardProps {
   sessionId: string;
@@ -32,6 +31,36 @@ const COLORS = [
   '#000000', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'
 ];
 
+const THICKNESSES = [
+    { label: 'Fin', value: 2 },
+    { label: 'Moyen', value: 5 },
+    { label: 'Épais', value: 10 },
+    { label: 'Très épais', value: 15 },
+]
+
+function ThicknessPicker({ current, onChange }: { current: number, onChange: (value: number) => void }) {
+    return (
+        <div className="flex flex-col gap-2">
+            {THICKNESSES.map(({label, value}) => (
+                 <Button
+                    key={value}
+                    variant={current === value ? 'secondary' : 'ghost'}
+                    className="w-full justify-start h-auto p-2"
+                    onClick={() => onChange(value)}
+                >
+                    <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-muted border flex items-center justify-center">
+                            <div className="rounded-full bg-foreground" style={{width: `${value}px`, height: `${value}px`}} />
+                        </div>
+                        <span className="text-xs">{label}</span>
+                    </div>
+                </Button>
+            ))}
+        </div>
+    )
+}
+
+
 export function Whiteboard({ sessionId }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -40,7 +69,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState('#000000');
-  const [lineWidth, setLineWidth] = useState(2);
+  const [lineWidth, setLineWidth] = useState(5);
   
   const currentPos = useRef<{x:number, y:number} | null>(null);
 
@@ -220,14 +249,8 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
                         </div>
                     </Button>
                 </PopoverTrigger>
-                 <PopoverContent side="right" className="w-40 p-2">
-                    <Slider 
-                        min={1} 
-                        max={20} 
-                        step={1}
-                        value={[lineWidth]}
-                        onValueChange={(value) => setLineWidth(value[0])}
-                    />
+                 <PopoverContent side="right" className="w-auto p-2">
+                    <ThicknessPicker current={lineWidth} onChange={setLineWidth} />
                 </PopoverContent>
             </Popover>
         </div>
