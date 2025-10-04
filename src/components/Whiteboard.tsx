@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Trash2, Pen, Eraser, Palette, Undo2, Redo2, Square, Circle, MousePointer2, Minus, UserCheck } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
+import { Slider } from './ui/slider';
 
 interface WhiteboardProps {
   sessionId: string;
@@ -118,6 +119,9 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
 
 
     if (action.type === 'draw') {
+        if (tool === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out';
+        }
         ctx.beginPath();
         action.path.forEach((point, index) => {
             if (index === 0) {
@@ -127,6 +131,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
             }
         });
         ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
     } else if (action.type === 'rectangle' || action.type === 'circle' || action.type === 'line') {
         const width = action.end.x - action.start.x;
         const height = action.end.y - action.start.y;

@@ -1,4 +1,4 @@
-
+// src/components/PersonalizedContent.tsx
 "use client";
 
 import { useState } from 'react';

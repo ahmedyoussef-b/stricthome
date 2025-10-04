@@ -97,3 +97,9 @@ export type CareerWithTheme = Metier & {
     imageUrl: string;
   }
 }
+
+export type CoursSessionWithRelations = CoursSession & {
+    participants: User[];
+    professeur: User;
+    classe: Classe | null;
+};

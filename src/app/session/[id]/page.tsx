@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
-import { StudentWithCareer } from '@/lib/types';
+import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { endCoursSession } from '@/lib/actions';
@@ -24,7 +24,7 @@ const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod =>
     loading: () => <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">Chargement de la vidéo...</div>
 });
 
-async function getSessionData(sessionId: string) {
+async function getSessionData(sessionId: string): Promise<{ session: CoursSessionWithRelations, students: StudentWithCareer[], teacher: any }> {
     const response = await fetch(`/api/session/${sessionId}/details`);
     if (!response.ok) {
         throw new Error('Failed to fetch session details');
@@ -374,7 +374,7 @@ function SessionPageContent() {
                         isTeacher={isTeacher}
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
-                        participantUserId={mainParticipantUser?.id}
+                        participantUserId={mainParticipantUser?.id ?? ''}
                     />
                 ) : (
                     <Card className="aspect-video flex items-center justify-center bg-muted">

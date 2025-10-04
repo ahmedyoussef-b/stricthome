@@ -61,6 +61,7 @@ export default function StudentPageClient({
               createdAt: new Date(),
               endedAt: null,
               spotlightedParticipantSid: null,
+              whiteboardControllerId: null, // Correction
               classeId: null
             };
             setActiveSession(newSession);

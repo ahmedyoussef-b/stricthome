@@ -86,7 +86,7 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
     }
     
     // If the spotlighted participant is the teacher, give control back to teacher
-    const controllerId = participantUserId === session.user.id ? session.user.id : participantUserId;
+    const controllerId = participantUserId;
 
     await prisma.coursSession.update({
         where: { id: sessionId },
