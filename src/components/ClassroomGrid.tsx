@@ -29,13 +29,11 @@ export function ClassroomGrid({
     const allParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
 
     const findParticipantById = (userId: string) => {
-        // Updated to handle both teacher and student ID formats
         return allParticipants.find(p => p.identity.includes(userId.substring(0, 8)));
     }
 
     return (
         <div className="grid grid-cols-1 gap-2">
-            {/* Teacher's video */}
             {teacher && (() => {
                  const teacherParticipant = localParticipant?.identity.startsWith('teacher-')
                     ? localParticipant
@@ -50,13 +48,13 @@ export function ClassroomGrid({
                          isSpotlighted={teacherParticipant.sid === spotlightedParticipantSid}
                          isTeacher={isTeacher}
                          displayName={teacher.name}
+                         participantUserId={teacher.id}
                      />
                  ) : (
                      <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={false} />
                  );
             })()}
 
-            {/* Students' videos or placeholders */}
             {students.map(student => {
                 const studentParticipant = findParticipantById(student.id);
                 return studentParticipant ? (
@@ -66,8 +64,9 @@ export function ClassroomGrid({
                         isLocal={studentParticipant === localParticipant}
                         sessionId={sessionId}
                         isSpotlighted={studentParticipant.sid === spotlightedParticipantSid}
-isTeacher={isTeacher}
+                        isTeacher={isTeacher}
                         displayName={student.name ?? undefined}
+                        participantUserId={student.id}
                     />
                 ) : (
                     <StudentPlaceholder key={student.id} student={student} isOnline={false} />

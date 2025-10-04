@@ -7,11 +7,13 @@ import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Trash2, Pen, Eraser, Palette, Undo2, Redo2, Square, Circle, MousePointer2, Minus } from 'lucide-react';
+import { Trash2, Pen, Eraser, Palette, Undo2, Redo2, Square, Circle, MousePointer2, Minus, UserCheck } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 
 interface WhiteboardProps {
   sessionId: string;
+  isControlledByCurrentUser: boolean;
+  controllerName?: string | null;
 }
 
 type Tool = 'select' | 'pen' | 'eraser' | 'rectangle' | 'circle' | 'line';
@@ -40,7 +42,7 @@ interface ShapeAction {
 type Action = DrawAction | ShapeAction;
 
 interface HistoryEntry {
-    id: string; // Unique ID for the action, e.g., `${senderId}-${Date.now()}`
+    id: string;
     senderId: string;
     action: Action;
 }
@@ -80,7 +82,7 @@ function ThicknessPicker({ current, onChange }: { current: number, onChange: (va
 }
 
 
-export function Whiteboard({ sessionId }: WhiteboardProps) {
+export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerName }: WhiteboardProps) {
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const { data: session } = useSession();
@@ -213,6 +215,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isControlledByCurrentUser) return;
     const point = getCanvasPoint(e);
     setIsDrawing(true);
     startPoint.current = point;
@@ -228,7 +231,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !startPoint.current) return;
+    if (!isDrawing || !startPoint.current || !isControlledByCurrentUser) return;
     const currentPoint = getCanvasPoint(e);
     const previewCtx = previewCanvasRef.current?.getContext('2d');
     if (!previewCtx || !previewCanvasRef.current) return;
@@ -255,7 +258,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
   };
 
   const finishDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !startPoint.current) return;
+    if (!isDrawing || !startPoint.current || !isControlledByCurrentUser) return;
     const endPoint = getCanvasPoint(e);
 
     const previewCtx = previewCanvasRef.current?.getContext('2d');
@@ -299,7 +302,7 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial size
+    handleResize();
 
     return () => window.removeEventListener('resize', handleResize);
   }, [redrawCanvas, historyIndex]);
@@ -328,71 +331,79 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
     <Card className="h-full flex flex-col">
       <CardHeader className='flex-row items-center justify-between'>
         <CardTitle>Tableau Blanc</CardTitle>
+        {!isControlledByCurrentUser && controllerName && (
+            <div className="text-sm text-muted-foreground font-medium flex items-center gap-2 bg-muted px-3 py-1 rounded-md">
+                <UserCheck className="h-4 w-4" />
+                Contrôlé par {controllerName}
+            </div>
+        )}
       </CardHeader>
       <CardContent className="flex-grow p-0 relative flex">
-         <div className="p-2 border-r bg-muted/50 flex flex-col gap-1 items-center">
-            <Button variant={tool === 'select' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('select')} title="Sélectionner">
-                <MousePointer2 />
-            </Button>
-            <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')} title="Crayon">
-                <Pen />
-            </Button>
-            <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')} title="Gomme">
-                <Eraser />
-            </Button>
-            <Button variant={tool === 'rectangle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('rectangle')} title="Rectangle">
-                <Square />
-            </Button>
-            <Button variant={tool === 'circle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('circle')} title="Cercle">
-                <Circle />
-            </Button>
-            <Button variant={tool === 'line' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('line')} title="Ligne">
-                <Minus />
-            </Button>
-            
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" title="Couleur"><Palette /></Button>
-                </PopoverTrigger>
-                <PopoverContent side="right" className="w-auto p-2">
-                    <div className="flex gap-1">
-                        {COLORS.map(c => (
-                            <button
-                                key={c}
-                                onClick={() => setColor(c)}
-                                className={cn("h-6 w-6 rounded-full border-2", color === c ? 'border-primary' : 'border-transparent')}
-                                style={{ backgroundColor: c }}
-                            />
-                        ))}
-                    </div>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" title="Épaisseur">
-                        <div className="h-full w-full flex items-center justify-center relative">
-                            <div style={{width: `${lineWidth/2}px`, height: `${lineWidth/2}px`}} className="bg-foreground rounded-full"/>
+         {isControlledByCurrentUser && (
+            <div className="p-2 border-r bg-muted/50 flex flex-col gap-1 items-center">
+                <Button variant={tool === 'select' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('select')} title="Sélectionner">
+                    <MousePointer2 />
+                </Button>
+                <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')} title="Crayon">
+                    <Pen />
+                </Button>
+                <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')} title="Gomme">
+                    <Eraser />
+                </Button>
+                <Button variant={tool === 'rectangle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('rectangle')} title="Rectangle">
+                    <Square />
+                </Button>
+                <Button variant={tool === 'circle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('circle')} title="Cercle">
+                    <Circle />
+                </Button>
+                <Button variant={tool === 'line' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('line')} title="Ligne">
+                    <Minus />
+                </Button>
+                
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Couleur"><Palette /></Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" className="w-auto p-2">
+                        <div className="flex gap-1">
+                            {COLORS.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => setColor(c)}
+                                    className={cn("h-6 w-6 rounded-full border-2", color === c ? 'border-primary' : 'border-transparent')}
+                                    style={{ backgroundColor: c }}
+                                />
+                            ))}
                         </div>
+                    </PopoverContent>
+                </Popover>
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Épaisseur">
+                            <div className="h-full w-full flex items-center justify-center relative">
+                                <div style={{width: `${lineWidth/2}px`, height: `${lineWidth/2}px`}} className="bg-foreground rounded-full"/>
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" className="w-auto p-2">
+                        <ThicknessPicker current={lineWidth} onChange={setLineWidth} />
+                    </PopoverContent>
+                </Popover>
+                
+                <div className="mt-auto flex flex-col gap-1">
+                    <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0} title="Annuler">
+                        <Undo2 />
                     </Button>
-                </PopoverTrigger>
-                 <PopoverContent side="right" className="w-auto p-2">
-                    <ThicknessPicker current={lineWidth} onChange={setLineWidth} />
-                </PopoverContent>
-            </Popover>
-            
-            <div className="mt-auto flex flex-col gap-1">
-                 <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0} title="Annuler">
-                    <Undo2 />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Rétablir">
-                    <Redo2 />
-                </Button>
-                 <Button variant="destructive" size="icon" onClick={handleClearCanvas} title="Tout effacer">
-                    <Trash2 className='h-4 w-4' />
-                </Button>
+                    <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Rétablir">
+                        <Redo2 />
+                    </Button>
+                    <Button variant="destructive" size="icon" onClick={handleClearCanvas} title="Tout effacer">
+                        <Trash2 className='h-4 w-4' />
+                    </Button>
+                </div>
             </div>
-        </div>
+         )}
         <div className="relative w-full h-full">
             <canvas
               ref={mainCanvasRef}
@@ -405,10 +416,11 @@ export function Whiteboard({ sessionId }: WhiteboardProps) {
                 onMouseUp={finishDrawing}
                 onMouseLeave={finishDrawing}
                 className={cn('absolute top-0 left-0 h-full w-full touch-none rounded-b-lg', 
-                    tool === 'pen' && 'cursor-crosshair',
-                    tool === 'eraser' && 'cursor-grab',
-                    (tool === 'rectangle' || tool === 'circle' || tool === 'line') && 'cursor-crosshair',
-                    tool === 'select' && 'cursor-default'
+                    isControlledByCurrentUser && tool === 'pen' && 'cursor-crosshair',
+                    isControlledByCurrentUser && tool === 'eraser' && 'cursor-grab',
+                    isControlledByCurrentUser && (tool === 'rectangle' || tool === 'circle' || tool === 'line') && 'cursor-crosshair',
+                    isControlledByCurrentUser && tool === 'select' && 'cursor-default',
+                    !isControlledByCurrentUser && 'cursor-not-allowed'
                 )}
             />
         </div>

@@ -19,13 +19,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentPlaceholder } from '@/components/StudentPlaceholder';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 
-// Dynamically import the VideoPlayer component with SSR disabled
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
     ssr: false,
     loading: () => <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">Chargement de la vidéo...</div>
 });
 
-// This function will fetch the necessary data on the client side
 async function getSessionData(sessionId: string) {
     const response = await fetch(`/api/session/${sessionId}/details`);
     if (!response.ok) {
@@ -63,8 +61,9 @@ function SessionPageContent() {
     const [isEndingSession, setIsEndingSession] = useState(false);
     const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
     const [teacher, setTeacher] = useState<any>(null);
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
 
-    // Timer State
+
     const [duration, setDuration] = useState(300); // 5 minutes
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -108,7 +107,6 @@ function SessionPageContent() {
         broadcastTimerEvent('timer-reset', { duration });
     };
 
-    // Countdown effect for teacher
     useEffect(() => {
         if (isTeacher && isTimerRunning) {
             timerIntervalRef.current = setInterval(() => {
@@ -185,9 +183,10 @@ function SessionPageContent() {
         
         const fetchSessionDetails = async () => {
             try {
-                const { students, teacher } = await getSessionData(sessionId);
+                const { session, students, teacher } = await getSessionData(sessionId);
                 setClassStudents(students || []);
                 setTeacher(teacher);
+                setWhiteboardControllerId(session.whiteboardControllerId);
             } catch (error) {
                 console.error("Failed to load session data", error);
                  toast({
@@ -216,8 +215,11 @@ function SessionPageContent() {
               setSpotlightedParticipant(participant);
             }
         };
+        
+        const handleWhiteboardControl = (data: { controllerId: string }) => {
+            setWhiteboardControllerId(data.controllerId);
+        };
 
-        // Student timer handlers
         const handleTimerStart = (data: { duration: number }) => {
             setTimeLeft(data.duration);
             setIsTimerRunning(true);
@@ -240,6 +242,7 @@ function SessionPageContent() {
         };
 
         channel.bind('participant-spotlighted', handleSpotlight);
+        channel.bind('whiteboard-control-changed', handleWhiteboardControl);
         channel.bind('session-ended', handleSessionEnded);
 
         if (!isTeacher) {
@@ -284,17 +287,24 @@ function SessionPageContent() {
     };
 
     const allLiveParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
-    const allSessionUsers = [teacher, ...classStudents];
+    const allSessionUsers = [teacher, ...classStudents].filter(Boolean);
     
     const findUserByParticipant = (participant: TwilioParticipant) => {
         return allSessionUsers.find(user => participant.identity.includes(user.id.substring(0, 8)));
     };
 
+    const isControlledByCurrentUser = whiteboardControllerId === userId;
+    const controllerUser = allSessionUsers.find(u => u.id === whiteboardControllerId);
+
     const teacherView = (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
             <div className="lg:col-span-3 flex flex-col gap-6">
                <div className="flex-grow min-h-[400px]">
-                 <Whiteboard sessionId={sessionId} />
+                 <Whiteboard
+                    sessionId={sessionId}
+                    isControlledByCurrentUser={isControlledByCurrentUser}
+                    controllerName={controllerUser?.name}
+                 />
                </div>
                  <Card>
                     <CardHeader>
@@ -364,6 +374,7 @@ function SessionPageContent() {
                         isTeacher={isTeacher}
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
+                        participantUserId={mainParticipantUser?.id}
                     />
                 ) : (
                     <Card className="aspect-video flex items-center justify-center bg-muted">
@@ -374,7 +385,11 @@ function SessionPageContent() {
                     </Card>
                 )}
                  <div className="flex-grow">
-                   <Whiteboard sessionId={sessionId} />
+                   <Whiteboard
+                        sessionId={sessionId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerName={controllerUser?.name}
+                   />
                 </div>
             </div>
              <div className="flex flex-col space-y-4">

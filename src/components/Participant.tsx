@@ -27,10 +27,11 @@ interface ParticipantProps {
   isSpotlighted?: boolean;
   sessionId?: string;
   isTeacher: boolean;
-  displayName?: string; // New prop for display name
+  displayName?: string;
+  participantUserId: string;
 }
 
-export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher, displayName }: ParticipantProps) {
+export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher, displayName, participantUserId }: ParticipantProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
@@ -67,7 +68,6 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
       }
     };
 
-    // Handle initial tracks that are already published
     participant.tracks.forEach(publication => {
         if (publication.track) {
             attachTrack(publication.track);
@@ -75,13 +75,11 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
         }
     });
 
-    // Handle new tracks that are subscribed to later
     const handleTrackSubscribed = (track: Track) => {
         attachTrack(track);
         updateTrackState(track);
     };
 
-    // Handle tracks that are unsubscribed from
     const handleTrackUnsubscribed = (track: Track) => {
         detachTrack(track);
     };
@@ -90,7 +88,6 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
     participant.on('trackUnsubscribed', handleTrackUnsubscribed);
 
     return () => {
-      // Detach all tracks on cleanup
       participant.tracks.forEach(publication => {
         if (publication.track) {
           detachTrack(publication.track);
@@ -102,12 +99,12 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
   }, [participant]);
 
   const handleSpotlight = async () => {
-    if (!sessionId || !isTeacher) return;
+    if (!sessionId || !isTeacher || !participantUserId) return;
     try {
-        await spotlightParticipant(sessionId, participant.sid);
+        await spotlightParticipant(sessionId, participant.sid, participantUserId);
         toast({
-            title: "Participant en vedette",
-            description: `${nameToDisplay} est maintenant visible par tous les élèves.`
+            title: "Mise à jour de la vedette",
+            description: `${nameToDisplay} contrôle maintenant la session.`
         });
     } catch (e) {
         toast({
@@ -118,7 +115,6 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
     }
   }
 
-  // Placeholder functions for controls
   const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
   const toggleVideo = () => console.log('Toggle video for', nameToDisplay);
 
@@ -169,7 +165,7 @@ export function Participant({ participant, isLocal, isSpotlighted, sessionId, is
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                           <p>Mettre en vedette</p>
+                           <p>Mettre en vedette / Donner le contrôle</p>
                         </TooltipContent>
                     </Tooltip>
                 )}

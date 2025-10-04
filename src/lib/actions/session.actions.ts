@@ -12,7 +12,6 @@ export async function createCoursSession(professeurId: string, studentIds: strin
         throw new Error('Teacher ID and at least one student ID are required.');
     }
 
-    // Récupérer la classe des élèves pour la lier à la session
     const firstStudent = await prisma.user.findUnique({
         where: { id: studentIds[0] },
         select: { classeId: true }
@@ -32,7 +31,8 @@ export async function createCoursSession(professeurId: string, studentIds: strin
             },
             classe: {
                 connect: { id: firstStudent.classeId }
-            }
+            },
+            whiteboardControllerId: professeurId, // Teacher has control by default
         },
     });
 
@@ -46,7 +46,6 @@ export async function createCoursSession(professeurId: string, studentIds: strin
     console.log(`✅ [Pusher] Événement 'session-started' envoyé sur le canal ${channelName}.`);
 
 
-    // La révalidation reste utile si l'élève n'était pas sur la page au moment de l'invitation.
     studentIds.forEach(id => {
         revalidatePath(`/student/${id}`);
     });
@@ -69,13 +68,12 @@ export async function getSessionDetails(sessionId: string) {
     });
 }
 
-export async function spotlightParticipant(sessionId: string, participantSid: string) {
+export async function spotlightParticipant(sessionId: string, participantSid: string, participantUserId: string) {
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized: Only teachers can spotlight participants.");
     }
 
-    // Verify the teacher is the host of this session
     const coursSession = await prisma.coursSession.findFirst({
         where: {
             id: sessionId,
@@ -87,13 +85,21 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
         throw new Error("Session not found or you are not the host.");
     }
     
+    // If the spotlighted participant is the teacher, give control back to teacher
+    const controllerId = participantUserId === session.user.id ? session.user.id : participantUserId;
+
     await prisma.coursSession.update({
         where: { id: sessionId },
-        data: { spotlightedParticipantSid: participantSid }
+        data: { 
+            spotlightedParticipantSid: participantSid,
+            whiteboardControllerId: controllerId
+        }
     });
 
     const channelName = `presence-session-${sessionId}`;
     await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
+    await pusherServer.trigger(channelName, 'whiteboard-control-changed', { controllerId });
+
 
     revalidatePath(`/session/${sessionId}`);
 }
@@ -108,13 +114,12 @@ export async function endCoursSession(sessionId: string) {
     where: { 
         id: sessionId, 
         professeurId: session.user.id,
-        endedAt: null, // S'assurer qu'on ne termine pas une session déjà terminée
+        endedAt: null,
     },
     include: { participants: { select: { id: true, classeId: true } } },
   });
 
   if (!coursSession) {
-    // Session already ended or doesn't exist/belong to the teacher.
     return null;
   }
 
@@ -123,7 +128,6 @@ export async function endCoursSession(sessionId: string) {
     data: { endedAt: new Date() },
   });
 
-  // Notify clients in real-time that session has ended
   const firstParticipant = coursSession.participants[0];
   if (firstParticipant?.classeId) {
       const channelName = `presence-classe-${firstParticipant.classeId}`;
@@ -131,13 +135,11 @@ export async function endCoursSession(sessionId: string) {
       console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal ${channelName}.`);
   }
 
-  // Also broadcast on the session-specific channel to kick people out of the call
   const sessionChannelName = `presence-session-${sessionId}`;
   await pusherServer.trigger(sessionChannelName, 'session-ended', { sessionId: updatedSession.id });
   console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de session ${sessionChannelName}.`);
 
 
-  // Revalidate paths for all participants (as a fallback)
   for (const participant of coursSession.participants) {
     revalidatePath(`/student/${participant.id}`);
   }
