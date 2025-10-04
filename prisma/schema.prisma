@@ -1,5 +1,10 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider     = "postgresql"
@@ -7,166 +12,191 @@ datasource db {
   relationMode = "prisma"
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
 
 model User {
-  id                  String           @id @default(cuid())
+  id                  String    @id @default(cuid())
   name                String?
-  email               String?          @unique
+  email               String?   @unique
   emailVerified       DateTime?
   image               String?
-  role                Role             @default(ELEVE)
+  role                Role      @default(ELEVE)
+  points              Int       @default(0)
   ambition            String?
-  points              Int              @default(0)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
   classeId            String?
+  classe              Classe?   @relation("ClasseEleves", fields: [classeId], references: [id])
+  
   etat                EtatEleve?
+
+  sessionsEnseignees  CoursSession[] @relation("SessionProfesseur")
+  sessionsParticipees CoursSession[] @relation("SessionParticipants")
+  
+  classesEnseignees   Classe[] @relation("ClasseProfesseur")
+  
   taskCompletions     TaskCompletion[]
-  sessionsParticipees CoursSession[]
-  conversationsAsInitiator Conversation[] @relation("Initiator")
-  conversationsAsReceiver  Conversation[] @relation("Receiver")
-  messagesEnvoyes     Message[]
+  messages            Message[]
   reactions           Reaction[]
   annonces            Annonce[]
 
-  // Relation explicite pour les classes où l'utilisateur est un élève
-  classe              Classe?          @relation("ClasseEleves", fields: [classeId], references: [id])
+  // For direct messaging
+  conversationsInitiated Conversation[] @relation("Initiator")
+  conversationsReceived  Conversation[] @relation("Receiver")
   
-  // Relation explicite pour les classes où l'utilisateur est le professeur
-  classesEnseignees   Classe[]         @relation("ClasseProfesseur")
-
   @@map("users")
 }
+
+model Classe {
+  id            String    @id @default(cuid())
+  nom           String
+  
+  eleves        User[]    @relation("ClasseEleves")
+  
+  professeur    User      @relation("ClasseProfesseur", fields: [professeurId], references: [id])
+  professeurId  String
+  
+  messages      Message[]
+  annonces      Annonce[]
+  sessions      CoursSession[]
+  
+  @@map("classes")
+}
+
+
+model EtatEleve {
+  id          String  @id @default(cuid())
+  eleveId     String  @unique
+  eleve       User    @relation(fields: [eleveId], references: [id])
+  isPunished  Boolean @default(false)
+  metierId    String?
+  metier      Metier? @relation(fields: [metierId], references: [id])
+
+  @@map("etats_eleves")
+}
+
+model Metier {
+  id           String      @id @default(cuid())
+  nom          String
+  description  String
+  icon         String?
+  theme        Json
+  etatsEleves  EtatEleve[]
+
+  @@map("metiers")
+}
+
+
+// models/cours-session.prisma
+model CoursSession {
+  id                      String    @id @default(cuid())
+  professeur              User      @relation("SessionProfesseur", fields: [professeurId], references: [id])
+  professeurId            String
+  participants            User[]    @relation("SessionParticipants")
+  createdAt               DateTime  @default(now())
+  endedAt                 DateTime?
+  spotlightedParticipantSid String?
+  whiteboardControllerId  String?
+
+  classe    Classe? @relation(fields: [classeId], references: [id])
+  classeId  String?
+  
+  @@map("sessions_cours")
+}
+
+
+model Task {
+  id              String           @id @default(cuid())
+  title           String
+  description     String
+  points          Int
+  type            TaskType
+  completions     TaskCompletion[]
+
+  @@map("tasks")
+}
+
+model TaskCompletion {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  taskId        String
+  task          Task     @relation(fields: [taskId], references: [id])
+  completedAt   DateTime @default(now())
+
+  @@unique([userId, taskId, completedAt])
+  @@map("task_completions")
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  initiatorId String
+  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
+  receiverId  String
+  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([initiatorId, receiverId])
+  @@map("conversations")
+}
+
+
+model Message {
+  id              String      @id @default(cuid())
+  message         String
+  senderId        String
+  sender          User        @relation(fields: [senderId], references: [id])
+  senderName      String
+  
+  classeId        String?
+  classe          Classe?     @relation(fields: [classeId], references: [id])
+
+  conversationId  String?
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+
+  createdAt       DateTime    @default(now())
+  reactions       Reaction[]
+
+  @@map("messages")
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id])
+
+  @@unique([userId, messageId, emoji])
+  @@map("reactions")
+}
+
+model Annonce {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  classeId    String?  // Nullable for public announcements
+  classe      Classe?  @relation(fields: [classeId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("annonces")
+}
+
 
 enum Role {
   ELEVE
   PROFESSEUR
-}
-
-model Classe {
-  id           String         @id @default(cuid())
-  nom          String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  annonces     Annonce[]
-  messages     Message[]
-  sessions     CoursSession[]
-  
-  // Relation explicite pour les élèves
-  eleves       User[]         @relation("ClasseEleves")
-  
-  // Relation explicite pour le professeur
-  professeur   User           @relation("ClasseProfesseur", fields: [professeurId], references: [id])
-  professeurId String
-
-  @@map("classes")
-}
-
-model EtatEleve {
-  id         String  @id @default(cuid())
-  eleve      User    @relation(fields: [eleveId], references: [id])
-  eleveId    String  @unique
-  isPunished Boolean @default(false)
-  metier     Metier? @relation(fields: [metierId], references: [id])
-  metierId   String?
-}
-
-model Metier {
-  id          String      @id @default(cuid())
-  nom         String
-  description String
-  icon        String?
-  theme       Json
-  eleves      EtatEleve[]
-}
-
-model Task {
-  id            String           @id @default(cuid())
-  title         String
-  description   String
-  points        Int
-  type          TaskType
-  completions   TaskCompletion[]
+  ADMIN
 }
 
 enum TaskType {
   DAILY
   WEEKLY
   MONTHLY
-}
-
-model TaskCompletion {
-  id           String   @id @default(cuid())
-  user         User     @relation(fields: [userId], references: [id])
-  userId       String
-  task         Task     @relation(fields: [taskId], references: [id])
-  taskId       String
-  completedAt  DateTime @default(now())
-
-  @@unique([userId, taskId, completedAt])
-}
-
-model CoursSession {
-  id                      String    @id @default(cuid())
-  professeur              User      @relation(fields: [professeurId], references: [id])
-  professeurId            String
-  participants            User[]
-  createdAt               DateTime  @default(now())
-  endedAt                 DateTime?
-  classe                  Classe?   @relation(fields: [classeId], references: [id])
-  classeId                String?
-  spotlightedParticipantSid String?
-  whiteboardControllerId  String?
-}
-
-model Conversation {
-  id          String    @id @default(cuid())
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
-  initiatorId String
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
-  receiverId  String
-  messages    Message[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@unique([initiatorId, receiverId])
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  message        String
-  sender         User         @relation(fields: [senderId], references: [id])
-  senderId       String
-  senderName     String
-  createdAt      DateTime     @default(now())
-  reactions      Reaction[]
-  classe         Classe?      @relation(fields: [classeId], references: [id])
-  classeId       String?
-  conversation   Conversation? @relation(fields: [conversationId], references: [id])
-  conversationId String?
-}
-
-model Reaction {
-  id        String   @id @default(cuid())
-  emoji     String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  message   Message  @relation(fields: [messageId], references: [id])
-  messageId String
-
-  @@unique([userId, messageId, emoji])
-}
-
-model Annonce {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
-  classe    Classe?  @relation(fields: [classeId], references: [id])
-  classeId  String?
-  createdAt DateTime @default(now())
 }
