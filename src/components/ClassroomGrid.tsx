@@ -1,14 +1,15 @@
 // src/components/ClassroomGrid.tsx
 'use client';
 
-import { LocalParticipant, RemoteParticipant } from "twilio-video";
+import { LocalParticipant, RemoteParticipant, Participant as TwilioParticipant } from "twilio-video";
 import { Participant } from "./Participant";
 import { StudentPlaceholder } from "./StudentPlaceholder";
 import type { StudentWithCareer } from "@/lib/types";
+import { User } from "@prisma/client";
 
 interface ClassroomGridProps {
     sessionId: string;
-    teacher: any;
+    teacher: User | null;
     students: StudentWithCareer[];
     localParticipant: LocalParticipant | null;
     remoteParticipants: RemoteParticipant[];
@@ -35,7 +36,7 @@ export function ClassroomGrid({
     const allVideoParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
 
     const findParticipantByUserId = (userId: string) => {
-        return allVideoParticipants.find(p => p.identity.includes(userId.substring(0, 8)));
+        return allVideoParticipants.find(p => p.identity.includes(userId));
     }
     
     const isUserOnline = (userId: string) => {
@@ -58,8 +59,8 @@ export function ClassroomGrid({
                          isLocal={teacherParticipant === localParticipant}
                          sessionId={sessionId}
                          isSpotlighted={teacherParticipant.sid === spotlightedParticipantSid}
-                         isTeacher={isTeacher}
-                         displayName={teacher.name}
+                         isTeacher={true}
+                         displayName={teacher.name ?? 'Professeur'}
                          participantUserId={teacher.id}
                          isWhiteboardController={teacher.id === whiteboardControllerId}
                          onGiveWhiteboardControl={onGiveWhiteboardControl}
@@ -80,7 +81,7 @@ export function ClassroomGrid({
                         isLocal={studentParticipant === localParticipant}
                         sessionId={sessionId}
                         isSpotlighted={studentParticipant.sid === spotlightedParticipantSid}
-                        isTeacher={isTeacher}
+                        isTeacher={false}
                         displayName={student.name ?? undefined}
                         participantUserId={student.id}
                         isWhiteboardController={student.id === whiteboardControllerId}

@@ -12,10 +12,9 @@ interface VideoPlayerProps {
   onConnected: (room: Room) => void;
   setRoom: (room: Room | null) => void;
   setLocalParticipant: (participant: LocalParticipant | null) => void;
-  setHasCameraPermission: (hasPermission: boolean | null) => void;
 }
 
-export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, setLocalParticipant, setHasCameraPermission }: VideoPlayerProps) {
+export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, setLocalParticipant }: VideoPlayerProps) {
   const { toast } = useToast();
   const roomRef = useRef<Room | null>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
@@ -51,7 +50,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, set
             return;
         }
 
-        setHasCameraPermission(true);
         console.log("✅ [VideoPlayer] Permission média obtenue.");
 
         localTracksRef.current = [
@@ -100,7 +98,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, set
         isConnectingRef.current = false;
 
       } catch (error) {
-        setHasCameraPermission(false);
         if (!isMounted) {
             isConnectingRef.current = false;
             return;
@@ -111,12 +108,13 @@ export function VideoPlayer({ sessionId, role, userId, onConnected, setRoom, set
             if (error.message.includes('53118')) {
                 description = "Un utilisateur avec la même identité est déjà connecté.";
             } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError' || error.message.includes('media')) {
+                // This case is now primarily handled by the parent component, but kept as a fallback.
                 description = "Veuillez autoriser l'accès à la caméra et au microphone dans votre navigateur.";
             }
         }
         
         console.error("❌ [VideoPlayer] Erreur de connexion:", error);
-        toast({ variant: 'destructive', title: 'Erreur de Connexion', description });
+        toast({ variant: 'destructive', title: 'Erreur de Connexion Vidéo', description });
         
         cleanupTracks();
         isConnectingRef.current = false;

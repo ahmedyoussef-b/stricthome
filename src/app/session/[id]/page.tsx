@@ -20,6 +20,7 @@ import { StudentPlaceholder } from '@/components/StudentPlaceholder';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { cn } from '@/lib/utils';
 import type { PresenceChannel } from 'pusher-js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -102,14 +103,28 @@ function SessionPageContent() {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (isTeacher && hasCameraPermission === false) {
-             toast({
-                variant: 'destructive',
-                title: 'Accès Caméra/Micro refusé',
-                description: 'Veuillez autoriser l\'accès dans votre navigateur pour continuer.',
-            });
-        }
-    }, [isTeacher, hasCameraPermission, toast]);
+        const getCameraPermission = async () => {
+          try {
+            // Ask for permission silently first
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            setHasCameraPermission(true);
+            // Stop tracks immediately, they will be requested again by VideoPlayer
+            stream.getTracks().forEach(track => track.stop());
+          } catch (error) {
+            console.error('Initial camera access failed:', error);
+            setHasCameraPermission(false);
+            if (isTeacher) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Accès Caméra/Micro requis',
+                    description: 'Veuillez autoriser l\'accès dans votre navigateur pour démarrer la session vidéo.',
+                    duration: 10000,
+                });
+            }
+          }
+        };
+        getCameraPermission();
+    }, [isTeacher, toast]);
 
 
     useEffect(() => {
@@ -184,10 +199,12 @@ function SessionPageContent() {
         setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
 
         newRoom.on('participantConnected', (participant) => {
+            console.log(`[Session Page] Participant connected: ${participant.identity}`);
             setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
         });
 
         newRoom.on('participantDisconnected', (participant) => {
+            console.log(`[Session Page] Participant disconnected: ${participant.identity}`);
             setRemoteParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
@@ -355,7 +372,8 @@ function SessionPageContent() {
     const allSessionUsers = [teacher, ...classStudents].filter(Boolean);
     
     const findUserByParticipant = (participant: TwilioParticipant) => {
-        return allSessionUsers.find(user => participant.identity.includes(user.id.substring(0, 8)));
+        // Find user whose ID is included in the participant's unique identity string
+        return allSessionUsers.find(user => participant.identity.includes(user.id));
     };
 
     const isControlledByCurrentUser = whiteboardControllerId === userId;
@@ -378,12 +396,14 @@ function SessionPageContent() {
         camera: "lg:col-span-1",
         whiteboard: "lg:col-span-1",
     }
+    
+    const showCameraStatus = isTeacher && (sessionView === 'camera' && !mainParticipant || hasCameraPermission === false);
 
 
     const content = (
          <div className={cn("grid gap-6 h-full", viewLayout[sessionView])}>
             <div className={cn("flex flex-col gap-6", mainContentLayout[sessionView])}>
-                {sessionView === 'camera' && mainParticipant ? (
+                {sessionView === 'camera' && mainParticipant && hasCameraPermission ? (
                      <Participant 
                         key={mainParticipant.sid}
                         participant={mainParticipant}
@@ -396,21 +416,19 @@ function SessionPageContent() {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
-                ) : sessionView === 'camera' && !mainParticipant ? (
-                     isTeacher ? (
-                        <CameraStatus 
-                            hasCameraPermission={hasCameraPermission} 
-                            room={room}
-                            localParticipant={localParticipant} 
-                        />
-                     ) : (
-                        <Card className="aspect-video flex items-center justify-center bg-muted">
-                            <div className="text-center">
-                                <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                                <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
-                            </div>
-                        </Card>
-                     )
+                ) : sessionView === 'camera' && showCameraStatus ? (
+                     <CameraStatus 
+                        hasCameraPermission={hasCameraPermission} 
+                        room={room}
+                        localParticipant={localParticipant} 
+                     />
+                ) : sessionView === 'camera' && !isTeacher ? (
+                    <Card className="aspect-video flex items-center justify-center bg-muted">
+                        <div className="text-center">
+                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                        </div>
+                    </Card>
                 ) : null}
 
                  <div className="flex-grow min-h-[300px]">
@@ -468,6 +486,14 @@ function SessionPageContent() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2">
+                         {hasCameraPermission === false && !isTeacher && (
+                           <Alert variant="destructive" className="mb-2">
+                                <AlertTitle>Accès Caméra/Micro Refusé</AlertTitle>
+                                <AlertDescription>
+                                    Vous devez autoriser l'accès pour participer. Rechargez la page et autorisez l'accès.
+                                </AlertDescription>
+                           </Alert>
+                        )}
                         <ScrollArea className="h-full">
                             <ClassroomGrid
                                 sessionId={sessionId}
@@ -490,15 +516,16 @@ function SessionPageContent() {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
-            <VideoPlayer 
-                sessionId={sessionId}
-                role={role ?? 'student'}
-                userId={userId ?? ''}
-                onConnected={onConnected}
-                setRoom={setRoom}
-                setLocalParticipant={setLocalParticipant}
-                setHasCameraPermission={setHasCameraPermission}
-            />
+            {hasCameraPermission && (
+                <VideoPlayer 
+                    sessionId={sessionId}
+                    role={role ?? 'student'}
+                    userId={userId ?? ''}
+                    onConnected={onConnected}
+                    setRoom={setRoom}
+                    setLocalParticipant={setLocalParticipant}
+                />
+            )}
             <header className="border-b bg-background/95 backdrop-blur-sm z-10">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                     <div className='flex items-center gap-4'>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, TrackPublication } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export function Participant({
   const [hasVideo, setHasVideo] = useState(true);
   const { toast } = useToast();
 
-  const nameToDisplay = displayName || participant.identity.split('-')[0];
+  const nameToDisplay = displayName || participant.identity;
 
   useEffect(() => {
     const videoElementRef = videoRef.current;
@@ -58,13 +58,9 @@ export function Participant({
     const attachTrack = (track: Track) => {
       if (isAttachable(track)) {
         const element = track.attach();
+        element.style.width = '100%';
+        element.style.height = '100%';
         videoElementRef.appendChild(element);
-        
-        // Ensure video elements play on all browsers
-        if (element.tagName === "VIDEO") {
-          element.muted = true; // Mute remote audio on video elements if you handle audio separately
-          element.play().catch(e => console.error("Video play failed:", e));
-        }
       }
     };
     
