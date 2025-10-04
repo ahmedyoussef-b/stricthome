@@ -17,6 +17,7 @@ import { StudentHeaderContent } from '@/components/StudentHeaderContent';
 import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -130,18 +131,22 @@ export default function StudentPageClient({
 
         <div className="md:col-span-2 space-y-8">
           {activeSession && !isTeacherView && (
-            <Card className="animate-pulse-border border-primary border-2 animate-in fade-in zoom-in-95">
+            <Card className={cn(
+                "animate-in fade-in zoom-in-95",
+                "bg-gradient-to-r from-primary via-blue-400 to-primary",
+                "bg-[length:200%_auto] animate-background-shine"
+              )}>
                 <CardHeader>
-                    <div className="flex items-center gap-2">
-                         <Video className="text-primary"/>
+                    <div className="flex items-center gap-2 text-primary-foreground">
+                         <Video />
                          <CardTitle>Invitation à une session !</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                     <p className="text-muted-foreground flex-grow">
+                     <p className="text-primary-foreground/90 flex-grow">
                         Votre professeur vous a invité à rejoindre une session d'apprentissage en direct.
                      </p>
-                     <Button asChild>
+                     <Button asChild variant="secondary">
                         <Link href={`/session/${activeSession.id}?role=student&userId=${student.id}`}>Rejoindre la session</Link>
                      </Button>
                 </CardContent>
