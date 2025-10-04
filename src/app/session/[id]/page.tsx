@@ -223,7 +223,6 @@ function SessionPageContent() {
 
         newRoom.on('disconnected', () => {
             if (roomRef.current) {
-                // roomRef.current.disconnect(); // This is handled by VideoPlayer's cleanup
                 roomRef.current = null;
                 setRoom(null);
                 setLocalParticipant(null);
@@ -244,7 +243,7 @@ function SessionPageContent() {
                 title: "Session terminée",
                 description: "Le professeur a mis fin à la session.",
             });
-            router.push(`/student/${userId}`);
+            if (userId) router.push(`/student/${userId}`);
         }
     }, [isTeacher, router, toast, userId]);
 
@@ -585,3 +584,5 @@ export default function SessionPage() {
         </Suspense>
     )
 }
+
+    
