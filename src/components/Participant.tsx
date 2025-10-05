@@ -96,7 +96,7 @@ export function Participant({
         }
         
         // Pour les participants distants, nous devons écouter la souscription
-        if ('on' in publication) {
+        if ('on' in publication && publication.on) {
           publication.on('subscribed', (track) => {
             console.log(`    ➕ [Subscribed] Souscription à la piste ${track.kind} de ${nameToDisplay}`);
             attachTrack(track);

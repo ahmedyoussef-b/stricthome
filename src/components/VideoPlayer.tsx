@@ -25,7 +25,6 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     const cleanupTracks = () => {
       console.log("🧹 [VideoPlayer] Nettoyage des pistes locales.");
       localTracksRef.current.forEach(track => {
-        // Check if the track has a stop method before calling it.
         if (track && typeof track.stop === 'function') {
           track.stop();
         }
@@ -111,6 +110,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
                 description = "Un utilisateur avec la même identité est déjà connecté.";
             } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError' || error.message.includes('media')) {
                 description = "Veuillez autoriser l'accès à la caméra et au microphone.";
+            } else if (error.name === 'NotFoundError') {
+                description = "Aucun périphérique de caméra/microphone trouvé. Veuillez vérifier qu'ils sont bien connectés.";
             }
         }
         
@@ -137,7 +138,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       cleanupTracks();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, role, userId]); // onConnected is wrapped in useCallback in parent, so it's stable.
+  }, [sessionId, role, userId, onConnected]);
 
   return null;
 }

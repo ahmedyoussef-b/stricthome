@@ -209,7 +209,7 @@ function SessionPageContent() {
                  const allUsers: SessionParticipant[] = [
                     ...(teacher ? [{ ...teacher, role: Role.PROFESSEUR }] : []),
                     ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
-                ].filter(Boolean);
+                ].filter((u): u is SessionParticipant => u !== null && u !== undefined);
                 setAllSessionUsers(allUsers);
                 setWhiteboardControllerId(session.whiteboardControllerId);
                 console.log(`✅ [API] Données de session chargées: ${allUsers.length} utilisateurs.`);
@@ -357,7 +357,7 @@ function SessionPageContent() {
         }
     };
 
-    const allVideoParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
+    const allVideoParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter((p): p is LocalParticipant | RemoteParticipant => p !== null);
     
     const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
         return allSessionUsers.find(u => u && participant.identity.includes(u.id));
