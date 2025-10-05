@@ -12,9 +12,6 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'pusher', 'twilio'],
-  },
 }
 
 module.exports = nextConfig
