@@ -98,7 +98,7 @@ function SessionPageContent() {
         setRoom(newRoom);
         roomRef.current = newRoom;
         setLocalParticipant(newRoom.localParticipant);
-
+    
         const initialRemoteParticipants = new Map<string, RemoteParticipant>();
         newRoom.participants.forEach(p => {
              console.log(`👨‍👩‍👧 [Twilio] Participant déjà présent trouvé: ${p.identity}`);
@@ -311,7 +311,7 @@ function SessionPageContent() {
         }
     };
 
-    const handleGiveWhiteboardControl = async (participantUserId: string) => {
+    const handleGiveWhiteboardControl = useCallback(async (participantUserId: string) => {
         if (!isTeacher) return;
         console.log(`✍️ [Action][OUT] Le professeur donne le contrôle du tableau à ${participantUserId}`);
         try {
@@ -329,9 +329,9 @@ function SessionPageContent() {
                 description: "Impossible de donner le contrôle du tableau."
             });
         }
-    };
+    }, [isTeacher, sessionId, toast]);
     
-    const handleSpotlightParticipant = async (participantSid: string) => {
+    const handleSpotlightParticipant = useCallback(async (participantSid: string) => {
         if (!isTeacher) return;
         try {
             await spotlightParticipant(sessionId, participantSid);
@@ -342,7 +342,7 @@ function SessionPageContent() {
                 description: "Impossible de mettre ce participant en vedette."
             });
         }
-    };
+    }, [isTeacher, sessionId, toast]);
 
 
     const broadcastTimerEvent = useCallback(async (event: string, data?: any) => {

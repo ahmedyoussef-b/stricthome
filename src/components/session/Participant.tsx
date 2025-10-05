@@ -1,7 +1,7 @@
 // src/components/session/Participant.tsx
 'use client';
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, RemoteTrackPublication, LocalTrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
@@ -33,7 +33,7 @@ interface ParticipantProps {
   onSpotlightParticipant?: (participantSid: string) => void;
 }
 
-export function Participant({ 
+function ParticipantComponent({ 
     participant, 
     isLocal, 
     isSpotlighted, 
@@ -233,3 +233,5 @@ export function Participant({
     </Card>
   );
 }
+
+export const Participant = React.memo(ParticipantComponent);
