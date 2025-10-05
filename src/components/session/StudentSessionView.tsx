@@ -2,13 +2,11 @@
 'use client';
 
 import { LocalParticipant, RemoteParticipant, Participant as TwilioParticipant } from 'twilio-video';
-import { Loader2, Users } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Participant } from '@/components/session/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ParticipantList } from './ParticipantList';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
@@ -55,12 +53,12 @@ export function StudentSessionView({
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
                 ) : (
-                    <Card className="aspect-video flex items-center justify-center bg-muted">
+                    <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
                         <div className="text-center">
                             <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                             <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
                         </div>
-                    </Card>
+                    </div>
                 )}
                  <div className="flex-1 min-h-[450px]">
                     <Whiteboard 
