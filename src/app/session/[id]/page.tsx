@@ -68,30 +68,6 @@ function SessionPageContent() {
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
     const classStudents = allSessionUsers.filter(u => u.role === 'ELEVE');
     
-    // Effet pour mettre à jour le participant en vedette
-    useEffect(() => {
-        if (!room) return;
-
-        // Si aucun SID n'est en vedette, essayez de mettre le professeur par défaut
-        if (!spotlightedParticipantSid) {
-            const teacherParticipant = room.localParticipant.identity.startsWith('teacher-')
-                ? room.localParticipant
-                : Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-'));
-            setSpotlightedParticipant(teacherParticipant || room.localParticipant);
-            return;
-        }
-        
-        // Trouver le participant correspondant au SID en vedette
-        const newSpotlightedParticipant =
-            spotlightedParticipantSid === room.localParticipant.sid
-                ? room.localParticipant
-                : room.participants.get(spotlightedParticipantSid) || null;
-
-        setSpotlightedParticipant(newSpotlightedParticipant);
-
-    }, [spotlightedParticipantSid, room, remoteParticipants]);
-
-
     const handleEndSession = useCallback(() => {
         console.log("🏁 [Session] La session a été marquée comme terminée. Redirection...");
         toast({
@@ -138,6 +114,32 @@ function SessionPageContent() {
             handleEndSession();
         });
     }, [handleEndSession]);
+
+     // Effet pour mettre à jour le participant en vedette
+    useEffect(() => {
+        if (!room) return;
+
+        let newSpotlightedParticipant: LocalParticipant | RemoteParticipant | null = null;
+        
+        if (spotlightedParticipantSid) {
+            newSpotlightedParticipant =
+                spotlightedParticipantSid === room.localParticipant.sid
+                    ? room.localParticipant
+                    : room.participants.get(spotlightedParticipantSid) || null;
+        }
+
+        // Si aucun participant n'est trouvé ou si aucun n'est en vedette, mettez le professeur par défaut.
+        if (!newSpotlightedParticipant) {
+             const teacherParticipant = room.localParticipant.identity.startsWith('teacher-')
+                ? room.localParticipant
+                : Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-'));
+            newSpotlightedParticipant = teacherParticipant || room.localParticipant;
+        }
+        
+        setSpotlightedParticipant(newSpotlightedParticipant);
+
+    }, [spotlightedParticipantSid, room, remoteParticipants]);
+
 
      useEffect(() => {
         roomRef.current = room;
@@ -395,6 +397,11 @@ function SessionPageContent() {
                 isTeacher={isTeacher}
                 isEndingSession={isEndingSession}
                 onGoBack={handleGoBack}
+                timeLeft={timeLeft}
+                isTimerRunning={isTimerRunning}
+                onStartTimer={handleStartTimer}
+                onPauseTimer={handlePauseTimer}
+                onResetTimer={handleResetTimer}
             />
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <PermissionPrompt />
@@ -412,8 +419,6 @@ function SessionPageContent() {
                         whiteboardControllerId={whiteboardControllerId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerUser={controllerUser}
-                        timeLeft={timeLeft}
-                        isTimerRunning={isTimerRunning}
                         onlineUsers={onlineUsers}
                         classStudents={classStudents}
                         teacher={teacher}
@@ -421,9 +426,6 @@ function SessionPageContent() {
                         spotlightedParticipantSid={spotlightedParticipantSid ?? undefined}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         onSpotlightParticipant={handleSpotlightParticipant}
-                        onStartTimer={handleStartTimer}
-                        onPauseTimer={handlePauseTimer}
-                        onResetTimer={handleResetTimer}
                     />
                 ) : (
                     <StudentSessionView
@@ -434,7 +436,6 @@ function SessionPageContent() {
                         whiteboardControllerId={whiteboardControllerId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerUser={controllerUser}
-                        timeLeft={timeLeft}
                         allVideoParticipants={allVideoParticipants}
                         findUserByParticipant={findUserByParticipant}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}

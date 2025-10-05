@@ -2,8 +2,7 @@
 'use client';
 
 import { LocalParticipant, RemoteParticipant, Participant as TwilioParticipant } from 'twilio-video';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Timer, Loader2 } from 'lucide-react';
+import { Card, Loader2 } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { ParticipantList } from './ParticipantList';
@@ -20,16 +19,9 @@ interface StudentSessionViewProps {
     whiteboardControllerId: string | null;
     isControlledByCurrentUser: boolean;
     controllerUser: SessionParticipant | null | undefined;
-    timeLeft: number;
     allVideoParticipants: Array<LocalParticipant | RemoteParticipant>;
     findUserByParticipant: (participant: TwilioParticipant) => SessionParticipant | undefined;
     onGiveWhiteboardControl: (userId: string) => void;
-}
-
-function formatTime(seconds: number) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 export function StudentSessionView({
@@ -40,7 +32,6 @@ export function StudentSessionView({
     whiteboardControllerId,
     isControlledByCurrentUser,
     controllerUser,
-    timeLeft,
     allVideoParticipants,
     findUserByParticipant,
 }: StudentSessionViewProps) {
@@ -53,20 +44,20 @@ export function StudentSessionView({
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
                         isSpotlighted={true}
-                        isTeacher={false} // Student view never has teacher controls on participants
+                        isTeacher={false}
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
                         participantUserId={mainParticipantUser?.id ?? ''}
-                        onGiveWhiteboardControl={() => {}} // Students can't give control
+                        onGiveWhiteboardControl={() => {}}
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
                 ) : (
-                    <Card className="aspect-video flex items-center justify-center bg-muted">
+                    <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
                         <div className="text-center">
                             <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                             <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
                         </div>
-                    </Card>
+                    </div>
                 )}
                 <div className="flex-grow">
                     <Whiteboard 
@@ -77,17 +68,6 @@ export function StudentSessionView({
                 </div>
             </div>
             <div className="flex flex-col space-y-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Timer />
-                            Temps restant
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
-                    </CardContent>
-                </Card>
                 <ParticipantList 
                     allVideoParticipants={allVideoParticipants}
                     localParticipant={localParticipant}

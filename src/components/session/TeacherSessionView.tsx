@@ -8,7 +8,6 @@ import { Users, Loader2 } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
-import { TimerControls } from './TimerControls';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
@@ -24,8 +23,6 @@ interface TeacherSessionViewProps {
     whiteboardControllerId: string | null;
     isControlledByCurrentUser: boolean;
     controllerUser: SessionParticipant | null | undefined;
-    timeLeft: number;
-    isTimerRunning: boolean;
     onlineUsers: string[];
     classStudents: StudentWithCareer[];
     teacher: User | null;
@@ -33,9 +30,6 @@ interface TeacherSessionViewProps {
     spotlightedParticipantSid?: string;
     onGiveWhiteboardControl: (userId: string) => void;
     onSpotlightParticipant: (participantSid: string) => void;
-    onStartTimer: () => void;
-    onPauseTimer: () => void;
-    onResetTimer: () => void;
 }
 
 export function TeacherSessionView({
@@ -46,8 +40,6 @@ export function TeacherSessionView({
     whiteboardControllerId,
     isControlledByCurrentUser,
     controllerUser,
-    timeLeft,
-    isTimerRunning,
     onlineUsers,
     classStudents,
     teacher,
@@ -55,9 +47,6 @@ export function TeacherSessionView({
     spotlightedParticipantSid,
     onGiveWhiteboardControl,
     onSpotlightParticipant,
-    onStartTimer,
-    onPauseTimer,
-    onResetTimer
 }: TeacherSessionViewProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
@@ -91,13 +80,6 @@ export function TeacherSessionView({
                         controllerName={controllerUser?.name}
                    />
                 </div>
-                <TimerControls 
-                    timeLeft={timeLeft}
-                    isTimerRunning={isTimerRunning}
-                    onStart={onStartTimer}
-                    onPause={onPauseTimer}
-                    onReset={onResetTimer}
-                />
             </div>
 
             <div className="lg:col-span-1 flex flex-col gap-6">
