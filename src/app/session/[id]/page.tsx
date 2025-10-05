@@ -82,62 +82,74 @@ function SessionPageContent() {
         }
     }, [router, toast, userId, role]);
     
-    const onConnected = useCallback((newRoom: Room) => {
+     const onConnected = useCallback((newRoom: Room) => {
         console.log(`🤝 [Twilio] Callback onConnected exécuté. Salle: ${newRoom.name}, SID: ${newRoom.sid}`);
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
-        const remoteParticipantsMap = new Map(newRoom.participants);
-        setRemoteParticipants(remoteParticipantsMap);
-        
-        newRoom.on('participantConnected', (participant) => {
+
+        const handleParticipantConnected = (participant: RemoteParticipant) => {
             console.log(`➕ [Twilio] Participant connecté: ${participant.identity}`);
             setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
-        });
+        };
 
-        newRoom.on('participantDisconnected', (participant) => {
+        const handleParticipantDisconnected = (participant: RemoteParticipant) => {
             console.log(`➖ [Twilio] Participant déconnecté: ${participant.identity}`);
             setRemoteParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
                 return newMap;
             });
-        });
+        };
+
+        // Gérer les participants déjà connectés
+        const initialRemoteParticipants = new Map<string, RemoteParticipant>();
+        newRoom.participants.forEach(p => initialRemoteParticipants.set(p.sid, p));
+        setRemoteParticipants(initialRemoteParticipants);
+
+        newRoom.on('participantConnected', handleParticipantConnected);
+        newRoom.on('participantDisconnected', handleParticipantDisconnected);
 
         newRoom.on('disconnected', () => {
             console.log("🚪 [Twilio] Déconnecté de la salle.");
             if (roomRef.current) {
+                roomRef.current.removeListener('participantConnected', handleParticipantConnected);
+                roomRef.current.removeListener('participantDisconnected', handleParticipantDisconnected);
                 roomRef.current.removeAllListeners();
                 roomRef.current = null;
-                setRoom(null);
-                setLocalParticipant(null);
             }
+            setRoom(null);
+            setLocalParticipant(null);
+            setRemoteParticipants(new Map());
             handleEndSession();
         });
     }, [handleEndSession]);
 
      // Effet pour mettre à jour le participant en vedette
-    useEffect(() => {
+     useEffect(() => {
         if (!room) return;
+    
+        const findParticipant = (sid: string) => {
+            if (room.localParticipant.sid === sid) {
+                return room.localParticipant;
+            }
+            return room.participants.get(sid) || null;
+        };
 
-        let newSpotlightedParticipant: LocalParticipant | RemoteParticipant | null = null;
-        
+        let newSpotlightedParticipant: TwilioParticipant | null = null;
+    
         if (spotlightedParticipantSid) {
-            newSpotlightedParticipant =
-                spotlightedParticipantSid === room.localParticipant.sid
-                    ? room.localParticipant
-                    : room.participants.get(spotlightedParticipantSid) || null;
+            newSpotlightedParticipant = findParticipant(spotlightedParticipantSid);
         }
-
-        // Si aucun participant n'est trouvé ou si aucun n'est en vedette, mettez le professeur par défaut.
+    
+        // Si aucun participant en vedette n'est trouvé, mettez le professeur par défaut si c'est la vue du professeur, ou le participant local sinon.
         if (!newSpotlightedParticipant) {
-             const teacherParticipant = room.localParticipant.identity.startsWith('teacher-')
-                ? room.localParticipant
-                : Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-'));
-            newSpotlightedParticipant = teacherParticipant || room.localParticipant;
+             const teacherParticipant = Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-')) || 
+                                       (room.localParticipant.identity.startsWith('teacher-') ? room.localParticipant : null);
+             newSpotlightedParticipant = teacherParticipant || room.localParticipant;
         }
         
-        setSpotlightedParticipant(newSpotlightedParticipant);
-
+        setSpotlightedParticipant(newSpotlightedParticipant as LocalParticipant | RemoteParticipant | null);
+    
     }, [spotlightedParticipantSid, room, remoteParticipants]);
 
 
@@ -224,15 +236,16 @@ function SessionPageContent() {
             setTimeLeft(data.timeLeft);
         };
         
-        const handleSessionEnded = (data: { sessionId: string }) => {
+        const handleSessionEnded = useCallback((data: { sessionId: string }) => {
              console.log(`🏁 [Pusher] Événement 'session-ended' reçu pour la session ${data.sessionId}`);
             if (data.sessionId === sessionId) {
                  if (roomRef.current) {
                     roomRef.current.disconnect();
+                } else {
+                    handleEndSession();
                 }
-                handleEndSession();
             }
-        };
+        }, [sessionId, handleEndSession]);
 
         channel.bind('participant-spotlighted', handleSpotlight);
         channel.bind('whiteboard-control-changed', handleWhiteboardControl);
@@ -369,7 +382,12 @@ function SessionPageContent() {
         };
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
-    const allVideoParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter((p): p is LocalParticipant | RemoteParticipant => p !== null);
+    const allVideoParticipants = room ? 
+        Array.from(new Map([
+            [room.localParticipant.sid, room.localParticipant], 
+            ...Array.from(room.participants.entries())
+        ]).values()) 
+        : [];
     
     const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
         return allSessionUsers.find(u => u && participant.identity.includes(u.id));
