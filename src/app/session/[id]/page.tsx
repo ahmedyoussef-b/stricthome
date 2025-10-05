@@ -242,7 +242,6 @@ function SessionPageContent() {
         return () => {
             console.log("🧹 [useEffect] Nettoyage des effets Pusher uniquement.");
             
-            // NE PAS déconnecter la room Twilio ici - seulement nettoyer Pusher
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
@@ -252,10 +251,40 @@ function SessionPageContent() {
     
     }, [sessionId, toast, isTeacher, handleEndSession, userId]);
     
+    // Effet pour gérer les événements de la salle Twilio
+    useEffect(() => {
+        if (!room) return;
+
+        console.log("🎧 [Twilio] Configuration des écouteurs d'événements pour la room");
+
+        const handleParticipantConnected = (participant: RemoteParticipant) => {
+            console.log(`➕ [Twilio] Participant connecté: ${participant.identity}`);
+            setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
+        };
+
+        const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+            console.log(`➖ [Twilio] Participant déconnecté: ${participant.identity}`);
+            setRemoteParticipants(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(participant.sid);
+                return newMap;
+            });
+        };
+
+        room.on('participantConnected', handleParticipantConnected);
+        room.on('participantDisconnected', handleParticipantDisconnected);
+
+        return () => {
+            console.log("🧹 [Twilio] Nettoyage des écouteurs d'événements");
+            room.off('participantConnected', handleParticipantConnected);
+            room.off('participantDisconnected', handleParticipantDisconnected);
+        };
+    }, [room]);
+    
+    // Effet pour le nettoyage final au démontage du composant
     useEffect(() => {
         return () => {
             console.log("🧹 [SessionPage] Démontage du composant - nettoyage complet.");
-            // Nettoyage complet uniquement lors du démontage réel
             if (roomRef.current) {
                 roomRef.current.disconnect();
                 console.log("🔌 [Twilio] Salle déconnectée lors du démontage du composant.");
