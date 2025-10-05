@@ -5,7 +5,7 @@ import { LocalParticipant, RemoteParticipant } from "twilio-video";
 import type { User } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Loader2 } from 'lucide-react';
-import { Participant } from '@/components/Participant';
+import { Participant } from '@/components/session/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,8 +49,8 @@ export function TeacherSessionView({
     onSpotlightParticipant,
 }: TeacherSessionViewProps) {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            <div className="lg:col-span-2 flex flex-col gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+            <div className="lg:col-span-3 flex flex-col gap-6">
                 {mainParticipant ? (
                     <Participant 
                         key={mainParticipant.sid}
