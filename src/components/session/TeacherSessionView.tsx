@@ -15,23 +15,6 @@ import { Role } from '@prisma/client';
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
 
-interface TeacherSessionViewProps {
-    sessionId: string;
-    mainParticipant: LocalParticipant | RemoteParticipant | null;
-    localParticipant: LocalParticipant | null;
-    mainParticipantUser: SessionParticipant | null | undefined;
-    whiteboardControllerId: string | null;
-    isControlledByCurrentUser: boolean;
-    controllerUser: SessionParticipant | null | undefined;
-    onlineUsers: string[];
-    classStudents: StudentWithCareer[];
-    teacher: User | null;
-    remoteParticipants: RemoteParticipant[];
-    spotlightedParticipantSid?: string;
-    onGiveWhiteboardControl: (userId: string) => void;
-    onSpotlightParticipant: (participantSid: string) => void;
-}
-
 export function TeacherSessionView({
     sessionId,
     mainParticipant,
@@ -47,7 +30,22 @@ export function TeacherSessionView({
     spotlightedParticipantSid,
     onGiveWhiteboardControl,
     onSpotlightParticipant,
-}: TeacherSessionViewProps) {
+}: {
+    sessionId: string;
+    mainParticipant: LocalParticipant | RemoteParticipant | null;
+    localParticipant: LocalParticipant | null;
+    mainParticipantUser: SessionParticipant | null | undefined;
+    whiteboardControllerId: string | null;
+    isControlledByCurrentUser: boolean;
+    controllerUser: SessionParticipant | null | undefined;
+    onlineUsers: string[];
+    classStudents: StudentWithCareer[];
+    teacher: User | null;
+    remoteParticipants: RemoteParticipant[];
+    spotlightedParticipantSid?: string;
+    onGiveWhiteboardControl: (userId: string) => void;
+    onSpotlightParticipant: (participantSid: string) => void;
+}) {
     const participantsForGrid = [localParticipant, ...remoteParticipants].filter(p => p && p !== mainParticipant);
 
     return (
@@ -80,20 +78,18 @@ export function TeacherSessionView({
 
             {/* Colonne centrale: Tableau blanc et espaces vides */}
             <div className="lg:col-span-3 grid grid-rows-3 gap-6">
-                {/* Espace vide en haut */}
-                <div className="bg-muted/30 rounded-lg"></div>
-                
-                {/* Tableau blanc au milieu */}
-                <div className="min-h-0">
+                {/* Tableau blanc en haut */}
+                <div className="row-span-1 min-h-0">
                    <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerName={controllerUser?.name}
                    />
                 </div>
-
+                {/* Espace vide au milieu */}
+                <div className="bg-muted/30 rounded-lg row-span-1"></div>
                 {/* Espace vide en bas */}
-                <div className="bg-muted/30 rounded-lg"></div>
+                <div className="bg-muted/30 rounded-lg row-span-1"></div>
             </div>
 
             {/* Colonne de droite: Liste des participants */}
