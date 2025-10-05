@@ -97,7 +97,6 @@ function SessionPageContent() {
         roomRef.current = newRoom;
         setLocalParticipant(newRoom.localParticipant);
 
-        // Gérer les participants déjà connectés
         const initialRemoteParticipants = new Map<string, RemoteParticipant>();
         newRoom.participants.forEach(p => {
              console.log(`👨‍👩‍👧 [Twilio] Participant déjà présent trouvé: ${p.identity}`);
@@ -261,11 +260,6 @@ function SessionPageContent() {
             console.log("🧹 [useEffect] Nettoyage des effets. Déconnexion et désabonnement.");
             if (roomRef.current?.state === 'connected') {
                 roomRef.current.disconnect();
-                handleEndSession();
-            }
-            if (room) {
-                 room.off('participantConnected', handleParticipantConnected);
-                 room.off('participantDisconnected', handleParticipantDisconnected);
             }
             if (channel) {
                 channel.unbind_all();
@@ -277,24 +271,22 @@ function SessionPageContent() {
     }, [sessionId, toast, isTeacher, handleEndSession, userId, room]);
 
 
-    const handleGoBack = useCallback(async (setIsLoading: (isLoading: boolean) => void) => {
+    const handleGoBack = useCallback(async () => {
         if (isTeacher) {
             console.log('🚪 [Action] Le professeur quitte et termine la session.');
-            setIsLoading(true);
             try {
                 await endCoursSession(sessionId);
-                // The pusher event 'session-ended' will trigger the cleanup
+                // The pusher event 'session-ended' will trigger the cleanup and redirect for everyone
             } catch (error) {
                 toast({
                     variant: "destructive",
                     title: "Erreur",
                     description: "Impossible de terminer la session.",
                 });
-                setIsLoading(false);
             }
         } else {
             console.log('🚪 [Action] L\'élève quitte la session.');
-            handleEndSession();
+            handleEndSession(); // Student just disconnects and leaves
         }
     }, [isTeacher, sessionId, toast, handleEndSession]);
 

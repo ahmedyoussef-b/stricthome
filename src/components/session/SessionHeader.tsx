@@ -10,7 +10,7 @@ import { SessionTimer } from "./SessionTimer";
 interface SessionHeaderProps {
     sessionId: string;
     isTeacher: boolean;
-    onGoBack: (setIsLoading: (isLoading: boolean) => void) => void;
+    onGoBack: () => void;
     timeLeft: number;
     isTimerRunning: boolean;
     onStartTimer: () => void;
@@ -28,18 +28,26 @@ export function SessionHeader({
     onPauseTimer,
     onResetTimer
 }: SessionHeaderProps) {
-    const [isLoading, setIsLoading] = useState(false);
+    const [isEndingSession, setIsEndingSession] = useState(false);
 
-    const handleGoBack = () => {
-        onGoBack(setIsLoading);
+    const handleGoBack = async () => {
+        setIsEndingSession(true);
+        try {
+            await onGoBack();
+        } catch (error) {
+            // Error is handled in the parent component via toast
+            setIsEndingSession(false);
+        }
+        // No need to set isEndingSession to false in the success case,
+        // as the component will unmount upon redirection.
     }
     
     return (
         <header className="border-b bg-background/95 backdrop-blur-sm z-10 sticky top-0">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                 <div className='flex items-center gap-4'>
-                     <Button variant="outline" onClick={handleGoBack} disabled={isLoading}>
-                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
+                     <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
+                         {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
                         {isTeacher ? "Terminer" : "Quitter"}
                     </Button>
                     <h1 className="text-xl font-bold hidden sm:block">Session: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
