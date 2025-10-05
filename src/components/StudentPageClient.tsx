@@ -118,7 +118,7 @@ export default function StudentPageClient({
                 currentCareerId={career?.id}
               />
             )}
-            {student.classe && (
+            {student.classe && !isTeacherView && (
               <div className="mt-4">
                 <Button asChild>
                   <Link href={`/teacher/class/${student.classe.id}`}>
