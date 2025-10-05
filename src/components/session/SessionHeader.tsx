@@ -52,7 +52,7 @@ export function SessionHeader({
                 </div>
                 
                 {/* Espace réservé pour équilibrer le flexbox */}
-                <div className="w-24"></div>
+                <div className="w-24 hidden sm:block"></div>
             </div>
         </header>
     );
