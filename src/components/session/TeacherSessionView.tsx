@@ -48,8 +48,11 @@ export function TeacherSessionView({
     onGiveWhiteboardControl,
     onSpotlightParticipant,
 }: TeacherSessionViewProps) {
+    const participantsForGrid = [localParticipant, ...remoteParticipants].filter(p => p && p !== mainParticipant);
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 py-8 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full py-8">
+            {/* Colonne de gauche: Caméra en vedette */}
             <div className="lg:col-span-1 flex flex-col gap-6">
                  {mainParticipant ? (
                     <Participant 
@@ -75,8 +78,9 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            <div className="lg:col-span-3 flex ">
-                <div className="flex-1 ">
+            {/* Colonne centrale: Tableau blanc */}
+            <div className="lg:col-span-3 flex flex-col">
+                <div className="flex-1 min-h-0">
                    <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
@@ -85,6 +89,7 @@ export function TeacherSessionView({
                 </div>
             </div>
 
+            {/* Colonne de droite: Liste des participants */}
             <div className="lg:col-span-1 flex flex-col gap-6 min-h-0">
                  <Card className="flex-1 flex flex-col min-h-0">
                      <CardHeader>
