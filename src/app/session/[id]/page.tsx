@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import type { PresenceChannel } from 'pusher-js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { VideoGrid } from '@/components/VideoGrid';
+import { Role } from '@prisma/client';
 
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -45,6 +46,9 @@ function formatTime(seconds: number) {
 
 type SessionView = 'camera' | 'whiteboard';
 
+// Define a unified type for all participants in the session
+type SessionParticipant = UserWithClasse & { role: Role };
+
 
 function SessionPageContent() {
     const router = useRouter();
@@ -67,8 +71,10 @@ function SessionPageContent() {
     
     const [isLoading, setIsLoading] = useState(true);
     const [isEndingSession, setIsEndingSession] = useState(false);
-    const [classStudents, setClassStudents] = useState<StudentWithCareer[]>([]);
-    const [teacher, setTeacher] = useState<UserWithClasse | null>(null);
+    
+    // Unified state for all users in the session
+    const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
+
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
     const [sessionView, setSessionView] = useState<SessionView>('camera');
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
@@ -77,6 +83,10 @@ function SessionPageContent() {
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Derived states from allSessionUsers
+    const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
+    const classStudents = allSessionUsers.filter(u => u.role === 'ELEVE');
 
     useEffect(() => {
         roomRef.current = room;
@@ -199,8 +209,11 @@ function SessionPageContent() {
         const fetchSessionDetails = async () => {
             try {
                 const { session, students, teacher } = await getSessionData(sessionId);
-                setClassStudents(students || []);
-                setTeacher(teacher);
+                 const allUsers: SessionParticipant[] = [
+                    ...(teacher ? [{ ...teacher, role: Role.PROFESSEUR }] : []),
+                    ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
+                ];
+                setAllSessionUsers(allUsers);
                 setWhiteboardControllerId(session.whiteboardControllerId);
             } catch (error) {
                  console.error("Failed to load session data", error);
@@ -328,9 +341,8 @@ function SessionPageContent() {
     };
 
     const allVideoParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
-    const allSessionUsers = [teacher, ...classStudents].filter(Boolean);
     
-    const findUserByParticipant = (participant: TwilioParticipant) => {
+    const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
         return allSessionUsers.find(user => participant.identity.includes(user.id));
     };
 
