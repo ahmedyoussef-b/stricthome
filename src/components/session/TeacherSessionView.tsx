@@ -2,15 +2,16 @@
 'use client';
 
 import { LocalParticipant, RemoteParticipant } from "twilio-video";
+import type { User } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Timer, Loader2 } from 'lucide-react';
+import { Users, Loader2 } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { TimerControls } from './TimerControls';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
-import { Role, User } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -31,6 +32,7 @@ interface TeacherSessionViewProps {
     remoteParticipants: RemoteParticipant[];
     spotlightedParticipantSid?: string;
     onGiveWhiteboardControl: (userId: string) => void;
+    onSpotlightParticipant: (participantSid: string) => void;
     onStartTimer: () => void;
     onPauseTimer: () => void;
     onResetTimer: () => void;
@@ -52,6 +54,7 @@ export function TeacherSessionView({
     remoteParticipants,
     spotlightedParticipantSid,
     onGiveWhiteboardControl,
+    onSpotlightParticipant,
     onStartTimer,
     onPauseTimer,
     onResetTimer
@@ -70,6 +73,7 @@ export function TeacherSessionView({
                         displayName={mainParticipantUser?.name ?? undefined}
                         participantUserId={mainParticipantUser?.id ?? ''}
                         onGiveWhiteboardControl={onGiveWhiteboardControl}
+                        onSpotlightParticipant={onSpotlightParticipant}
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
                 ) : (
@@ -116,6 +120,7 @@ export function TeacherSessionView({
                                 onlineUserIds={onlineUsers}
                                 isTeacher={true}
                                 onGiveWhiteboardControl={onGiveWhiteboardControl}
+                                onSpotlightParticipant={onSpotlightParticipant}
                                 whiteboardControllerId={whiteboardControllerId}
                             />
                         </ScrollArea>

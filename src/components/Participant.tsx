@@ -8,7 +8,6 @@ import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { spotlightParticipant } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
@@ -31,6 +30,7 @@ interface ParticipantProps {
   participantUserId: string;
   isWhiteboardController?: boolean;
   onGiveWhiteboardControl: (userId: string) => void;
+  onSpotlightParticipant?: (participantSid: string) => void;
 }
 
 export function Participant({ 
@@ -43,6 +43,7 @@ export function Participant({
     participantUserId,
     isWhiteboardController,
     onGiveWhiteboardControl,
+    onSpotlightParticipant,
 }: ParticipantProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -125,21 +126,13 @@ export function Participant({
     };
   }, [participant, nameToDisplay]);
 
-  const handleSpotlight = async () => {
-    if (!sessionId || !isTeacher || !participantUserId) return;
-    try {
-        await spotlightParticipant(sessionId, participant.sid);
-        toast({
-            title: "Participant en vedette",
-            description: `${nameToDisplay} est maintenant en vedette.`
-        });
-    } catch (e) {
-        toast({
-            variant: "destructive",
-            title: "Erreur",
-            description: "Impossible de mettre ce participant en vedette."
-        })
-    }
+  const handleSpotlight = () => {
+    if (!sessionId || !isTeacher || !participantUserId || !onSpotlightParticipant) return;
+    onSpotlightParticipant(participant.sid);
+    toast({
+        title: "Participant en vedette",
+        description: `${nameToDisplay} est maintenant en vedette.`
+    });
   }
 
   const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
