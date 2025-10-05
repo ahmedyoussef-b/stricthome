@@ -1,7 +1,7 @@
 // components/VideoPlayer.tsx
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Video, { connect, createLocalTracks, LocalTrack, Room, TwilioError, LocalAudioTrack, LocalVideoTrack } from 'twilio-video';
+import Video, { connect, createLocalTracks, LocalTrack, Room, LocalAudioTrack, LocalVideoTrack } from 'twilio-video';
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
