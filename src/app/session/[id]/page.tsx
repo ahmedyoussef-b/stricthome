@@ -53,7 +53,6 @@ function SessionPageContent() {
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<LocalParticipant | RemoteParticipant | null>(null);
     
     const [isLoading, setIsLoading] = useState(true);
-    const [isEndingSession, setIsEndingSession] = useState(false);
     
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
 
@@ -69,11 +68,19 @@ function SessionPageContent() {
     const classStudents = allSessionUsers.filter(u => u.role === 'ELEVE');
     
     const handleEndSession = useCallback(() => {
-        console.log("🏁 [Session] La session a été marquée comme terminée. Redirection...");
+        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
+        
+        if (roomRef.current) {
+            roomRef.current.disconnect();
+            roomRef.current = null;
+            console.log("🔌 [Twilio] Salle déconnectée.");
+        }
+
         toast({
             title: "Session terminée",
             description: "La session a pris fin.",
         });
+
         if (role === 'teacher') {
             router.push('/teacher');
         } else if (userId) {
@@ -90,27 +97,13 @@ function SessionPageContent() {
         roomRef.current = newRoom;
         setLocalParticipant(newRoom.localParticipant);
 
-        const handleParticipantConnected = (participant: RemoteParticipant) => {
-            console.log(`➕ [Twilio] Participant connecté: ${participant.identity}`);
-            setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
-        };
-
-        const handleParticipantDisconnected = (participant: RemoteParticipant) => {
-            console.log(`➖ [Twilio] Participant déconnecté: ${participant.identity}`);
-            setRemoteParticipants(prev => {
-                const newMap = new Map(prev);
-                newMap.delete(participant.sid);
-                return newMap;
-            });
-        };
-
         // Gérer les participants déjà connectés
         const initialRemoteParticipants = new Map<string, RemoteParticipant>();
-        newRoom.participants.forEach(p => initialRemoteParticipants.set(p.sid, p));
+        newRoom.participants.forEach(p => {
+             console.log(`👨‍👩‍👧 [Twilio] Participant déjà présent trouvé: ${p.identity}`);
+            initialRemoteParticipants.set(p.sid, p);
+        });
         setRemoteParticipants(initialRemoteParticipants);
-
-        newRoom.on('participantConnected', handleParticipantConnected);
-        newRoom.on('participantDisconnected', handleParticipantDisconnected);
 
     }, []);
 
@@ -234,6 +227,25 @@ function SessionPageContent() {
             }
         };
 
+        const handleParticipantConnected = (participant: RemoteParticipant) => {
+            console.log(`➕ [Twilio] Participant connecté: ${participant.identity}`);
+            setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
+        };
+
+        const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+            console.log(`➖ [Twilio] Participant déconnecté: ${participant.identity}`);
+            setRemoteParticipants(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(participant.sid);
+                return newMap;
+            });
+        };
+        
+        if (room) {
+            room.on('participantConnected', handleParticipantConnected);
+            room.on('participantDisconnected', handleParticipantDisconnected);
+        }
+
         channel.bind('participant-spotlighted', handleSpotlight);
         channel.bind('whiteboard-control-changed', handleWhiteboardControl);
         channel.bind('session-ended', handleSessionEnded);
@@ -251,19 +263,24 @@ function SessionPageContent() {
                 roomRef.current.disconnect();
                 handleEndSession();
             }
+            if (room) {
+                 room.off('participantConnected', handleParticipantConnected);
+                 room.off('participantDisconnected', handleParticipantDisconnected);
+            }
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
+                 console.log(`📡 [Pusher] Désabonnement du canal ${channelName}.`);
             }
         };
 
-    }, [sessionId, toast, isTeacher, handleEndSession, userId]);
+    }, [sessionId, toast, isTeacher, handleEndSession, userId, room]);
 
 
-    const handleGoBack = useCallback(async () => {
+    const handleGoBack = useCallback(async (setIsLoading: (isLoading: boolean) => void) => {
         if (isTeacher) {
             console.log('🚪 [Action] Le professeur quitte et termine la session.');
-            setIsEndingSession(true);
+            setIsLoading(true);
             try {
                 await endCoursSession(sessionId);
                 // The pusher event 'session-ended' will trigger the cleanup
@@ -273,7 +290,7 @@ function SessionPageContent() {
                     title: "Erreur",
                     description: "Impossible de terminer la session.",
                 });
-                setIsEndingSession(false);
+                setIsLoading(false);
             }
         } else {
             console.log('🚪 [Action] L\'élève quitte la session.');
@@ -398,7 +415,6 @@ function SessionPageContent() {
             <SessionHeader 
                 sessionId={sessionId}
                 isTeacher={isTeacher}
-                isEndingSession={isEndingSession}
                 onGoBack={handleGoBack}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}

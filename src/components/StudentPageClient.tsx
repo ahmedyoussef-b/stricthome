@@ -55,6 +55,7 @@ export default function StudentPageClient({
 
       channel.bind('session-started', (data: { sessionId: string, invitedStudentIds: string[] }) => {
         if (data.invitedStudentIds.includes(student.id)) {
+            console.log(`🔔 [Pusher] Événement 'session-started' reçu. Session ID: ${data.sessionId}. Mise à jour de l'interface...`);
             const newSession: CoursSession = {
               id: data.sessionId,
               professeurId: '',

@@ -30,7 +30,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     connectionAttemptedRef.current = true;
     setIsConnecting(true);
     setMediaError(null);
-    console.log('🎥 [VideoPlayer] Début de la connexion pour', sessionId);
+    console.log('▶️ [VideoPlayer] Début de la connexion pour la session', sessionId);
 
     try {
       // Fetch token first

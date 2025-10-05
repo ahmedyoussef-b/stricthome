@@ -141,6 +141,7 @@ export async function endCoursSession(sessionId: string) {
   });
 
   if (!coursSession) {
+    console.log(`ℹ️ [Action Server] Tentative de fin pour la session ${sessionId}, mais elle est déjà terminée ou n'existe pas.`);
     return null;
   }
 
@@ -148,12 +149,13 @@ export async function endCoursSession(sessionId: string) {
     where: { id: sessionId },
     data: { endedAt: new Date() },
   });
+  console.log(`✅ [DB] Session ${sessionId} marquée comme terminée en base de données.`);
 
   const firstParticipant = coursSession.participants[0];
   if (firstParticipant?.classeId) {
       const channelName = `presence-classe-${firstParticipant.classeId}`;
       await pusherServer.trigger(channelName, 'session-ended', { sessionId: updatedSession.id });
-      console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal ${channelName}.`);
+      console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de classe ${channelName}.`);
   }
 
   const sessionChannelName = `presence-session-${sessionId}`;
@@ -166,7 +168,7 @@ export async function endCoursSession(sessionId: string) {
   }
   revalidatePath(`/teacher`);
 
-  console.log(`✅ [Session End] Session ${sessionId} terminée par le professeur ${session.user.id}.`);
+  console.log(`🏁 [Action Server] Session ${sessionId} terminée avec succès par le professeur ${session.user.id}.`);
 
   return updatedSession;
 }
