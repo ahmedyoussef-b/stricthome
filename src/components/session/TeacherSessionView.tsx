@@ -78,15 +78,22 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            {/* Colonne centrale: Tableau blanc */}
-            <div className="lg:col-span-3 flex flex-col">
-                <div className="flex-1 min-h-0">
+            {/* Colonne centrale: Tableau blanc et espaces vides */}
+            <div className="lg:col-span-3 grid grid-rows-3 gap-6">
+                {/* Espace vide en haut */}
+                <div className="bg-muted/30 rounded-lg"></div>
+                
+                {/* Tableau blanc au milieu */}
+                <div className="min-h-0">
                    <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerName={controllerUser?.name}
                    />
                 </div>
+
+                {/* Espace vide en bas */}
+                <div className="bg-muted/30 rounded-lg"></div>
             </div>
 
             {/* Colonne de droite: Liste des participants */}
