@@ -258,13 +258,17 @@ function SessionPageContent() {
 
         return () => {
             console.log("🧹 [useEffect] Nettoyage des effets. Déconnexion et désabonnement.");
-            if (roomRef.current?.state === 'connected') {
+            
+            if (roomRef.current && (roomRef.current.state === 'connected' || roomRef.current.state === 'connecting')) {
+                console.log("🔌 [Twilio] Déconnexion de la room...");
                 roomRef.current.disconnect();
+                roomRef.current = null;
             }
+            
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
-                 console.log(`📡 [Pusher] Désabonnement du canal ${channelName}.`);
+                console.log(`📡 [Pusher] Désabonnement du canal ${channelName}.`);
             }
         };
 

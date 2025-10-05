@@ -90,10 +90,10 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             roomRef.current = room;
             onConnected(room);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ [VideoPlayer] Erreur de connexion:', error);
             let errorMsg = 'Erreur de connexion à la salle de visioconférence';
-            if (error instanceof TwilioError) {
+            if (typeof error === 'object' && error !== null && 'code' in error) {
                     errorMsg = `Erreur Twilio ${error.code}: ${error.message}`;
             } else if (error instanceof Error) {
                     errorMsg = error.message;
