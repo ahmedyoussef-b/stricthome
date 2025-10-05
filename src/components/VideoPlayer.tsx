@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Video, { Room, LocalTrack } from 'twilio-video';
+import Video, { Room, LocalTrack, TwilioError } from 'twilio-video';
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
@@ -25,7 +25,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     const cleanupTracks = () => {
       console.log("🧹 [VideoPlayer] Nettoyage des pistes locales.");
       localTracksRef.current.forEach(track => {
-        if ('stop' in track && typeof track.stop === 'function') {
+        // Check if the track has a stop method before calling it.
+        if (track && typeof track.stop === 'function') {
           track.stop();
         }
       });
@@ -106,7 +107,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         
         let description = "Impossible d'établir la connexion vidéo.";
         if (error instanceof Error) {
-            if (error.message.includes('53118')) {
+            if ((error as TwilioError).code === 53118) {
                 description = "Un utilisateur avec la même identité est déjà connecté.";
             } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError' || error.message.includes('media')) {
                 description = "Veuillez autoriser l'accès à la caméra et au microphone.";
@@ -126,15 +127,17 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     return () => {
       console.log(`🧹 [VideoPlayer] Nettoyage du composant pour ${userId}.`);
       isMounted = false;
-      if (roomRef.current) {
-        console.log(`🚪 [VideoPlayer] Déconnexion de la salle ${roomRef.current.name.substring(0,8)}.`);
-        roomRef.current.disconnect();
+      const currentRoom = roomRef.current;
+      if (currentRoom) {
+        console.log(`🚪 [VideoPlayer] Déconnexion de la salle ${currentRoom.name.substring(0,8)}.`);
+        currentRoom.removeAllListeners();
+        currentRoom.disconnect();
         roomRef.current = null;
       }
       cleanupTracks();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, role, userId]);
+  }, [sessionId, role, userId]); // onConnected is wrapped in useCallback in parent, so it's stable.
 
   return null;
 }

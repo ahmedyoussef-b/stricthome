@@ -3,7 +3,6 @@
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { Whiteboard } from '@/components/Whiteboard';
 import type { RemoteParticipant, LocalParticipant, Room, Participant as TwilioParticipant } from 'twilio-video';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
@@ -374,6 +373,7 @@ function SessionPageContent() {
         <div className="min-h-screen bg-background text-foreground flex flex-col">
             {userId && (
                 <VideoPlayer 
+                    key={sessionId} // Force persistence of the component for this session
                     sessionId={sessionId}
                     role={role ?? 'student'}
                     userId={userId}
