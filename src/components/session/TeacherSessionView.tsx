@@ -50,19 +50,7 @@ export function TeacherSessionView({
 }: TeacherSessionViewProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
-            <div className="hidden lg:block lg:col-span-1"></div>
-
-            <div className="lg:col-span-3 flex flex-col gap-6">
-                <div className="flex-grow min-h-[400px] lg:min-h-0">
-                   <Whiteboard
-                        sessionId={sessionId}
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerName={controllerUser?.name}
-                   />
-                </div>
-            </div>
-
-            <div className="lg:col-span-1 flex flex-col gap-6">
+             <div className="hidden lg:flex lg:col-span-1 flex-col gap-6">
                  {mainParticipant ? (
                     <Participant 
                         key={mainParticipant.sid}
@@ -85,6 +73,19 @@ export function TeacherSessionView({
                         </div>
                     </Card>
                 )}
+            </div>
+
+            <div className="lg:col-span-3 flex flex-col gap-6">
+                <div className="flex-grow min-h-[400px] lg:min-h-0">
+                   <Whiteboard
+                        sessionId={sessionId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerName={controllerUser?.name}
+                   />
+                </div>
+            </div>
+
+            <div className="lg:col-span-1 flex flex-col gap-6">
                  <Card className="flex-1 flex flex-col">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
