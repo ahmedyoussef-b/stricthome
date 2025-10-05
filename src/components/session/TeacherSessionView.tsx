@@ -75,8 +75,8 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            <div className="lg:col-span-3 flex flex-col min-h-0">
-                <div className="flex-1 min-h-0">
+            <div className="lg:col-span-3 flex ">
+                <div className="flex-1 ">
                    <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
