@@ -45,29 +45,6 @@ function formatTime(seconds: number) {
 
 type SessionView = 'camera' | 'whiteboard';
 
-function CameraStatus({ hasCameraPermission, room, localParticipant }: { hasCameraPermission: boolean | null, room: Room | null, localParticipant: LocalParticipant | null }) {
-    const StatusItem = ({ label, status }: { label: string; status: boolean | null }) => (
-        <div className="flex items-center justify-between p-3 bg-background/50 rounded-md">
-            <span className="font-medium">{label}</span>
-            {status === null && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-            {status === true && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-            {status === false && <XCircle className="h-5 w-5 text-destructive" />}
-        </div>
-    );
-
-    return (
-        <Card className="aspect-video flex flex-col justify-center bg-muted p-4">
-            <CardHeader className="p-2">
-                <CardTitle className="text-center">Statut Technique de la Caméra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 p-2">
-                <StatusItem label="Permission Caméra/Micro" status={hasCameraPermission} />
-                <StatusItem label="Connexion à la salle" status={room !== null} />
-                <StatusItem label="Participant local créé" status={localParticipant !== null} />
-            </CardContent>
-        </Card>
-    );
-}
 
 function SessionPageContent() {
     const router = useRouter();
@@ -95,36 +72,11 @@ function SessionPageContent() {
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
     const [sessionView, setSessionView] = useState<SessionView>('camera');
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-
 
     const [duration, setDuration] = useState(300); // 5 minutes
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    useEffect(() => {
-        const getCameraPermission = async () => {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            setHasCameraPermission(true);
-            stream.getTracks().forEach(track => track.stop());
-          } catch (error) {
-            console.error('Initial camera access failed:', error);
-            setHasCameraPermission(false);
-            if (isTeacher) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Accès Caméra/Micro requis',
-                    description: 'Veuillez autoriser l\'accès dans votre navigateur pour démarrer la session vidéo.',
-                    duration: 10000,
-                });
-            }
-          }
-        };
-        getCameraPermission();
-    }, [isTeacher, toast]);
-
 
     useEffect(() => {
         roomRef.current = room;
@@ -379,7 +331,6 @@ function SessionPageContent() {
     const allSessionUsers = [teacher, ...classStudents].filter(Boolean);
     
     const findUserByParticipant = (participant: TwilioParticipant) => {
-        // Find user whose ID is included in the participant's unique identity string
         return allSessionUsers.find(user => participant.identity.includes(user.id));
     };
 
@@ -388,70 +339,31 @@ function SessionPageContent() {
 
     const mainParticipant = spotlightedParticipant ?? localParticipant;
     const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
-    
-    const viewLayout = {
-        camera: isTeacher ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1",
-        whiteboard: isTeacher ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1",
-    };
-    
-    const mainContentLayout = {
-        camera: isTeacher ? "lg:col-span-2" : "lg:col-span-1",
-        whiteboard: isTeacher ? "lg:col-span-3" : "lg:col-span-1",
-    }
 
-    const sidebarLayout = {
-        camera: "lg:col-span-1",
-        whiteboard: "lg:col-span-1",
-    }
-    
-    const showCameraStatus = isTeacher && (sessionView === 'camera' && (!mainParticipant || hasCameraPermission === false));
-
-
-    const content = (
-         <div className={cn("grid gap-6 h-full", isTeacher ? "lg:grid-cols-3" : "grid-cols-1")}>
-            <div className={cn("flex flex-col gap-6", isTeacher ? "lg:col-span-2" : "")}>
-                {sessionView === 'camera' && mainParticipant && hasCameraPermission ? (
-                     <Participant 
+    const teacherView = (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+            <div className="lg:col-span-2 flex flex-col gap-6">
+                {mainParticipant ? (
+                    <Participant 
                         key={mainParticipant.sid}
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
                         isSpotlighted={true}
-                        isTeacher={mainParticipantUser?.role === 'PROFESSEUR'}
+                        isTeacher={true}
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
                         participantUserId={mainParticipantUser?.id ?? ''}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
-                ) : sessionView === 'camera' && showCameraStatus ? (
-                     <CameraStatus 
-                        hasCameraPermission={hasCameraPermission} 
-                        room={room}
-                        localParticipant={localParticipant} 
-                     />
-                ) : sessionView === 'camera' ? (
+                ) : (
                     <Card className="aspect-video flex items-center justify-center bg-muted">
                         <div className="text-center">
                             <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                             <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
                         </div>
                     </Card>
-                ) : null}
-
-                 {!isTeacher && sessionView === 'camera' && allVideoParticipants.length > 1 &&
-                    <div className="h-24">
-                        <VideoGrid 
-                            sessionId={sessionId}
-                            localParticipant={localParticipant}
-                            participants={Array.from(remoteParticipants.values())}
-                            isTeacher={isTeacher}
-                            spotlightedParticipantSid={spotlightedParticipant?.sid}
-                            onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                            allSessionUsers={allSessionUsers}
-                        />
-                    </div>
-                }
-
+                )}
                  <div className="flex-grow min-h-[300px]">
                    <Whiteboard
                         sessionId={sessionId}
@@ -459,8 +371,7 @@ function SessionPageContent() {
                         controllerName={controllerUser?.name}
                    />
                 </div>
-                
-                 {isTeacher && <Card>
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Timer />
@@ -484,10 +395,11 @@ function SessionPageContent() {
                             </Button>
                         </div>
                     </CardContent>
-                </Card>}
+                </Card>
             </div>
-             {isTeacher && <div className="lg:col-span-1 flex flex-col space-y-4">
-                <Card className="flex-1 flex flex-col">
+
+            <div className="lg:col-span-1 flex flex-col gap-6">
+                 <Card className="flex-1 flex flex-col">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
@@ -511,13 +423,80 @@ function SessionPageContent() {
                         </ScrollArea>
                     </CardContent>
                 </Card>
-             </div>}
+            </div>
+        </div>
+    );
+    
+
+    const studentView = (
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+            <div className="lg:col-span-2 flex flex-col gap-6">
+                 {mainParticipant ? (
+                    <Participant 
+                        key={mainParticipant.sid}
+                        participant={mainParticipant}
+                        isLocal={mainParticipant === localParticipant}
+                        isSpotlighted={true}
+                        isTeacher={mainParticipantUser?.role === 'PROFESSEUR'}
+                        sessionId={sessionId}
+                        displayName={mainParticipantUser?.name ?? undefined}
+                        participantUserId={mainParticipantUser?.id ?? ''}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                        isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
+                    />
+                ) : (
+                    <Card className="aspect-video flex items-center justify-center bg-muted">
+                        <div className="text-center">
+                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                        </div>
+                    </Card>
+                )}
+                 <div className="flex-grow">
+                   <Whiteboard 
+                        sessionId={sessionId} 
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerName={controllerUser?.name}
+                   />
+                </div>
+            </div>
+             <div className="flex flex-col space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Timer />
+                            Temps restant
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants ({allVideoParticipants.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
+                      {allVideoParticipants.map(p => {
+                          const user = findUserByParticipant(p);
+                          return (
+                              <div key={p.sid} className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarFallback>{user?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{user?.name ?? p.identity.split('-')[0]} {p === localParticipant ? '(Vous)' : ''}</span>
+                              </div>
+                          )
+                      })}
+                    </CardContent>
+                </Card>
+             </div>
         </div>
     );
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
-            {hasCameraPermission && userId && (
+            {userId && (
                 <VideoPlayer 
                     sessionId={sessionId}
                     role={role ?? 'student'}
@@ -529,18 +508,6 @@ function SessionPageContent() {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                     <div className='flex items-center gap-4'>
                         <h1 className="text-xl font-bold">Session: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
-                         {isTeacher && (
-                            <div className='flex items-center gap-2 rounded-md bg-muted p-1'>
-                                <Button size="sm" variant={sessionView === 'camera' ? 'secondary' : 'ghost'} onClick={() => setSessionView('camera')}>
-                                    <Monitor className="mr-2 h-4 w-4"/>
-                                    Vue Caméra
-                                </Button>
-                                <Button size="sm" variant={sessionView === 'whiteboard' ? 'secondary' : 'ghost'} onClick={() => setSessionView('whiteboard')}>
-                                    <PenSquare className="mr-2 h-4 w-4"/>
-                                    Vue Tableau
-                                </Button>
-                            </div>
-                        )}
                     </div>
                     <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
                          {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
@@ -549,20 +516,12 @@ function SessionPageContent() {
                 </div>
             </header>
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {!isTeacher && (
-                           <Alert variant="destructive" className="mb-4">
-                                <AlertTitle>Accès Caméra/Micro Refusé</AlertTitle>
-                                <AlertDescription>
-                                    Vous devez autoriser l'accès pour participer. Rechargez la page et autorisez l'accès.
-                                </AlertDescription>
-                           </Alert>
-                        )}
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
                     </div>
                 ) : (
-                    content
+                    role === 'teacher' ? teacherView : studentView
                 )}
             </main>
         </div>
