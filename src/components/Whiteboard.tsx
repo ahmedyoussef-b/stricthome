@@ -165,7 +165,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
                 drawActionOnCanvas(ctx, history[i].action);
             }
         }
-    }, [history, drawActionOnCanvas]);
+    }, [history, drawActionOnCanvas, tool]);
     
    useEffect(() => {
         redrawCanvas(mainCanvasRef.current, historyIndex);

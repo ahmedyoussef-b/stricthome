@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const channel = `presence-session-${sessionId}`;
     
-    // On ne relaie que l'événement, sans le stocker, pour un tableau blanc éphémère.
+    // On relaie l'événement avec les données et on ajoute l'ID de l'expéditeur
     await pusherServer.trigger(channel, event, { ...data, senderId: session.user.id });
 
     return NextResponse.json({ success: true });
