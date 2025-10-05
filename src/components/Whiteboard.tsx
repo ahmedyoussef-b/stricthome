@@ -165,7 +165,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
                 drawActionOnCanvas(ctx, history[i].action);
             }
         }
-    }, [history]);
+    }, [history, drawActionOnCanvas]);
     
    useEffect(() => {
         redrawCanvas(mainCanvasRef.current, historyIndex);
@@ -314,7 +314,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
 
   useEffect(() => {
     if (!sessionId) return;
-    const channelName = `presence-whiteboard-${sessionId}`;
+    const channelName = `presence-session-${sessionId}`;
     const channel = pusherClient.subscribe(channelName);
     
     const historyUpdateHandler = (data: { history: HistoryEntry[], index: number, senderId: string }) => {

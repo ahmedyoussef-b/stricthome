@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    const channel = `presence-whiteboard-${sessionId}`;
+    const channel = `presence-session-${sessionId}`;
     
     // On ne relaie que l'événement, sans le stocker, pour un tableau blanc éphémère.
     await pusherServer.trigger(channel, event, { ...data, senderId: session.user.id });
