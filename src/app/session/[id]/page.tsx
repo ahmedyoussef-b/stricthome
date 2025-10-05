@@ -72,15 +72,17 @@ function SessionPageContent() {
         console.log("🏁 [Session] La session a été marquée comme terminée. Redirection...");
         toast({
             title: "Session terminée",
-            description: "Le professeur a mis fin à la session.",
+            description: "La session a pris fin.",
         });
-        if (userId) {
-            if (role === 'teacher') router.push('/teacher');
-            else router.push(`/student/${userId}`);
+        if (role === 'teacher') {
+            router.push('/teacher');
+        } else if (userId) {
+            router.push(`/student/${userId}`);
         } else {
             router.push('/');
         }
     }, [router, toast, userId, role]);
+    
     
      const onConnected = useCallback((newRoom: Room) => {
         console.log(`🤝 [Twilio] Callback onConnected exécuté. Salle: ${newRoom.name}, SID: ${newRoom.sid}`);
@@ -109,20 +111,7 @@ function SessionPageContent() {
         newRoom.on('participantConnected', handleParticipantConnected);
         newRoom.on('participantDisconnected', handleParticipantDisconnected);
 
-        newRoom.on('disconnected', () => {
-            console.log("🚪 [Twilio] Déconnecté de la salle.");
-            if (roomRef.current) {
-                roomRef.current.removeListener('participantConnected', handleParticipantConnected);
-                roomRef.current.removeListener('participantDisconnected', handleParticipantDisconnected);
-                roomRef.current.removeAllListeners();
-                roomRef.current = null;
-            }
-            setRoom(null);
-            setLocalParticipant(null);
-            setRemoteParticipants(new Map());
-            handleEndSession();
-        });
-    }, [handleEndSession]);
+    }, []);
 
      // Effet pour mettre à jour le participant en vedette
      useEffect(() => {
@@ -141,7 +130,6 @@ function SessionPageContent() {
             newSpotlightedParticipant = findParticipant(spotlightedParticipantSid);
         }
     
-        // Si aucun participant en vedette n'est trouvé, mettez le professeur par défaut si c'est la vue du professeur, ou le participant local sinon.
         if (!newSpotlightedParticipant) {
              const teacherParticipant = Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-')) || 
                                        (room.localParticipant.identity.startsWith('teacher-') ? room.localParticipant : null);
@@ -236,16 +224,15 @@ function SessionPageContent() {
             setTimeLeft(data.timeLeft);
         };
         
-        const handleSessionEnded = useCallback((data: { sessionId: string }) => {
+        const handleSessionEnded = (data: { sessionId: string }) => {
              console.log(`🏁 [Pusher] Événement 'session-ended' reçu pour la session ${data.sessionId}`);
             if (data.sessionId === sessionId) {
-                 if (roomRef.current) {
+                 if (roomRef.current?.state === 'connected') {
                     roomRef.current.disconnect();
-                } else {
-                    handleEndSession();
                 }
+                handleEndSession();
             }
-        }, [sessionId, handleEndSession]);
+        };
 
         channel.bind('participant-spotlighted', handleSpotlight);
         channel.bind('whiteboard-control-changed', handleWhiteboardControl);
@@ -260,6 +247,9 @@ function SessionPageContent() {
 
         return () => {
             console.log("🧹 [useEffect] Nettoyage des effets. Désabonnement du canal Pusher.");
+            if (roomRef.current?.state === 'connected') {
+                roomRef.current.disconnect();
+            }
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
@@ -275,6 +265,7 @@ function SessionPageContent() {
             setIsEndingSession(true);
             try {
                 await endCoursSession(sessionId);
+                // The pusher event 'session-ended' will trigger the cleanup
             } catch (error) {
                 toast({
                     variant: "destructive",
@@ -287,11 +278,10 @@ function SessionPageContent() {
             console.log('🚪 [Action] L\'élève quitte la session.');
              if (roomRef.current) {
                 roomRef.current.disconnect();
-            } else {
-                router.back();
             }
+            handleEndSession();
         }
-    }, [isTeacher, sessionId, toast, router]);
+    }, [isTeacher, sessionId, toast, handleEndSession]);
 
     const handleGiveWhiteboardControl = async (participantUserId: string) => {
         if (!isTeacher) return;
@@ -382,11 +372,13 @@ function SessionPageContent() {
         };
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
-    const allVideoParticipants = room ? 
-        Array.from(new Map([
-            [room.localParticipant.sid, room.localParticipant], 
-            ...Array.from(room.participants.entries())
-        ]).values()) 
+     const allVideoParticipants = room
+        ? Array.from(
+            new Map(
+                [room.localParticipant, ...Array.from(room.participants.values())]
+                .map(p => [p.sid, p])
+            ).values()
+          )
         : [];
     
     const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
