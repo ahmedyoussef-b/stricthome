@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, RemoteTrackPublication } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, RemoteTrackPublication, LocalTrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,13 +50,18 @@ export function Participant({
   const { toast } = useToast();
 
   const nameToDisplay = displayName || participant.identity;
+  
+  console.log(`🖼️ [Participant] Rendu du composant pour: ${nameToDisplay} (isLocal: ${isLocal})`);
+
 
   useEffect(() => {
+    console.log(`🔗 [Participant: ${nameToDisplay}] useEffect pour attacher les pistes.`);
     const videoElementRef = videoRef.current;
     if (!videoElementRef) return;
 
     const attachTrack = (track: Track) => {
       if (isAttachable(track)) {
+        console.log(`    📎 [Attach] Attachement de la piste ${track.kind} (${track.sid}) pour ${nameToDisplay}.`);
         const element = track.attach();
         element.style.width = '100%';
         element.style.height = '100%';
@@ -66,6 +71,7 @@ export function Participant({
     
     const detachTrack = (track: Track) => {
         if (isAttachable(track)) {
+            console.log(`    📎 [Detach] Détachement de la piste ${track.kind} (${track.sid}) pour ${nameToDisplay}.`);
             track.detach().forEach((element) => element.remove());
         }
     };
@@ -82,47 +88,42 @@ export function Participant({
       }
     };
 
-    // Handle initial tracks that are already published
-    participant.tracks.forEach(publication => {
+    const handlePublication = (publication: RemoteTrackPublication | LocalTrackPublication) => {
         if (publication.track) {
+            console.log(`    🛤️ [Track] Piste déjà disponible pour publication: ${publication.track.kind}`);
             attachTrack(publication.track);
             updateTrackState(publication.track);
         }
-        // For remote participants, we need to listen for subscription
+        
+        // Pour les participants distants, nous devons écouter la souscription
         if ('on' in publication) {
           publication.on('subscribed', (track) => {
+            console.log(`    ➕ [Subscribed] Souscription à la piste ${track.kind} de ${nameToDisplay}`);
             attachTrack(track);
             updateTrackState(track);
           });
-          publication.on('unsubscribed', detachTrack);
+          publication.on('unsubscribed', (track) => {
+             console.log(`    ➖ [Unsubscribed] Désabonnement de la piste ${track.kind} de ${nameToDisplay}`);
+             detachTrack(track);
+          });
         }
-    });
-
-    // Handle new tracks that are subscribed to later
-    const handleTrackSubscribed = (track: Track) => {
-        attachTrack(track);
-        updateTrackState(track);
     };
 
-    // Handle tracks that are unsubscribed from
-    const handleTrackUnsubscribed = (track: Track) => {
-        detachTrack(track);
-    };
+    participant.tracks.forEach(handlePublication);
 
-    participant.on('trackSubscribed', handleTrackSubscribed);
-    participant.on('trackUnsubscribed', handleTrackUnsubscribed);
+    // Gérer les nouvelles pistes qui sont publiées plus tard
+    participant.on('trackPublished', handlePublication);
 
     return () => {
-      // Detach all tracks on cleanup
+      console.log(`🧹 [Participant: ${nameToDisplay}] Nettoyage du composant et détachement des pistes.`);
       participant.tracks.forEach(publication => {
         if (publication.track) {
           detachTrack(publication.track);
         }
       });
-      participant.off('trackSubscribed', handleTrackSubscribed);
-      participant.off('trackUnsubscribed', handleTrackUnsubscribed);
+      participant.off('trackPublished', handlePublication);
     };
-  }, [participant]);
+  }, [participant, nameToDisplay]);
 
   const handleSpotlight = async () => {
     if (!sessionId || !isTeacher || !participantUserId) return;

@@ -1,8 +1,8 @@
 // src/components/VideoPlayer.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Video, { Room, LocalTrack, LocalVideoTrack, LocalAudioTrack, ConnectOptions } from 'twilio-video';
+import { useEffect, useRef } from 'react';
+import Video, { Room, LocalTrack } from 'twilio-video';
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
@@ -19,9 +19,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   const isConnectingRef = useRef(false);
 
   useEffect(() => {
+    console.log(`🔌 [VideoPlayer] Montage pour: ${userId}, rôle: ${role}`);
     let isMounted = true;
 
     const cleanupTracks = () => {
+      console.log("🧹 [VideoPlayer] Nettoyage des pistes locales.");
       localTracksRef.current.forEach(track => {
         if ('stop' in track && typeof track.stop === 'function') {
           track.stop();
@@ -32,6 +34,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
 
     const connectToRoom = async () => {
       if (isConnectingRef.current || roomRef.current) {
+        console.log("🔌 [VideoPlayer] Connexion déjà en cours ou établie. Annulation.");
         return;
       }
       isConnectingRef.current = true;
@@ -39,20 +42,21 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       console.log(`🔌 [VideoPlayer] Début de la connexion pour "${userId}"`);
 
       try {
-        console.log("🎥 [VideoPlayer] Demande d'accès média...");
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        console.log("🎥 [VideoPlayer] Demande d'accès média (caméra/micro)...");
+        const localTracks = await Video.createLocalTracks({
+            audio: true,
+            video: { width: 640 }
+        });
         
         if (!isMounted) {
-            stream.getTracks().forEach(track => track.stop());
+            console.log("🔌 [VideoPlayer] Le composant a été démonté pendant l'obtention des pistes. Annulation.");
+            localTracks.forEach(track => track.stop());
             isConnectingRef.current = false;
             return;
         }
 
-        localTracksRef.current = [
-            new LocalVideoTrack(stream.getVideoTracks()[0]),
-            new LocalAudioTrack(stream.getAudioTracks()[0])
-        ];
-        console.log("✅ [VideoPlayer] Accès média obtenu.");
+        localTracksRef.current = localTracks;
+        console.log("✅ [VideoPlayer] Accès média obtenu et pistes locales créées.");
         
         console.log("🔑 [VideoPlayer] Récupération du jeton Twilio...");
         const response = await fetch('/api/twilio/token', {
@@ -67,6 +71,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         }
 
         if (!isMounted) {
+            console.log("🔌 [VideoPlayer] Le composant a été démonté pendant la récupération du jeton. Annulation.");
             cleanupTracks();
             isConnectingRef.current = false;
             return;
@@ -81,6 +86,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         });
 
         if (!isMounted) {
+            console.log("🔌 [VideoPlayer] Le composant a été démonté pendant la connexion à la salle. Déconnexion.");
             room.disconnect();
             cleanupTracks();
             isConnectingRef.current = false;
@@ -118,9 +124,10 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     connectToRoom();
 
     return () => {
-      console.log("🧹 [VideoPlayer] Nettoyage du composant.");
+      console.log(`🧹 [VideoPlayer] Nettoyage du composant pour ${userId}.`);
       isMounted = false;
       if (roomRef.current) {
+        console.log(`🚪 [VideoPlayer] Déconnexion de la salle ${roomRef.current.name.substring(0,8)}.`);
         roomRef.current.disconnect();
         roomRef.current = null;
       }

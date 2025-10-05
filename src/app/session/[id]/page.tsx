@@ -5,13 +5,11 @@ import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Whiteboard } from '@/components/Whiteboard';
 import type { RemoteParticipant, LocalParticipant, Room, Participant as TwilioParticipant } from 'twilio-video';
-import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { endCoursSession, setWhiteboardController } from '@/lib/actions';
-import { cn } from '@/lib/utils';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -35,6 +33,7 @@ async function getSessionData(sessionId: string): Promise<{ session: CoursSessio
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
 function SessionPageContent() {
+    console.log("🔄 [SessionPage] Le composant est en cours de rendu.");
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -85,22 +84,25 @@ function SessionPageContent() {
                 body: JSON.stringify({ sessionId, event, data }),
             });
         } catch (error) {
-            console.error(`Failed to broadcast timer event ${event}`, error);
+            console.error(`❌ [Pusher] Échec de la diffusion de l'événement de minuterie ${event}`, error);
             toast({ variant: 'destructive', title: 'Erreur de synchronisation', description: 'Le minuteur n\'a pas pu être synchronisé.' });
         }
     }, [sessionId, toast]);
 
     const handleStartTimer = () => {
+        console.log('▶️ [Timer] Démarrage du minuteur par le professeur');
         setIsTimerRunning(true);
         broadcastTimerEvent('timer-start', { duration: timeLeft });
     };
 
     const handlePauseTimer = () => {
+        console.log('⏸️ [Timer] Pause du minuteur par le professeur');
         setIsTimerRunning(false);
         broadcastTimerEvent('timer-pause');
     };
 
     const handleResetTimer = () => {
+        console.log('🔄 [Timer] Réinitialisation du minuteur par le professeur');
         setIsTimerRunning(false);
         setTimeLeft(duration);
         broadcastTimerEvent('timer-reset', { duration });
@@ -111,8 +113,10 @@ function SessionPageContent() {
             timerIntervalRef.current = setInterval(() => {
                 setTimeLeft(prevTime => {
                     const newTime = prevTime > 0 ? prevTime - 1 : 0;
+                    if (newTime % 10 === 0) console.log(`⏳ [Timer] Tick: ${newTime}s restantes`);
                     broadcastTimerEvent('timer-tick', { timeLeft: newTime });
                     if (newTime === 0) {
+                        console.log('⌛ [Timer] Le minuteur a atteint zéro');
                         setIsTimerRunning(false);
                     }
                     return newTime;
@@ -130,6 +134,7 @@ function SessionPageContent() {
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
     const handleEndSession = useCallback(() => {
+        console.log("🏁 [Session] La session a été marquée comme terminée. Redirection...");
         toast({
             title: "Session terminée",
             description: "Le professeur a mis fin à la session.",
@@ -143,22 +148,29 @@ function SessionPageContent() {
     }, [router, toast, userId, role]);
 
     const onConnected = useCallback((newRoom: Room) => {
+        console.log(`🤝 [Twilio] Callback onConnected exécuté. Salle: ${newRoom.name.substring(0,8)}, SID: ${newRoom.sid}`);
         setRoom(newRoom);
         setLocalParticipant(newRoom.localParticipant);
         const remoteParticipantsMap = new Map(newRoom.participants);
         setRemoteParticipants(remoteParticipantsMap);
+        console.log(`👨‍🏫 [Twilio] Participant local: ${newRoom.localParticipant.identity}`);
+        console.log(`👩‍🎓 [Twilio] Participants distants initiaux: ${remoteParticipantsMap.size}`);
 
         const teacherParticipant = newRoom.localParticipant.identity.startsWith('teacher-')
             ? newRoom.localParticipant
             : Array.from(remoteParticipantsMap.values()).find(p => p.identity.startsWith('teacher-'));
 
         setSpotlightedParticipant(teacherParticipant || newRoom.localParticipant);
+        console.log(`🔦 [Spotlight] Participant initial mis en vedette: ${teacherParticipant?.identity || newRoom.localParticipant.identity}`);
+
 
         newRoom.on('participantConnected', (participant) => {
+            console.log(`➕ [Twilio] Participant connecté: ${participant.identity}`);
             setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
         });
 
         newRoom.on('participantDisconnected', (participant) => {
+            console.log(`➖ [Twilio] Participant déconnecté: ${participant.identity}`);
             setRemoteParticipants(prev => {
                 const newMap = new Map(prev);
                 newMap.delete(participant.sid);
@@ -166,14 +178,17 @@ function SessionPageContent() {
             });
             
             if (spotlightedParticipantRef.current?.sid === participant.sid) {
+                console.log(`🔦 [Spotlight] Le participant en vedette s'est déconnecté. Recherche d'un remplaçant...`);
                 const newSpotlight = newRoom.localParticipant.identity.startsWith('teacher-')
                     ? newRoom.localParticipant
                     : Array.from(newRoom.participants.values()).find(p => p.identity.startsWith('teacher-'));
                 setSpotlightedParticipant(newSpotlight || newRoom.localParticipant);
+                console.log(`🔦 [Spotlight] Nouveau participant en vedette: ${newSpotlight?.identity || newRoom.localParticipant.identity}`);
             }
         });
 
         newRoom.on('disconnected', () => {
+            console.log("🚪 [Twilio] Déconnecté de la salle.");
             if (roomRef.current) {
                 roomRef.current = null;
                 setRoom(null);
@@ -184,10 +199,12 @@ function SessionPageContent() {
     }, [handleEndSession]);
 
      useEffect(() => {
+        console.log('📦 [useEffect] Montage du composant et initialisation des effets.');
         if (!sessionId) return;
         let channel: PresenceChannel;
         
         const fetchSessionDetails = async () => {
+            console.log(`📊 [API] Récupération des détails de la session ${sessionId.substring(0,8)}...`);
             try {
                 const { session, students, teacher } = await getSessionData(sessionId);
                  const allUsers: SessionParticipant[] = [
@@ -196,8 +213,9 @@ function SessionPageContent() {
                 ].filter(Boolean);
                 setAllSessionUsers(allUsers);
                 setWhiteboardControllerId(session.whiteboardControllerId);
+                console.log(`✅ [API] Données de session chargées: ${allUsers.length} utilisateurs.`);
             } catch (error) {
-                 console.error("Failed to load session data", error);
+                 console.error("❌ [API] Échec du chargement des données de session:", error);
                  toast({
                     variant: "destructive",
                     title: "Erreur de chargement",
@@ -210,18 +228,27 @@ function SessionPageContent() {
         fetchSessionDetails();
 
         const channelName = `presence-session-${sessionId}`;
+        console.log(`📡 [Pusher] Abonnement au canal: ${channelName}`);
         channel = pusherClient.subscribe(channelName) as PresenceChannel;
         
         const updateOnlineUsers = () => {
             const userIds = Object.keys(channel.members.members).map(id => channel.members.members[id].user_id);
+            console.log(`👥 [Pusher] Mise à jour des utilisateurs en ligne: ${userIds.length} présents.`);
             setOnlineUsers(userIds);
         }
 
         channel.bind('pusher:subscription_succeeded', updateOnlineUsers);
-        channel.bind('pusher:member_added', updateOnlineUsers);
-        channel.bind('pusher:member_removed', updateOnlineUsers);
+        channel.bind('pusher:member_added', (member: any) => {
+            console.log(`➕ [Pusher] Membre ajouté: ${member.info.name}`);
+            updateOnlineUsers();
+        });
+        channel.bind('pusher:member_removed', (member: any) => {
+            console.log(`➖ [Pusher] Membre retiré: ${member.info.name}`);
+            updateOnlineUsers();
+        });
         
         const handleSpotlight = (data: { participantSid: string }) => {
+            console.log(`🔦 [Pusher] Événement 'participant-spotlighted' reçu pour SID: ${data.participantSid}`);
             const currentRoom = roomRef.current;
             if (!currentRoom) return;
 
@@ -235,15 +262,21 @@ function SessionPageContent() {
         };
         
         const handleWhiteboardControl = (data: { controllerId: string }) => {
+            console.log(`✍️ [Pusher] Événement 'whiteboard-control-changed' reçu pour UserID: ${data.controllerId}`);
             setWhiteboardControllerId(data.controllerId);
         };
 
         const handleTimerStart = (data: { duration: number }) => {
+            console.log(`▶️ [Pusher] Événement 'timer-start' reçu. Durée: ${data.duration}`);
             setTimeLeft(data.duration);
             setIsTimerRunning(true);
         };
-        const handleTimerPause = () => setIsTimerRunning(false);
+        const handleTimerPause = () => {
+            console.log("⏸️ [Pusher] Événement 'timer-pause' reçu.");
+            setIsTimerRunning(false);
+        };
         const handleTimerReset = (data: { duration: number }) => {
+            console.log(`🔄 [Pusher] Événement 'timer-reset' reçu. Durée: ${data.duration}`);
             setIsTimerRunning(false);
             setTimeLeft(data.duration);
         };
@@ -252,6 +285,7 @@ function SessionPageContent() {
         };
         
         const handleSessionEnded = (data: { sessionId: string }) => {
+             console.log(`🏁 [Pusher] Événement 'session-ended' reçu pour la session ${data.sessionId}`);
             if (data.sessionId === sessionId) {
                  if (roomRef.current) {
                     roomRef.current.disconnect();
@@ -272,6 +306,7 @@ function SessionPageContent() {
         }
 
         return () => {
+            console.log("🧹 [useEffect] Nettoyage des effets. Désabonnement du canal Pusher.");
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
@@ -283,6 +318,7 @@ function SessionPageContent() {
 
     const handleGoBack = useCallback(async () => {
         if (isTeacher) {
+            console.log('🚪 [Action] Le professeur quitte et termine la session.');
             setIsEndingSession(true);
             try {
                 await endCoursSession(sessionId);
@@ -295,6 +331,7 @@ function SessionPageContent() {
                 setIsEndingSession(false);
             }
         } else {
+            console.log('🚪 [Action] L\'élève quitte la session.');
              if (roomRef.current) {
                 roomRef.current.disconnect();
             } else {
@@ -305,6 +342,7 @@ function SessionPageContent() {
 
     const handleGiveWhiteboardControl = async (participantUserId: string) => {
         if (!isTeacher) return;
+        console.log(`✍️ [Action] Le professeur donne le contrôle du tableau à ${participantUserId}`);
         try {
             await setWhiteboardController(sessionId, participantUserId);
             toast({
@@ -352,6 +390,7 @@ function SessionPageContent() {
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
+                        <p className='ml-2'>Chargement de la session...</p>
                     </div>
                 ) : isTeacher ? (
                     <TeacherSessionView
