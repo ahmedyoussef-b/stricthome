@@ -1,0 +1,127 @@
+// src/components/session/TeacherSessionView.tsx
+'use client';
+
+import { LocalParticipant, RemoteParticipant, User } from "twilio-video";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Timer, Loader2 } from 'lucide-react';
+import { Participant } from '@/components/Participant';
+import { Whiteboard } from '@/components/Whiteboard';
+import { ClassroomGrid } from '@/components/ClassroomGrid';
+import { TimerControls } from './TimerControls';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { StudentWithCareer } from '@/lib/types';
+import { Role } from '@prisma/client';
+
+type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
+
+
+interface TeacherSessionViewProps {
+    sessionId: string;
+    mainParticipant: LocalParticipant | RemoteParticipant | null;
+    localParticipant: LocalParticipant | null;
+    mainParticipantUser: SessionParticipant | null | undefined;
+    whiteboardControllerId: string | null;
+    isControlledByCurrentUser: boolean;
+    controllerUser: SessionParticipant | null | undefined;
+    timeLeft: number;
+    isTimerRunning: boolean;
+    onlineUsers: string[];
+    classStudents: StudentWithCareer[];
+    teacher: User | null;
+    remoteParticipants: RemoteParticipant[];
+    spotlightedParticipantSid?: string;
+    onGiveWhiteboardControl: (userId: string) => void;
+    onStartTimer: () => void;
+    onPauseTimer: () => void;
+    onResetTimer: () => void;
+}
+
+export function TeacherSessionView({
+    sessionId,
+    mainParticipant,
+    localParticipant,
+    mainParticipantUser,
+    whiteboardControllerId,
+    isControlledByCurrentUser,
+    controllerUser,
+    timeLeft,
+    isTimerRunning,
+    onlineUsers,
+    classStudents,
+    teacher,
+    remoteParticipants,
+    spotlightedParticipantSid,
+    onGiveWhiteboardControl,
+    onStartTimer,
+    onPauseTimer,
+    onResetTimer
+}: TeacherSessionViewProps) {
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+            <div className="lg:col-span-2 flex flex-col gap-6">
+                {mainParticipant ? (
+                    <Participant 
+                        key={mainParticipant.sid}
+                        participant={mainParticipant}
+                        isLocal={mainParticipant === localParticipant}
+                        isSpotlighted={true}
+                        isTeacher={true}
+                        sessionId={sessionId}
+                        displayName={mainParticipantUser?.name ?? undefined}
+                        participantUserId={mainParticipantUser?.id ?? ''}
+                        onGiveWhiteboardControl={onGiveWhiteboardControl}
+                        isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
+                    />
+                ) : (
+                    <Card className="aspect-video flex items-center justify-center bg-muted">
+                        <div className="text-center">
+                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                        </div>
+                    </Card>
+                )}
+                 <div className="flex-grow min-h-[300px]">
+                   <Whiteboard
+                        sessionId={sessionId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerName={controllerUser?.name}
+                   />
+                </div>
+                <TimerControls 
+                    timeLeft={timeLeft}
+                    isTimerRunning={isTimerRunning}
+                    onStart={onStartTimer}
+                    onPause={onPauseTimer}
+                    onReset={onResetTimer}
+                />
+            </div>
+
+            <div className="lg:col-span-1 flex flex-col gap-6">
+                 <Card className="flex-1 flex flex-col">
+                     <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users />
+                            Participants ({onlineUsers.length}/{classStudents.length})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 p-2">
+                        <ScrollArea className="h-full">
+                            <ClassroomGrid
+                                sessionId={sessionId}
+                                teacher={teacher}
+                                students={classStudents}
+                                localParticipant={localParticipant}
+                                remoteParticipants={remoteParticipants}
+                                spotlightedParticipantSid={spotlightedParticipantSid}
+                                onlineUserIds={onlineUsers}
+                                isTeacher={true}
+                                onGiveWhiteboardControl={onGiveWhiteboardControl}
+                                whiteboardControllerId={whiteboardControllerId}
+                            />
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}

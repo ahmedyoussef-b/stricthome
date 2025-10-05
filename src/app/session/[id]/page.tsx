@@ -2,27 +2,21 @@
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { ArrowLeft, Users, Timer, Loader2, Play, Pause, RotateCcw, Monitor, PenSquare, CheckCircle2, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { Whiteboard } from '@/components/Whiteboard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { RemoteParticipant, LocalParticipant, Room, Participant as TwilioParticipant } from 'twilio-video';
-import { Badge } from '@/components/ui/badge';
 import { Participant } from '@/components/Participant';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
-import { StudentWithCareer, CoursSessionWithRelations, UserWithClasse } from '@/lib/types';
+import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { endCoursSession, setWhiteboardController } from '@/lib/actions';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { StudentPlaceholder } from '@/components/StudentPlaceholder';
-import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { cn } from '@/lib/utils';
 import type { PresenceChannel } from 'pusher-js';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { VideoGrid } from '@/components/VideoGrid';
 import { Role } from '@prisma/client';
+import { SessionHeader } from '@/components/session/SessionHeader';
+import { TeacherSessionView } from '@/components/session/TeacherSessionView';
+import { StudentSessionView } from '@/components/session/StudentSessionView';
 
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -38,17 +32,7 @@ async function getSessionData(sessionId: string): Promise<{ session: CoursSessio
     return response.json();
 }
 
-function formatTime(seconds: number) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-}
-
-type SessionView = 'camera' | 'whiteboard';
-
-// Define a unified type for all participants in the session
-type SessionParticipant = UserWithClasse & { role: Role };
-
+type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
 function SessionPageContent() {
     const router = useRouter();
@@ -72,11 +56,9 @@ function SessionPageContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isEndingSession, setIsEndingSession] = useState(false);
     
-    // Unified state for all users in the session
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
 
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
-    const [sessionView, setSessionView] = useState<SessionView>('camera');
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
     const [duration, setDuration] = useState(300); // 5 minutes
@@ -84,7 +66,6 @@ function SessionPageContent() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Derived states from allSessionUsers
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
     const classStudents = allSessionUsers.filter(u => u.role === 'ELEVE');
 
@@ -212,7 +193,7 @@ function SessionPageContent() {
                  const allUsers: SessionParticipant[] = [
                     ...(teacher ? [{ ...teacher, role: Role.PROFESSEUR }] : []),
                     ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
-                ];
+                ].filter(Boolean);
                 setAllSessionUsers(allUsers);
                 setWhiteboardControllerId(session.whiteboardControllerId);
             } catch (error) {
@@ -305,7 +286,6 @@ function SessionPageContent() {
             setIsEndingSession(true);
             try {
                 await endCoursSession(sessionId);
-                // The handleEndSession callback will be triggered by pusher
             } catch (error) {
                 toast({
                     variant: "destructive",
@@ -343,168 +323,14 @@ function SessionPageContent() {
     const allVideoParticipants = [localParticipant, ...Array.from(remoteParticipants.values())].filter(Boolean) as Array<LocalParticipant | RemoteParticipant>;
     
     const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
-        return allSessionUsers.find(user => participant.identity.includes(user.id));
+        return allSessionUsers.find(u => u && participant.identity.includes(u.id));
     };
 
     const isControlledByCurrentUser = whiteboardControllerId === userId;
-    const controllerUser = allSessionUsers.find(u => u.id === whiteboardControllerId);
+    const controllerUser = allSessionUsers.find(u => u && u.id === whiteboardControllerId);
 
     const mainParticipant = spotlightedParticipant ?? localParticipant;
     const mainParticipantUser = mainParticipant ? findUserByParticipant(mainParticipant) : null;
-
-    const teacherView = (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            <div className="lg:col-span-2 flex flex-col gap-6">
-                {mainParticipant ? (
-                    <Participant 
-                        key={mainParticipant.sid}
-                        participant={mainParticipant}
-                        isLocal={mainParticipant === localParticipant}
-                        isSpotlighted={true}
-                        isTeacher={true}
-                        sessionId={sessionId}
-                        displayName={mainParticipantUser?.name ?? undefined}
-                        participantUserId={mainParticipantUser?.id ?? ''}
-                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                        isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
-                    />
-                ) : (
-                    <Card className="aspect-video flex items-center justify-center bg-muted">
-                        <div className="text-center">
-                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
-                        </div>
-                    </Card>
-                )}
-                 <div className="flex-grow min-h-[300px]">
-                   <Whiteboard
-                        sessionId={sessionId}
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerName={controllerUser?.name}
-                   />
-                </div>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Timer />
-                            Minuteur
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-4xl font-bold">{formatTime(timeLeft)}</p>
-                        <div className="flex justify-center gap-2 mt-2">
-                           {!isTimerRunning ? (
-                                <Button variant="outline" size="sm" onClick={handleStartTimer} disabled={timeLeft === 0}>
-                                    <Play className="mr-2 h-4 w-4" /> Démarrer
-                                </Button>
-                            ) : (
-                                <Button variant="outline" size="sm" onClick={handlePauseTimer}>
-                                    <Pause className="mr-2 h-4 w-4" /> Pauser
-                                </Button>
-                            )}
-                            <Button variant="ghost" size="sm" onClick={handleResetTimer}>
-                                <RotateCcw className="mr-2 h-4 w-4" /> Réinitialiser
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="lg:col-span-1 flex flex-col gap-6">
-                 <Card className="flex-1 flex flex-col">
-                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users />
-                            Participants ({onlineUsers.length}/{classStudents.length})
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-1 p-2">
-                        <ScrollArea className="h-full">
-                            <ClassroomGrid
-                                sessionId={sessionId}
-                                teacher={teacher}
-                                students={classStudents}
-                                localParticipant={localParticipant}
-                                remoteParticipants={Array.from(remoteParticipants.values())}
-                                spotlightedParticipantSid={spotlightedParticipant?.sid}
-                                onlineUserIds={onlineUsers}
-                                isTeacher={isTeacher}
-                                onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                                whiteboardControllerId={whiteboardControllerId}
-                            />
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
-    
-
-    const studentView = (
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            <div className="lg:col-span-2 flex flex-col gap-6">
-                 {mainParticipant ? (
-                    <Participant 
-                        key={mainParticipant.sid}
-                        participant={mainParticipant}
-                        isLocal={mainParticipant === localParticipant}
-                        isSpotlighted={true}
-                        isTeacher={mainParticipantUser?.role === 'PROFESSEUR'}
-                        sessionId={sessionId}
-                        displayName={mainParticipantUser?.name ?? undefined}
-                        participantUserId={mainParticipantUser?.id ?? ''}
-                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                        isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
-                    />
-                ) : (
-                    <Card className="aspect-video flex items-center justify-center bg-muted">
-                        <div className="text-center">
-                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
-                        </div>
-                    </Card>
-                )}
-                 <div className="flex-grow">
-                   <Whiteboard 
-                        sessionId={sessionId} 
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerName={controllerUser?.name}
-                   />
-                </div>
-            </div>
-             <div className="flex flex-col space-y-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Timer />
-                            Temps restant
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-3xl font-bold">{formatTime(timeLeft)}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base"><Users /> Participants ({allVideoParticipants.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
-                      {allVideoParticipants.map(p => {
-                          const user = findUserByParticipant(p);
-                          return (
-                              <div key={p.sid} className="flex items-center gap-3">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarFallback>{user?.name?.charAt(0) ?? '?'}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm font-medium">{user?.name ?? p.identity.split('-')[0]} {p === localParticipant ? '(Vous)' : ''}</span>
-                              </div>
-                          )
-                      })}
-                    </CardContent>
-                </Card>
-             </div>
-        </div>
-    );
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -516,24 +342,52 @@ function SessionPageContent() {
                     onConnected={onConnected}
                 />
             )}
-            <header className="border-b bg-background/95 backdrop-blur-sm z-10">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-                    <div className='flex items-center gap-4'>
-                        <h1 className="text-xl font-bold">Session: <Badge variant="secondary">{sessionId.substring(0,8)}</Badge></h1>
-                    </div>
-                    <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
-                         {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
-                        {isTeacher ? "Terminer pour tous" : "Quitter la session"}
-                    </Button>
-                </div>
-            </header>
+            <SessionHeader 
+                sessionId={sessionId}
+                isTeacher={isTeacher}
+                isEndingSession={isEndingSession}
+                onGoBack={handleGoBack}
+            />
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
                     </div>
+                ) : isTeacher ? (
+                    <TeacherSessionView
+                        sessionId={sessionId}
+                        mainParticipant={mainParticipant}
+                        localParticipant={localParticipant}
+                        mainParticipantUser={mainParticipantUser}
+                        whiteboardControllerId={whiteboardControllerId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerUser={controllerUser}
+                        timeLeft={timeLeft}
+                        isTimerRunning={isTimerRunning}
+                        onlineUsers={onlineUsers}
+                        classStudents={classStudents}
+                        teacher={teacher}
+                        remoteParticipants={Array.from(remoteParticipants.values())}
+                        spotlightedParticipantSid={spotlightedParticipant?.sid}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                        onStartTimer={handleStartTimer}
+                        onPauseTimer={handlePauseTimer}
+                        onResetTimer={handleResetTimer}
+                    />
                 ) : (
-                    role === 'teacher' ? teacherView : studentView
+                    <StudentSessionView
+                        sessionId={sessionId}
+                        mainParticipant={mainParticipant}
+                        localParticipant={localParticipant}
+                        mainParticipantUser={mainParticipantUser}
+                        whiteboardControllerId={whiteboardControllerId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerUser={controllerUser}
+                        timeLeft={timeLeft}
+                        allVideoParticipants={allVideoParticipants}
+                        findUserByParticipant={findUserByParticipant}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                    />
                 )}
             </main>
         </div>
