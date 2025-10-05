@@ -60,8 +60,8 @@ export const authOptions: NextAuthOptions = {
     
           if (!dbUser) {
             // Create user and their state in a transaction
-            dbUser = await prisma.$transaction(async (tx) => {
-              const newUser = await tx.user.create({
+            const newUser = await prisma.$transaction(async (tx) => {
+              const createdUser = await tx.user.create({
                 data: {
                   email: profile.email,
                   name: profile.name,
@@ -72,12 +72,13 @@ export const authOptions: NextAuthOptions = {
 
               await tx.etatEleve.create({
                 data: {
-                  eleveId: newUser.id,
+                  eleveId: createdUser.id,
                 }
               });
 
-              return newUser;
+              return createdUser;
             });
+            dbUser = newUser;
           }
           // Ensure the user object passed along has the correct id and role for the session callback
           user.id = dbUser.id;
