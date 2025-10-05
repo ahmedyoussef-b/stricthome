@@ -75,8 +75,8 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            <div className="lg:col-span-3 flex flex-col gap-6">
-                <div className="flex-grow min-h-[400px] lg:min-h-0">
+            <div className="lg:col-span-3 flex flex-col gap-6 h-full">
+                <div className="flex-grow min-h-0">
                    <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
@@ -85,15 +85,15 @@ export function TeacherSessionView({
                 </div>
             </div>
 
-            <div className="lg:col-span-1 flex flex-col gap-6">
-                 <Card className="flex-1 flex flex-col">
+            <div className="lg:col-span-1 flex flex-col gap-6 h-full">
+                 <Card className="flex-1 flex flex-col min-h-0">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users />
                             Participants
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-1 p-2">
+                    <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
                             <ClassroomGrid
                                 sessionId={sessionId}
