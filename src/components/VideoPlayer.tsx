@@ -26,10 +26,11 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   useEffect(() => {
     // Garde pour le double montage de React Strict Mode en développement
     if (connectionAttemptedRef.current) {
+        console.log('🔌 [VideoPlayer] Connexion déjà tentée, annulation de la nouvelle tentative.');
         return;
     }
     connectionAttemptedRef.current = true;
-    console.log('🔌 [VideoPlayer] Instance créée pour:', userId, 'rôle:', role);
+    console.log('🔌 [VideoPlayer] Montage pour:', userId, 'rôle:', role);
 
 
     const connectToRoom = async () => {
@@ -52,8 +53,8 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
             try {
                 console.log('🎥 [VideoPlayer] Demande d\'accès média...');
                 localTracks = await createLocalTracks({
-                audio: true,
-                video: { width: 640 }
+                    audio: true,
+                    video: { width: 640 }
                 });
                 localTracksRef.current = localTracks;
                 console.log('✅ [VideoPlayer] Médias locaux obtenus:', localTracks.length, 'pistes');
@@ -72,6 +73,12 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
                     title: "Accès Média",
                     description: errorMsg,
                 })
+            }
+            
+            // Prévention de reconnexion si une salle existe déjà
+            if (roomRef.current) {
+                console.log('🔌 [VideoPlayer] Une salle existe déjà, déconnexion de l\'ancienne avant de continuer.');
+                roomRef.current.disconnect();
             }
 
             const room = await connect(data.token, {
@@ -102,7 +109,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
     connectToRoom();
 
     return () => {
-        console.log('🧹 [VideoPlayer] Instance détruite pour:', userId);
+        console.log('🧹 [VideoPlayer] Nettoyage du composant pour:', userId);
         if (roomRef.current) {
             console.log('🔌 [VideoPlayer] Déconnexion de la room lors du nettoyage.');
             roomRef.current.disconnect();
@@ -110,14 +117,15 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         }
         
         localTracksRef.current.forEach(track => {
-            if (isAudioOrVideoTrack(track) && track.readyState === 'started') {
-                track.stop();
+            if (isAudioOrVideoTrack(track)) {
+              track.stop();
             }
         });
         localTracksRef.current = [];
         connectionAttemptedRef.current = false;
     };
-  }, [sessionId, role, userId, onConnected, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, role, userId, toast]);
 
   return null; // Ce composant ne rend rien lui-même
 }
