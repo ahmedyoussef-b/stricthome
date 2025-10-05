@@ -100,13 +100,14 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
 
   const broadcastEvent = useCallback(async (event: string, data: any) => {
     try {
+      console.log(`🎨 [Whiteboard][OUT] Diffusion de l'événement '${event}'...`);
       await fetch('/api/whiteboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, event, data }),
       });
     } catch (error) {
-      console.error(`Failed to broadcast ${event} event:`, error);
+      console.error(`❌ [Whiteboard] Échec de la diffusion de l'événement ${event}:`, error);
     }
   }, [sessionId]);
 
@@ -159,6 +160,8 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
+        
+        console.log(`🖌️ [Whiteboard] Redessin du canvas jusqu'à l'index ${upToIndex}.`);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (let i = 0; i <= upToIndex; i++) {
             if (history[i]) {
@@ -184,11 +187,13 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     
+    console.log(`💾 [Whiteboard] Nouvelle action enregistrée localement. Envoi pour diffusion.`);
     broadcastEvent('history-update', { history: newHistory, index: newHistory.length - 1 });
   };
 
 
   const handleClearCanvas = () => {
+    console.log("🗑️ [Whiteboard] Action: Effacer tout le tableau.");
     setHistory([]);
     setHistoryIndex(-1);
     broadcastEvent('history-update', { history: [], index: -1 });
@@ -198,6 +203,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
  const handleUndo = () => {
     if (historyIndex < 0) return;
     const newIndex = historyIndex - 1;
+    console.log("↪️ [Whiteboard] Action: Annuler. Nouvel index:", newIndex);
     setHistoryIndex(newIndex);
     broadcastEvent('history-update', { history, index: newIndex });
   }
@@ -205,6 +211,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   const handleRedo = () => {
     if (historyIndex >= history.length - 1) return;
     const newIndex = historyIndex + 1;
+    console.log("↩️ [Whiteboard] Action: Rétablir. Nouvel index:", newIndex);
     setHistoryIndex(newIndex);
     broadcastEvent('history-update', { history, index: newIndex });
   }
@@ -222,6 +229,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isControlledByCurrentUser) return;
     const point = getCanvasPoint(e);
+    console.log(`✏️ [Whiteboard] Début du dessin (outil: ${tool}) aux coordonnées:`, point);
     setIsDrawing(true);
     startPoint.current = point;
 
@@ -265,6 +273,8 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   const finishDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !startPoint.current || !isControlledByCurrentUser) return;
     const endPoint = getCanvasPoint(e);
+    console.log(`✅ [Whiteboard] Fin du dessin. Action terminée.`);
+
 
     const previewCtx = previewCanvasRef.current?.getContext('2d');
     if (previewCtx && previewCanvasRef.current) {
@@ -319,6 +329,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     
     const historyUpdateHandler = (data: { history: HistoryEntry[], index: number, senderId: string }) => {
         if (data.senderId !== session?.user.id) {
+            console.log(`🔄 [Whiteboard][IN] Données reçues de ${data.senderId}. Mise à jour de l'historique local.`);
             setHistory(data.history);
             setHistoryIndex(data.index);
         }

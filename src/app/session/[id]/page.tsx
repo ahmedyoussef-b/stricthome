@@ -195,7 +195,7 @@ function SessionPageContent() {
         };
         
         const handleWhiteboardControl = (data: { controllerId: string; senderId: string; }) => {
-            console.log(`✍️ [Pusher] Événement 'whiteboard-control-changed' reçu pour UserID: ${data.controllerId}`);
+            console.log(`✍️ [Pusher][IN] Événement 'whiteboard-control-changed' reçu. Nouveau contrôleur: ${data.controllerId}`);
             if (data.senderId !== userId) {
                  setWhiteboardControllerId(data.controllerId);
             }
@@ -259,10 +259,9 @@ function SessionPageContent() {
         return () => {
             console.log("🧹 [useEffect] Nettoyage des effets. Déconnexion et désabonnement.");
             
-            if (roomRef.current && (roomRef.current.state === 'connected' || roomRef.current.state === 'connecting')) {
-                console.log("🔌 [Twilio] Déconnexion de la room...");
+            if (roomRef.current) {
                 roomRef.current.disconnect();
-                roomRef.current = null;
+                 console.log("🔌 [Twilio] Salle déconnectée lors du nettoyage.");
             }
             
             if (channel) {
@@ -296,7 +295,7 @@ function SessionPageContent() {
 
     const handleGiveWhiteboardControl = async (participantUserId: string) => {
         if (!isTeacher) return;
-        console.log(`✍️ [Action] Le professeur donne le contrôle du tableau à ${participantUserId}`);
+        console.log(`✍️ [Action][OUT] Le professeur donne le contrôle du tableau à ${participantUserId}`);
         try {
             await setWhiteboardController(sessionId, participantUserId);
             // Optimistic update

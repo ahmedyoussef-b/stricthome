@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
     
     // On relaie l'événement avec les données et on ajoute l'ID de l'expéditeur
     await pusherServer.trigger(channel, event, { ...data, senderId: session.user.id });
+    
+    console.log(`📡 [API Whiteboard] Événement '${event}' diffusé sur le canal '${channel}' par ${session.user.id}.`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

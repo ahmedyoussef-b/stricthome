@@ -73,6 +73,8 @@ export async function setWhiteboardController(sessionId: string, participantUser
     if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized: Only teachers can set whiteboard controller.");
     }
+    console.log(`✍️ [Action Server] Le professeur ${session.user.id} change le contrôle du tableau pour ${participantUserId} dans la session ${sessionId}.`);
+
 
      const coursSession = await prisma.coursSession.findFirst({
         where: {
@@ -88,9 +90,13 @@ export async function setWhiteboardController(sessionId: string, participantUser
         where: { id: sessionId },
         data: { whiteboardControllerId: participantUserId }
     });
+    console.log(`✅ [DB] Contrôle du tableau mis à jour en base de données.`);
+
 
     const channelName = `presence-session-${sessionId}`;
     await pusherServer.trigger(channelName, 'whiteboard-control-changed', { controllerId: participantUserId });
+    console.log(`📡 [Pusher][OUT] Événement 'whiteboard-control-changed' envoyé sur le canal ${channelName}.`);
+
 
     revalidatePath(`/session/${sessionId}`);
 }
