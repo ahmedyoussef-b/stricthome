@@ -15,7 +15,6 @@ import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
-import { PrivateBrowserInstructions } from '@/components/PrivateBrowserInstructions';
 
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -412,7 +411,7 @@ function SessionPageContent() {
                         teacher={teacher}
                         remoteParticipants={Array.from(remoteParticipants.values())}
                         spotlightedParticipantSid={spotlightedParticipant?.sid}
-                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                        onGiveWhiteboardControl={onGiveWhiteboardControl}
                         onStartTimer={handleStartTimer}
                         onPauseTimer={handlePauseTimer}
                         onResetTimer={handleResetTimer}
@@ -432,7 +431,6 @@ function SessionPageContent() {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                     />
                 )}
-                 <PrivateBrowserInstructions />
             </main>
         </div>
     );
