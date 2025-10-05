@@ -6,7 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./
 import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap } from "lucide-react";
 import { Button } from "./ui/button";
 import { completeTask } from "@/lib/actions/task.actions";
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
@@ -99,6 +99,12 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
 }
 
 export function TaskList({ tasks, studentCompletions, studentId, isTeacherView }: TaskListProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const dailyTasks = tasks.filter(t => t.type === TaskType.DAILY);
   const weeklyTasks = tasks.filter(t => t.type === TaskType.WEEKLY);
   const monthlyTasks = tasks.filter(t => t.type === TaskType.MONTHLY);
@@ -108,6 +114,12 @@ export function TaskList({ tasks, studentCompletions, studentId, isTeacherView }
     { title: "Hebdomadaire", tasks: weeklyTasks, icon: Calendar },
     { title: "Mensuel", tasks: monthlyTasks, icon: Award }
   ];
+
+  // On initial server-side render and first client-side render,
+  // we render a placeholder to avoid hydration mismatch.
+  if (!isClient) {
+    return <div className="h-48 w-full animate-pulse rounded-md bg-muted/50"></div>;
+  }
 
   return (
     <Accordion type="multiple" defaultValue={['Quotidien', 'Hebdomadaire', 'Mensuel']} className="w-full">
