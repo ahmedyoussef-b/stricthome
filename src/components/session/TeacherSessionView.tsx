@@ -49,8 +49,8 @@ export function TeacherSessionView({
     onSpotlightParticipant,
 }: TeacherSessionViewProps) {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-            <div className="lg:col-span-3 flex flex-col gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+            <div className="lg:col-span-4 flex flex-col gap-6">
                 {mainParticipant ? (
                     <Participant 
                         key={mainParticipant.sid}
