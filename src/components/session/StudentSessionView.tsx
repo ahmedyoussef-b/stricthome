@@ -58,7 +58,7 @@ export function StudentSessionView({
                         </div>
                     </Card>
                 )}
-                 <div className="flex-grow min-h-[400px]">
+                 <div className="h-[450px]">
                     <Whiteboard 
                         sessionId={sessionId} 
                         isControlledByCurrentUser={isControlledByCurrentUser}
