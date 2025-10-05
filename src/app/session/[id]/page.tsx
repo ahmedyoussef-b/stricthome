@@ -74,14 +74,15 @@ function SessionPageContent() {
         if (roomRef.current) {
             roomRef.current.disconnect();
             roomRef.current = null;
+            setRoom(null);
             console.log("🔌 [Twilio] Salle déconnectée.");
         }
-
+    
         toast({
             title: "Session terminée",
             description: "La session a pris fin.",
         });
-
+    
         if (role === 'teacher') {
             router.push('/teacher');
         } else if (userId) {
@@ -249,7 +250,18 @@ function SessionPageContent() {
             }
         };
     
-    }, [sessionId, toast, isTeacher, handleEndSession, userId]); // Retirer 'room' des dépendances
+    }, [sessionId, toast, isTeacher, handleEndSession, userId]);
+    
+    useEffect(() => {
+        return () => {
+            console.log("🧹 [SessionPage] Démontage du composant - nettoyage complet.");
+            // Nettoyage complet uniquement lors du démontage réel
+            if (roomRef.current) {
+                roomRef.current.disconnect();
+                console.log("🔌 [Twilio] Salle déconnectée lors du démontage du composant.");
+            }
+        };
+    }, []);
 
     const handleGoBack = async () => {
         if (isTeacher) {
@@ -444,3 +456,5 @@ export default function SessionPage() {
         </Suspense>
     )
 }
+
+    
