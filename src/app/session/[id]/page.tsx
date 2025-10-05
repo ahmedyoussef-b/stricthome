@@ -247,6 +247,7 @@ function SessionPageContent() {
             console.log("🧹 [useEffect] Nettoyage des effets. Déconnexion et désabonnement.");
             if (roomRef.current?.state === 'connected') {
                 roomRef.current.disconnect();
+                handleEndSession();
             }
             if (channel) {
                 channel.unbind_all();
@@ -367,7 +368,7 @@ function SessionPageContent() {
         };
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
-     const allVideoParticipants = room ? [room.localParticipant, ...Array.from(room.participants.values())] : [];
+     const allVideoParticipants = room ? [room.localParticipant, ...Array.from(remoteParticipants.values())] : [];
     
     const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
         return allSessionUsers.find(u => u && participant.identity.includes(u.id));
@@ -401,7 +402,7 @@ function SessionPageContent() {
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
             />
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="flex-1 flex flex-col container mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-0">
                 <PermissionPrompt />
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
