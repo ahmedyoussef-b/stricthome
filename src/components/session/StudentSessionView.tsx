@@ -42,7 +42,8 @@ export function StudentSessionView({
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
                         isSpotlighted={true}
-                        isTeacher={mainParticipantUser?.role === 'PROFESSEUR'}
+                        // Pour la vue élève, isTeacher est toujours false pour masquer les contrôles prof
+                        isTeacher={false}
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
                         participantUserId={mainParticipantUser?.id ?? ''}
