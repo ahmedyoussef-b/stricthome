@@ -61,7 +61,7 @@ export function Participant({
 
     const attachTrack = (track: Track) => {
       if (isAttachable(track)) {
-        console.log(`    📎 [Attach] Attachement de la piste ${track.kind} (${track.sid}) pour ${nameToDisplay}.`);
+        console.log(`    📎 [Attach] Attachement de la piste ${track.kind} pour ${nameToDisplay}.`);
         const element = track.attach();
         element.style.width = '100%';
         element.style.height = '100%';
@@ -71,7 +71,7 @@ export function Participant({
     
     const detachTrack = (track: Track) => {
         if (isAttachable(track)) {
-            console.log(`    📎 [Detach] Détachement de la piste ${track.kind} (${track.sid}) pour ${nameToDisplay}.`);
+            console.log(`    📎 [Detach] Détachement de la piste ${track.kind} pour ${nameToDisplay}.`);
             track.detach().forEach((element) => element.remove());
         }
     };
