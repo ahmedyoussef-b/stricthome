@@ -103,6 +103,10 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
   }, [sessionId, role, userId, onConnected, toast]);
 
   useEffect(() => {
+    // StrictMode double-mount guard
+    if (connectionAttemptedRef.current) {
+        return;
+    }
     connectToRoom();
 
     return () => {
