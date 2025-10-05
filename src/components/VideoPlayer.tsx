@@ -115,7 +115,9 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
       }
       
       localTracksRef.current.forEach(track => {
-        track.stop();
+        if ('stop' in track) {
+            track.stop();
+        }
       });
       localTracksRef.current = [];
       

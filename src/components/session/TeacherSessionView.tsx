@@ -1,7 +1,7 @@
 // src/components/session/TeacherSessionView.tsx
 'use client';
 
-import { LocalParticipant, RemoteParticipant, User } from "twilio-video";
+import { LocalParticipant, RemoteParticipant } from "twilio-video";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Timer, Loader2 } from 'lucide-react';
 import { Participant } from '@/components/Participant';
@@ -10,7 +10,7 @@ import { ClassroomGrid } from '@/components/ClassroomGrid';
 import { TimerControls } from './TimerControls';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
