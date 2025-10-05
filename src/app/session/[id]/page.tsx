@@ -149,7 +149,7 @@ function SessionPageContent() {
             console.log(`📊 [API] Récupération des détails de la session ${sessionId.substring(0,8)}...`);
             try {
                 const { session, students, teacher } = await getSessionData(sessionId);
-                 const allUsers: SessionParticipant[] = [
+                const allUsers: SessionParticipant[] = [
                     ...(teacher ? [{ ...teacher, role: Role.PROFESSEUR }] : []),
                     ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
                 ].filter((u): u is SessionParticipant => u !== null && u !== undefined);
@@ -158,8 +158,8 @@ function SessionPageContent() {
                 setSpotlightedParticipantSid(session.spotlightedParticipantSid);
                 console.log(`✅ [API] Données de session chargées: ${allUsers.length} utilisateurs.`);
             } catch (error) {
-                 console.error("❌ [API] Échec du chargement des données de session:", error);
-                 toast({
+                console.error("❌ [API] Échec du chargement des données de session:", error);
+                toast({
                     variant: "destructive",
                     title: "Erreur de chargement",
                     description: "Impossible de récupérer les détails de la session.",
@@ -169,7 +169,7 @@ function SessionPageContent() {
             }
         };
         fetchSessionDetails();
-
+    
         const channelName = `presence-session-${sessionId}`;
         console.log(`📡 [Pusher] Abonnement au canal: ${channelName}`);
         channel = pusherClient.subscribe(channelName) as PresenceChannel;
@@ -179,7 +179,7 @@ function SessionPageContent() {
             console.log(`👥 [Pusher] Mise à jour des utilisateurs en ligne: ${userIds.length} présents.`);
             setOnlineUsers(userIds);
         }
-
+    
         channel.bind('pusher:subscription_succeeded', updateOnlineUsers);
         channel.bind('pusher:member_added', (member: any) => {
             console.log(`➕ [Pusher] Membre ajouté: ${member.info.name}`);
@@ -198,10 +198,10 @@ function SessionPageContent() {
         const handleWhiteboardControl = (data: { controllerId: string; senderId: string; }) => {
             console.log(`✍️ [Pusher][IN] Événement 'whiteboard-control-changed' reçu. Nouveau contrôleur: ${data.controllerId}`);
             if (data.senderId !== userId) {
-                 setWhiteboardControllerId(data.controllerId);
+                setWhiteboardControllerId(data.controllerId);
             }
         };
-
+    
         const handleTimerStart = (data: { duration: number }) => {
             console.log(`▶️ [Pusher] Événement 'timer-start' reçu. Durée: ${data.duration}`);
             setTimeLeft(data.duration);
@@ -221,59 +221,35 @@ function SessionPageContent() {
         };
         
         const handleSessionEnded = (data: { sessionId: string }) => {
-             console.log(`🏁 [Pusher] Événement 'session-ended' reçu pour la session ${data.sessionId}`);
+            console.log(`🏁 [Pusher] Événement 'session-ended' reçu pour la session ${data.sessionId}`);
             if (data.sessionId === sessionId) {
                 handleEndSession();
             }
         };
-
-        const handleParticipantConnected = (participant: RemoteParticipant) => {
-            console.log(`➕ [Twilio] Participant connecté: ${participant.identity}`);
-            setRemoteParticipants(prev => new Map(prev).set(participant.sid, participant));
-        };
-
-        const handleParticipantDisconnected = (participant: RemoteParticipant) => {
-            console.log(`➖ [Twilio] Participant déconnecté: ${participant.identity}`);
-            setRemoteParticipants(prev => {
-                const newMap = new Map(prev);
-                newMap.delete(participant.sid);
-                return newMap;
-            });
-        };
-        
-        if (room) {
-            room.on('participantConnected', handleParticipantConnected);
-            room.on('participantDisconnected', handleParticipantDisconnected);
-        }
-
+    
         channel.bind('participant-spotlighted', handleSpotlight);
         channel.bind('whiteboard-control-changed', handleWhiteboardControl);
         channel.bind('session-ended', handleSessionEnded);
-
+    
         if (!isTeacher) {
             channel.bind('timer-start', handleTimerStart);
             channel.bind('timer-pause', handleTimerPause);
             channel.bind('timer-reset', handleTimerReset);
             channel.bind('timer-tick', handleTimerTick);
         }
-
+    
         return () => {
-            console.log("🧹 [useEffect] Nettoyage des effets. Déconnexion et désabonnement.");
+            console.log("🧹 [useEffect] Nettoyage des effets Pusher uniquement.");
             
-            if (roomRef.current) {
-                roomRef.current.disconnect();
-                 console.log("🔌 [Twilio] Salle déconnectée lors du nettoyage.");
-            }
-            
+            // NE PAS déconnecter la room Twilio ici - seulement nettoyer Pusher
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
                 console.log(`📡 [Pusher] Désabonnement du canal ${channelName}.`);
             }
         };
-
-    }, [sessionId, toast, isTeacher, handleEndSession, userId, room]);
-
+    
+    }, [sessionId, toast, isTeacher, handleEndSession, userId]); // Retirer 'room' des dépendances
 
     const handleGoBack = async () => {
         if (isTeacher) {
