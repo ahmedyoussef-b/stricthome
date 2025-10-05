@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, RemoteTrackPublication } from "twilio-video";
+import type { RemoteParticipant, Track, LocalParticipant, LocalVideoTrack, RemoteVideoTrack, LocalAudioTrack, RemoteAudioTrack, AudioTrack, VideoTrack, TrackPublication } from "twilio-video";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
+import { Mic, MicOff, Star, Video, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -27,29 +27,16 @@ interface ParticipantProps {
   isSpotlighted?: boolean;
   sessionId?: string;
   isTeacher: boolean;
-  displayName?: string;
-  participantUserId: string;
-  isWhiteboardController?: boolean;
-  onGiveWhiteboardControl: (userId: string) => void;
+  displayName?: string; // New prop for display name
 }
 
-export function Participant({ 
-    participant, 
-    isLocal, 
-    isSpotlighted, 
-    sessionId, 
-    isTeacher, 
-    displayName, 
-    participantUserId,
-    isWhiteboardController,
-    onGiveWhiteboardControl,
-}: ParticipantProps) {
+export function Participant({ participant, isLocal, isSpotlighted, sessionId, isTeacher, displayName }: ParticipantProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
   const { toast } = useToast();
 
-  const nameToDisplay = displayName || participant.identity;
+  const nameToDisplay = displayName || participant.identity.split('-')[0];
 
   useEffect(() => {
     const videoElementRef = videoRef.current;
@@ -58,8 +45,6 @@ export function Participant({
     const attachTrack = (track: Track) => {
       if (isAttachable(track)) {
         const element = track.attach();
-        element.style.width = '100%';
-        element.style.height = '100%';
         videoElementRef.appendChild(element);
       }
     };
@@ -117,12 +102,12 @@ export function Participant({
   }, [participant]);
 
   const handleSpotlight = async () => {
-    if (!sessionId || !isTeacher || !participantUserId) return;
+    if (!sessionId || !isTeacher) return;
     try {
         await spotlightParticipant(sessionId, participant.sid);
         toast({
             title: "Participant en vedette",
-            description: `${nameToDisplay} est maintenant en vedette.`
+            description: `${nameToDisplay} est maintenant visible par tous les élèves.`
         });
     } catch (e) {
         toast({
@@ -133,6 +118,7 @@ export function Participant({
     }
   }
 
+  // Placeholder functions for controls
   const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
   const toggleVideo = () => console.log('Toggle video for', nameToDisplay);
 
@@ -176,7 +162,6 @@ export function Participant({
                      </>
                  )}
                 {isTeacher && (
-                    <>
                      <Tooltip>
                         <TooltipTrigger asChild>
                              <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={handleSpotlight}>
@@ -187,17 +172,6 @@ export function Participant({
                            <p>Mettre en vedette</p>
                         </TooltipContent>
                     </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                             <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={() => onGiveWhiteboardControl(participantUserId)}>
-                                <Pen className={cn("h-4 w-4", isWhiteboardController && "fill-blue-500 text-blue-500")} />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                           <p>Donner le contrôle du tableau</p>
-                        </TooltipContent>
-                    </Tooltip>
-                    </>
                 )}
              </TooltipProvider>
         </div>
@@ -212,20 +186,6 @@ export function Participant({
                 <div className="bg-destructive/80 backdrop-blur-sm rounded-md p-1">
                     <VideoOff className="h-4 w-4 text-destructive-foreground" />
                 </div>
-            )}
-            {isWhiteboardController && (
-                 <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                           <div className="bg-blue-500/80 backdrop-blur-sm rounded-md p-1">
-                                <Pen className="h-4 w-4 text-white" />
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                           <p>Contrôle le tableau</p>
-                        </TooltipContent>
-                    </Tooltip>
-                 </TooltipProvider>
             )}
         </div>
     </Card>

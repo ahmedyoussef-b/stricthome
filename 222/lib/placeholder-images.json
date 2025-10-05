@@ -1,0 +1,18 @@
+{
+  "pompier": {
+    "url": "https://picsum.photos/seed/firefighter/1200/800",
+    "hint": "firefighter action"
+  },
+  "astronaute": {
+    "url": "https://picsum.photos/seed/astronaut/1200/800",
+    "hint": "space galaxy"
+  },
+  "veterinaire": {
+    "url": "https://picsum.photos/seed/vet/1200/800",
+    "hint": "animals nature"
+  },
+  "default": {
+    "url": "https://picsum.photos/seed/default/1200/800",
+    "hint": "education classroom"
+  }
+}
