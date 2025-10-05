@@ -364,71 +364,78 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
         )}
       </CardHeader>
       <CardContent className="flex-grow p-0 relative flex">
-         {isControlledByCurrentUser && (
-            <div className="p-2 border-r bg-muted/50 flex flex-col gap-1 items-center">
-                <Button variant={tool === 'select' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('select')} title="Sélectionner">
-                    <MousePointer2 />
-                </Button>
-                <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')} title="Crayon">
-                    <Pen />
-                </Button>
-                <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')} title="Gomme">
-                    <Eraser />
-                </Button>
-                <Button variant={tool === 'rectangle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('rectangle')} title="Rectangle">
-                    <Square />
-                </Button>
-                <Button variant={tool === 'circle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('circle')} title="Cercle">
-                    <Circle />
-                </Button>
-                <Button variant={tool === 'line' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('line')} title="Ligne">
-                    <Minus />
-                </Button>
-                
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Couleur"><Palette /></Button>
-                    </PopoverTrigger>
-                    <PopoverContent side="right" className="w-auto p-2">
-                        <div className="flex gap-1">
-                            {COLORS.map(c => (
-                                <button
-                                    key={c}
-                                    onClick={() => setColor(c)}
-                                    className={cn("h-6 w-6 rounded-full border-2", color === c ? 'border-primary' : 'border-transparent')}
-                                    style={{ backgroundColor: c }}
-                                />
-                            ))}
-                        </div>
-                    </PopoverContent>
-                </Popover>
-
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Épaisseur">
-                            <div className="h-full w-full flex items-center justify-center relative">
-                                <div style={{width: `${lineWidth/2}px`, height: `${lineWidth/2}px`}} className="bg-foreground rounded-full"/>
-                            </div>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent side="right" className="w-auto p-2">
-                        <ThicknessPicker current={lineWidth} onChange={setLineWidth} />
-                    </PopoverContent>
-                </Popover>
-                
-                <div className="mt-auto flex flex-col gap-1">
-                    <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0} title="Annuler">
-                        <Undo2 />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Rétablir">
-                        <Redo2 />
-                    </Button>
-                    <Button variant="destructive" size="icon" onClick={handleClearCanvas} title="Tout effacer">
-                        <Trash2 className='h-4 w-4' />
-                    </Button>
+      {isControlledByCurrentUser ? (
+    <div className="p-2 border-r bg-muted/50 flex flex-col gap-1 items-center">
+        <Button variant={tool === 'select' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('select')} title="Sélectionner">
+            <MousePointer2 />
+        </Button>
+        <Button variant={tool === 'pen' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('pen')} title="Crayon">
+            <Pen />
+        </Button>
+        <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')} title="Gomme">
+            <Eraser />
+        </Button>
+        <Button variant={tool === 'rectangle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('rectangle')} title="Rectangle">
+            <Square />
+        </Button>
+        <Button variant={tool === 'circle' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('circle')} title="Cercle">
+            <Circle />
+        </Button>
+        <Button variant={tool === 'line' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('line')} title="Ligne">
+            <Minus />
+        </Button>
+        
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" title="Couleur"><Palette /></Button>
+            </PopoverTrigger>
+            <PopoverContent side="right" className="w-auto p-2">
+                <div className="flex gap-1">
+                    {COLORS.map(c => (
+                        <button
+                            key={c}
+                            onClick={() => setColor(c)}
+                            className={cn("h-6 w-6 rounded-full border-2", color === c ? 'border-primary' : 'border-transparent')}
+                            style={{ backgroundColor: c }}
+                        />
+                    ))}
                 </div>
-            </div>
-         )}
+            </PopoverContent>
+        </Popover>
+
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" title="Épaisseur">
+                    <div className="h-full w-full flex items-center justify-center relative">
+                        <div style={{width: `${lineWidth/2}px`, height: `${lineWidth/2}px`}} className="bg-foreground rounded-full"/>
+                    </div>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent side="right" className="w-auto p-2">
+                <ThicknessPicker current={lineWidth} onChange={setLineWidth} />
+            </PopoverContent>
+        </Popover>
+        
+        <div className="mt-auto flex flex-col gap-1">
+            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex < 0} title="Annuler">
+                <Undo2 />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Rétablir">
+                <Redo2 />
+            </Button>
+            <Button variant="destructive" size="icon" onClick={handleClearCanvas} title="Tout effacer">
+                <Trash2 className='h-4 w-4' />
+            </Button>
+        </div>
+    </div>
+) : (
+    <div className="p-2 border-r bg-muted/30 flex flex-col gap-1 items-center justify-center">
+        <div className="text-xs text-muted-foreground text-center">
+            <UserCheck className="h-4 w-4 mx-auto mb-1" />
+            En observation
+        </div>
+    </div>
+)}
         <div className="relative w-full h-full">
             <canvas
               ref={mainCanvasRef}
