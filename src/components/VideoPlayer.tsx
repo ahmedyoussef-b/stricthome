@@ -1,7 +1,7 @@
 // components/VideoPlayer.tsx
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Video, { connect, createLocalTracks, LocalTrack, Room, TwilioError } from 'twilio-video';
+import Video, { connect, createLocalTracks, LocalTrack, Room, TwilioError, LocalAudioTrack, LocalVideoTrack } from 'twilio-video';
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
@@ -10,6 +10,12 @@ interface VideoPlayerProps {
   userId: string;
   onConnected: (room: Room) => void;
 }
+
+// Type guards to check track types
+const isAudioTrack = (track: LocalTrack): track is LocalAudioTrack => track.kind === 'audio';
+const isVideoTrack = (track: LocalTrack): track is LocalVideoTrack => track.kind === 'video';
+const isAudioOrVideoTrack = (track: LocalTrack): track is LocalAudioTrack | LocalVideoTrack => isAudioTrack(track) || isVideoTrack(track);
+
 
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
   const { toast } = useToast();
@@ -104,7 +110,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         }
         
         localTracksRef.current.forEach(track => {
-            if (track.readyState === 'started') {
+            if (isAudioOrVideoTrack(track) && track.readyState === 'started') {
                 track.stop();
             }
         });
