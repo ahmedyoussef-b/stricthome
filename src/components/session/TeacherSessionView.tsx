@@ -49,8 +49,8 @@ export function TeacherSessionView({
     onSpotlightParticipant,
 }: TeacherSessionViewProps) {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
-             <div className="lg:col-span-1 flex flex-col gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 py-8 h-full">
+            <div className="lg:col-span-1 flex flex-col gap-6">
                  {mainParticipant ? (
                     <Participant 
                         key={mainParticipant.sid}
@@ -75,8 +75,8 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            <div className="lg:col-span-3 flex flex-col gap-6 h-full">
-                <div className="h-[450px]">
+            <div className="lg:col-span-3 flex flex-col min-h-0">
+                <div className="flex-1 min-h-0">
                    <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
@@ -85,7 +85,7 @@ export function TeacherSessionView({
                 </div>
             </div>
 
-            <div className="lg:col-span-1 flex flex-col gap-6 h-full">
+            <div className="lg:col-span-1 flex flex-col gap-6 min-h-0">
                  <Card className="flex-1 flex flex-col min-h-0">
                      <CardHeader>
                         <CardTitle className="flex items-center gap-2">

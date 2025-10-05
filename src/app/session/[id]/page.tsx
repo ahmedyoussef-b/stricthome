@@ -202,9 +202,11 @@ function SessionPageContent() {
             setSpotlightedParticipantSid(data.participantSid);
         };
         
-        const handleWhiteboardControl = (data: { controllerId: string }) => {
+        const handleWhiteboardControl = (data: { controllerId: string; senderId: string; }) => {
             console.log(`✍️ [Pusher] Événement 'whiteboard-control-changed' reçu pour UserID: ${data.controllerId}`);
-            setWhiteboardControllerId(data.controllerId);
+            if (data.senderId !== userId) {
+                 setWhiteboardControllerId(data.controllerId);
+            }
         };
 
         const handleTimerStart = (data: { duration: number }) => {
@@ -255,7 +257,7 @@ function SessionPageContent() {
             }
         };
 
-    }, [sessionId, toast, isTeacher, handleEndSession]);
+    }, [sessionId, toast, isTeacher, handleEndSession, userId]);
 
 
     const handleGoBack = useCallback(async () => {
@@ -284,6 +286,8 @@ function SessionPageContent() {
         console.log(`✍️ [Action] Le professeur donne le contrôle du tableau à ${participantUserId}`);
         try {
             await setWhiteboardController(sessionId, participantUserId);
+            // Optimistic update
+            setWhiteboardControllerId(participantUserId);
             toast({
                 title: "Contrôle du tableau donné",
                 description: "Le participant a maintenant le contrôle du tableau blanc."
@@ -402,7 +406,7 @@ function SessionPageContent() {
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
             />
-            <main className="flex-1 flex flex-col container mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-0">
+            <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
@@ -452,5 +456,3 @@ export default function SessionPage() {
         </Suspense>
     )
 }
-
-    
