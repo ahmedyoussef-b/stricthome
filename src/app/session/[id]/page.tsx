@@ -87,6 +87,7 @@ function SessionPageContent() {
      const onConnected = useCallback((newRoom: Room) => {
         console.log(`🤝 [Twilio] Callback onConnected exécuté. Salle: ${newRoom.name}, SID: ${newRoom.sid}`);
         setRoom(newRoom);
+        roomRef.current = newRoom;
         setLocalParticipant(newRoom.localParticipant);
 
         const handleParticipantConnected = (participant: RemoteParticipant) => {
@@ -138,7 +139,7 @@ function SessionPageContent() {
         
         setSpotlightedParticipant(newSpotlightedParticipant as LocalParticipant | RemoteParticipant | null);
     
-    }, [spotlightedParticipantSid, room, remoteParticipants]);
+    }, [spotlightedParticipantSid, room, remoteParticipants, localParticipant]);
 
 
      useEffect(() => {
@@ -227,9 +228,6 @@ function SessionPageContent() {
         const handleSessionEnded = (data: { sessionId: string }) => {
              console.log(`🏁 [Pusher] Événement 'session-ended' reçu pour la session ${data.sessionId}`);
             if (data.sessionId === sessionId) {
-                 if (roomRef.current?.state === 'connected') {
-                    roomRef.current.disconnect();
-                }
                 handleEndSession();
             }
         };
@@ -246,7 +244,7 @@ function SessionPageContent() {
         }
 
         return () => {
-            console.log("🧹 [useEffect] Nettoyage des effets. Désabonnement du canal Pusher.");
+            console.log("🧹 [useEffect] Nettoyage des effets. Déconnexion et désabonnement.");
             if (roomRef.current?.state === 'connected') {
                 roomRef.current.disconnect();
             }
@@ -276,9 +274,6 @@ function SessionPageContent() {
             }
         } else {
             console.log('🚪 [Action] L\'élève quitte la session.');
-             if (roomRef.current) {
-                roomRef.current.disconnect();
-            }
             handleEndSession();
         }
     }, [isTeacher, sessionId, toast, handleEndSession]);
@@ -372,14 +367,7 @@ function SessionPageContent() {
         };
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
-     const allVideoParticipants = room
-        ? Array.from(
-            new Map(
-                [room.localParticipant, ...Array.from(room.participants.values())]
-                .map(p => [p.sid, p])
-            ).values()
-          )
-        : [];
+     const allVideoParticipants = room ? [room.localParticipant, ...Array.from(room.participants.values())] : [];
     
     const findUserByParticipant = (participant: TwilioParticipant): SessionParticipant | undefined => {
         return allSessionUsers.find(u => u && participant.identity.includes(u.id));
@@ -463,3 +451,5 @@ export default function SessionPage() {
         </Suspense>
     )
 }
+
+    
