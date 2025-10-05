@@ -157,18 +157,23 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
 
 
   const redrawCanvas = useCallback((canvas: HTMLCanvasElement | null, upToIndex: number) => {
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        
-        console.log(`🖌️ [Whiteboard] Redessin du canvas jusqu'à l'index ${upToIndex}.`);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i <= upToIndex; i++) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const actualIndex = upToIndex === -1 ? -1 : Math.min(upToIndex, history.length - 1);
+    console.log(`🖌️ [Whiteboard] Redessin du canvas jusqu'à l'index ${actualIndex}. Historique: ${history.length} actions`);
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (actualIndex >= 0) {
+        for (let i = 0; i <= actualIndex; i++) {
             if (history[i]) {
                 drawActionOnCanvas(ctx, history[i].action);
             }
         }
-    }, [history, drawActionOnCanvas, tool]);
+    }
+}, [history]);
     
    useEffect(() => {
         redrawCanvas(mainCanvasRef.current, historyIndex);
@@ -328,20 +333,24 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     const channel = pusherClient.subscribe(channelName);
     
     const historyUpdateHandler = (data: { history: HistoryEntry[], index: number, senderId: string }) => {
-        if (data.senderId !== session?.user.id) {
-            console.log(`🔄 [Whiteboard][IN] Données reçues de ${data.senderId}. Mise à jour de l'historique local.`);
+        if (data.history && Array.isArray(data.history) && typeof data.index === 'number') {
+            console.log(`🔄 [Whiteboard][IN] Données reçues de ${data.senderId}. Historique: ${data.history.length} actions, index: ${data.index}`);
+            
             setHistory(data.history);
             setHistoryIndex(data.index);
+            redrawCanvas(mainCanvasRef.current, data.index);
+        } else {
+            console.error('❌ [Whiteboard] Données d\'historique invalides reçues:', data);
         }
     };
 
     channel.bind('history-update', historyUpdateHandler);
 
     return () => {
-      channel.unbind_all();
+      channel.unbind('history-update', historyUpdateHandler);
       pusherClient.unsubscribe(channelName);
     };
-  }, [sessionId, session?.user.id]);
+  }, [sessionId, redrawCanvas]);
 
   return (
     <Card className="h-full flex flex-col">
