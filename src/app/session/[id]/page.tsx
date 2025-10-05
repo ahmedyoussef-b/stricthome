@@ -411,7 +411,7 @@ function SessionPageContent() {
                         teacher={teacher}
                         remoteParticipants={Array.from(remoteParticipants.values())}
                         spotlightedParticipantSid={spotlightedParticipant?.sid}
-                        onGiveWhiteboardControl={onGiveWhiteboardControl}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         onStartTimer={handleStartTimer}
                         onPauseTimer={handlePauseTimer}
                         onResetTimer={handleResetTimer}
