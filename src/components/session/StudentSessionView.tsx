@@ -43,7 +43,6 @@ export function StudentSessionView({
     timeLeft,
     allVideoParticipants,
     findUserByParticipant,
-    onGiveWhiteboardControl
 }: StudentSessionViewProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
@@ -54,11 +53,11 @@ export function StudentSessionView({
                         participant={mainParticipant}
                         isLocal={mainParticipant === localParticipant}
                         isSpotlighted={true}
-                        isTeacher={mainParticipantUser?.role === 'PROFESSEUR'}
+                        isTeacher={false} // Student view never has teacher controls on participants
                         sessionId={sessionId}
                         displayName={mainParticipantUser?.name ?? undefined}
                         participantUserId={mainParticipantUser?.id ?? ''}
-                        onGiveWhiteboardControl={onGiveWhiteboardControl}
+                        onGiveWhiteboardControl={() => {}} // Students can't give control
                         isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
                     />
                 ) : (
