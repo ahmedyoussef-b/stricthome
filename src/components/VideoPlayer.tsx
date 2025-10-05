@@ -1,8 +1,7 @@
-// src/components/VideoPlayer.tsx
+// components/VideoPlayer.tsx - Version améliorée
 'use client';
-
-import { useEffect, useRef } from 'react';
-import Video, { Room, LocalTrack, TwilioError } from 'twilio-video';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import Video, { connect, createLocalTracks, LocalTrack, Room, TwilioError } from 'twilio-video';
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
@@ -14,131 +13,115 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlayerProps) {
   const { toast } = useToast();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const roomRef = useRef<Room | null>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
-  const isConnectingRef = useRef(false);
+  const connectionAttemptedRef = useRef(false);
 
-  useEffect(() => {
-    console.log(`🔌 [VideoPlayer] Montage pour: ${userId}, rôle: ${role}`);
-    let isMounted = true;
+  console.log('🔌 [VideoPlayer] Montage pour:', userId, 'rôle:', role);
 
-    const cleanupTracks = () => {
-      console.log("🧹 [VideoPlayer] Nettoyage des pistes locales.");
-      localTracksRef.current.forEach(track => {
-        if (track && typeof track.stop === 'function') {
-          track.stop();
-        }
+  const connectToRoom = useCallback(async () => {
+    if (connectionAttemptedRef.current || roomRef.current) {
+      console.log('🔌 [VideoPlayer] Connexion déjà en cours ou établie. Annulation.');
+      return;
+    }
+
+    connectionAttemptedRef.current = true;
+    setIsConnecting(true);
+    setMediaError(null);
+    console.log('🎥 [VideoPlayer] Début de la connexion pour', sessionId);
+
+    try {
+      // Fetch token first
+      console.log("🔑 [VideoPlayer] Récupération du jeton Twilio...");
+      const response = await fetch('/api/twilio/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: userId, room: sessionId, role: role })
       });
-      localTracksRef.current = [];
-    };
-
-    const connectToRoom = async () => {
-      if (isConnectingRef.current || roomRef.current) {
-        console.log("🔌 [VideoPlayer] Connexion déjà en cours ou établie. Annulation.");
-        return;
+      const data = await response.json();
+      if (!response.ok || !data.token) {
+        throw new Error(data.error || 'Erreur serveur pour le jeton.');
       }
-      isConnectingRef.current = true;
+      console.log("✅ [VideoPlayer] Jeton Twilio reçu.");
       
-      console.log(`🔌 [VideoPlayer] Début de la connexion pour "${userId}"`);
-
+      let localTracks: LocalTrack[] = [];
       try {
-        console.log("🎥 [VideoPlayer] Demande d'accès média (caméra/micro)...");
-        const localTracks = await Video.createLocalTracks({
-            audio: true,
-            video: { width: 640 }
+        console.log('🎥 [VideoPlayer] Demande d\'accès média...');
+        localTracks = await createLocalTracks({
+          audio: true,
+          video: { width: 640 }
         });
-        
-        if (!isMounted) {
-            console.log("🔌 [VideoPlayer] Le composant a été démonté pendant l'obtention des pistes. Annulation.");
-            localTracks.forEach(track => track.stop());
-            isConnectingRef.current = false;
-            return;
-        }
-
-        localTracksRef.current = localTracks;
-        console.log("✅ [VideoPlayer] Accès média obtenu et pistes locales créées.");
-        
-        console.log("🔑 [VideoPlayer] Récupération du jeton Twilio...");
-        const response = await fetch('/api/twilio/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: userId, room: sessionId, role: role })
-        });
-        const data = await response.json();
-
-        if (!response.ok || !data.token) {
-          throw new Error(data.error || 'Erreur serveur pour le jeton.');
-        }
-
-        if (!isMounted) {
-            console.log("🔌 [VideoPlayer] Le composant a été démonté pendant la récupération du jeton. Annulation.");
-            cleanupTracks();
-            isConnectingRef.current = false;
-            return;
-        }
-
-        console.log("✅ [VideoPlayer] Jeton Twilio reçu.");
-        console.log(`🚪 [VideoPlayer] Connexion à la salle "${sessionId.substring(0, 8)}"...`);
-        
-        const room = await Video.connect(data.token, {
-          name: sessionId,
-          tracks: localTracksRef.current,
-        });
-
-        if (!isMounted) {
-            console.log("🔌 [VideoPlayer] Le composant a été démonté pendant la connexion à la salle. Déconnexion.");
-            room.disconnect();
-            cleanupTracks();
-            isConnectingRef.current = false;
-            return;
-        }
-        
-        console.log(`✅ [VideoPlayer] Connecté à la salle "${room.name.substring(0,8)}" en tant que "${room.localParticipant.identity}"`);
-        roomRef.current = room;
-        onConnected(room);
-        isConnectingRef.current = false;
-
-      } catch (error) {
-        if (!isMounted) {
-            isConnectingRef.current = false;
-            return;
-        }
-        
-        let description = "Impossible d'établir la connexion vidéo.";
-        if (error instanceof Error) {
-            if ((error as TwilioError).code === 53118) {
-                description = "Un utilisateur avec la même identité est déjà connecté.";
-            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError' || error.message.includes('media')) {
-                description = "Veuillez autoriser l'accès à la caméra et au microphone.";
-            } else if (error.name === 'NotFoundError') {
-                description = "Aucun périphérique de caméra/microphone trouvé. Veuillez vérifier qu'ils sont bien connectés.";
+        console.log('✅ [VideoPlayer] Médias locaux obtenus:', localTracks.length, 'pistes');
+      } catch (err) {
+        console.warn('⚠️ [VideoPlayer] Erreur accès médias:', err);
+        let errorMsg = 'Impossible d\'accéder à la caméra ou au microphone. Vous pouvez continuer en mode spectateur.';
+        if (err instanceof Error) {
+            if (err.name === 'NotAllowedError') {
+                errorMsg = "L'accès à la caméra/micro a été refusé. Vous êtes en mode spectateur.";
+            } else if (err.name === 'NotFoundError') {
+                errorMsg = "Aucun périphérique média trouvé. Vous êtes en mode spectateur.";
             }
         }
-        
-        console.error("❌ [VideoPlayer] Erreur de connexion:", error);
-        toast({ variant: 'destructive', title: 'Erreur de Connexion', description });
-        
-        cleanupTracks();
-        isConnectingRef.current = false;
+        setMediaError(errorMsg);
+        toast({
+            variant: "destructive",
+            title: "Accès Média",
+            description: errorMsg,
+        })
       }
-    };
 
+      localTracksRef.current = localTracks;
+
+      const room = await connect(data.token, {
+        name: sessionId,
+        tracks: localTracks,
+      });
+
+      console.log('✅ [VideoPlayer] Connecté à la room:', room.name);
+      roomRef.current = room;
+      onConnected(room);
+
+    } catch (error) {
+      console.error('❌ [VideoPlayer] Erreur de connexion:', error);
+      let errorMsg = 'Erreur de connexion à la salle de visioconférence';
+       if (error instanceof TwilioError) {
+            errorMsg = `Erreur Twilio ${error.code}: ${error.message}`;
+       } else if (error instanceof Error) {
+            errorMsg = error.message;
+       }
+      setMediaError(errorMsg);
+       toast({
+            variant: "destructive",
+            title: "Erreur de Connexion",
+            description: errorMsg,
+       })
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [sessionId, role, userId, onConnected, toast]);
+
+  useEffect(() => {
     connectToRoom();
 
     return () => {
-      console.log(`🧹 [VideoPlayer] Nettoyage du composant pour ${userId}.`);
-      isMounted = false;
-      const currentRoom = roomRef.current;
-      if (currentRoom) {
-        console.log(`🚪 [VideoPlayer] Déconnexion de la salle ${currentRoom.name.substring(0,8)}.`);
-        currentRoom.removeAllListeners();
-        currentRoom.disconnect();
+      console.log('🧹 [VideoPlayer] Nettoyage du composant pour', userId);
+      
+      if (roomRef.current) {
+        console.log('🔌 [VideoPlayer] Déconnexion de la room');
+        roomRef.current.disconnect();
         roomRef.current = null;
       }
-      cleanupTracks();
+      
+      localTracksRef.current.forEach(track => {
+        track.stop();
+      });
+      localTracksRef.current = [];
+      
+      connectionAttemptedRef.current = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, role, userId, onConnected]);
+  }, [connectToRoom, userId]);
 
-  return null;
+  return null; // This component does not render anything itself
 }

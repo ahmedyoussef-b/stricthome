@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import type { RemoteParticipant, LocalParticipant, Room, Participant as TwilioParticipant } from 'twilio-video';
+import type { RemoteParticipant, LocalParticipant, Room, Participant as TwilioParticipant, Track } from 'twilio-video';
 import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
@@ -14,6 +14,8 @@ import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
+import { PermissionPrompt } from '@/components/PermissionPrompt';
+import { PrivateBrowserInstructions } from '@/components/PrivateBrowserInstructions';
 
 
 const VideoPlayer = dynamic(() => import('@/components/VideoPlayer').then(mod => mod.VideoPlayer), {
@@ -189,6 +191,7 @@ function SessionPageContent() {
         newRoom.on('disconnected', () => {
             console.log("🚪 [Twilio] Déconnecté de la salle.");
             if (roomRef.current) {
+                roomRef.current.removeAllListeners();
                 roomRef.current = null;
                 setRoom(null);
                 setLocalParticipant(null);
@@ -387,6 +390,7 @@ function SessionPageContent() {
                 onGoBack={handleGoBack}
             />
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <PermissionPrompt />
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
@@ -428,6 +432,7 @@ function SessionPageContent() {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                     />
                 )}
+                 <PrivateBrowserInstructions />
             </main>
         </div>
     );
