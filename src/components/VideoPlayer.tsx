@@ -125,7 +125,7 @@ export function VideoPlayer({ sessionId, role, userId, onConnected }: VideoPlaye
         connectionAttemptedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sessionId, role, userId]);
 
   return null; // Ce composant ne rend rien lui-même
 }
