@@ -33,9 +33,13 @@ export function ClassroomGrid({
     onGiveWhiteboardControl,
 }: ClassroomGridProps) {
 
-    const allVideoParticipants = [localParticipant, ...remoteParticipants].filter(Boolean) as (LocalParticipant | RemoteParticipant)[];
+    // Combine all participants but filter out the local participant if they are the teacher,
+    // as the teacher is handled separately.
+    const allVideoParticipants = [localParticipant, ...remoteParticipants]
+        .filter(p => p !== null && !p.identity.startsWith('teacher-')) as (LocalParticipant | RemoteParticipant)[];
 
     const findParticipantByUserId = (userId: string) => {
+        // Find participant in the filtered list (which doesn't include the teacher)
         return allVideoParticipants.find(p => p.identity.includes(userId));
     }
     
@@ -48,7 +52,7 @@ export function ClassroomGrid({
             {teacher && (() => {
                  const teacherParticipant = localParticipant?.identity.startsWith('teacher-')
                     ? localParticipant
-                    : allVideoParticipants.find(p => p.identity.startsWith('teacher-'));
+                    : remoteParticipants.find(p => p.identity.startsWith('teacher-'));
                  
                  const isOnline = teacherParticipant ? true : isUserOnline(teacher.id);
 
@@ -66,7 +70,7 @@ export function ClassroomGrid({
                          onGiveWhiteboardControl={onGiveWhiteboardControl}
                      />
                  ) : (
-                     <StudentPlaceholder student={{...teacher, etat: { metier: null}}} isOnline={isOnline} />
+                     <StudentPlaceholder key={teacher.id} student={{...teacher, etat: { metier: null}}} isOnline={isOnline} />
                  );
             })()}
 
