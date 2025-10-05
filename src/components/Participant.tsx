@@ -88,6 +88,14 @@ export function Participant({
             attachTrack(publication.track);
             updateTrackState(publication.track);
         }
+        // For remote participants, we need to listen for subscription
+        if ('on' in publication) {
+          publication.on('subscribed', (track) => {
+            attachTrack(track);
+            updateTrackState(track);
+          });
+          publication.on('unsubscribed', detachTrack);
+        }
     });
 
     // Handle new tracks that are subscribed to later
