@@ -271,7 +271,7 @@ function SessionPageContent() {
     }, [sessionId, toast, isTeacher, handleEndSession, userId, room]);
 
 
-    const handleGoBack = useCallback(async () => {
+    const handleGoBack = async () => {
         if (isTeacher) {
             console.log('🚪 [Action] Le professeur quitte et termine la session.');
             try {
@@ -288,7 +288,7 @@ function SessionPageContent() {
             console.log('🚪 [Action] L\'élève quitte la session.');
             handleEndSession(); // Student just disconnects and leaves
         }
-    }, [isTeacher, sessionId, toast, handleEndSession]);
+    };
 
     const handleGiveWhiteboardControl = async (participantUserId: string) => {
         if (!isTeacher) return;
