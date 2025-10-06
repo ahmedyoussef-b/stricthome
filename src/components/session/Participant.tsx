@@ -127,13 +127,21 @@ function ParticipantComponent({
   }, [participant, nameToDisplay]);
 
   const handleSpotlight = () => {
-    if (!sessionId || !isTeacher || !participantUserId || !onSpotlightParticipant) return;
+    console.log(`🔦 [Participant] Bouton spotlight cliqué pour: ${nameToDisplay}, SID: ${participant.sid}`);
+    
+    if (!sessionId || !isTeacher || !onSpotlightParticipant) {
+        console.log(`❌ [Participant] Conditions non remplies: sessionId=${sessionId}, isTeacher=${isTeacher}, onSpotlightParticipant=${!!onSpotlightParticipant}`);
+        return;
+    }
+    
+    console.log(`✅ [Participant] Appel de onSpotlightParticipant avec SID: ${participant.sid}`);
     onSpotlightParticipant(participant.sid);
+    
     toast({
         title: "Participant en vedette",
         description: `${nameToDisplay} est maintenant en vedette.`
     });
-  }
+}
 
   const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
   const toggleVideo = () => console.log('Toggle video for', nameToDisplay);

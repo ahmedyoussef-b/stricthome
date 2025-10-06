@@ -102,8 +102,10 @@ export async function setWhiteboardController(sessionId: string, participantUser
 }
 
 export async function spotlightParticipant(sessionId: string, participantSid: string) {
+    console.log(`🔦 [Action Server] Tentative de mise en vedette du SID ${participantSid} pour la session ${sessionId}`);
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
+        console.log(`❌ [Action Server] Échec: L'utilisateur n'est pas un professeur.`);
         throw new Error("Unauthorized: Only teachers can spotlight participants.");
     }
 
@@ -115,18 +117,22 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
     });
 
     if (!coursSession) {
+        console.log(`❌ [Action Server] Échec: Session non trouvée ou l'utilisateur n'est pas le professeur hôte.`);
         throw new Error("Session not found or you are not the host.");
     }
     
+    console.log(`✅ [Action Server] Autorisé. Mise à jour de la base de données...`);
     await prisma.coursSession.update({
         where: { id: sessionId },
         data: { 
             spotlightedParticipantSid: participantSid,
         }
     });
+    console.log(`✅ [DB] Mise en vedette mise à jour en base de données.`);
 
     const channelName = `presence-session-${sessionId}`;
     await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
+    console.log(`📡 [Pusher] Événement 'participant-spotlighted' diffusé sur ${channelName}.`);
     
     revalidatePath(`/session/${sessionId}`);
 }
