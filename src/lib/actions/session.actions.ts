@@ -102,12 +102,15 @@ export async function setWhiteboardController(sessionId: string, participantUser
 }
 
 export async function spotlightParticipant(sessionId: string, participantSid: string) {
-    console.log(`🔦 [Action Server] Tentative de mise en vedette du SID ${participantSid} pour la session ${sessionId}`);
+    console.log(`🔦 [Action Server] Début de spotlightParticipant - Session: ${sessionId}, ParticipantSID: ${participantSid}`);
+    
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
-        console.log(`❌ [Action Server] Échec: L'utilisateur n'est pas un professeur.`);
+        console.log(`❌ [Action Server] Non autorisé: Rôle=${session?.user.role}`);
         throw new Error("Unauthorized: Only teachers can spotlight participants.");
     }
+
+    console.log(`👤 [Action Server] Professeur autorisé: ${session.user.id}`);
 
     const coursSession = await prisma.coursSession.findFirst({
         where: {
@@ -117,24 +120,35 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
     });
 
     if (!coursSession) {
-        console.log(`❌ [Action Server] Échec: Session non trouvée ou l'utilisateur n'est pas le professeur hôte.`);
+        console.log(`❌ [Action Server] Session non trouvée ou non autorisée: ${sessionId}`);
         throw new Error("Session not found or you are not the host.");
     }
     
-    console.log(`✅ [Action Server] Autorisé. Mise à jour de la base de données...`);
+    console.log(`✅ [Action Server] Session trouvée, mise à jour en base de données...`);
+    
     await prisma.coursSession.update({
         where: { id: sessionId },
         data: { 
             spotlightedParticipantSid: participantSid,
         }
     });
-    console.log(`✅ [DB] Mise en vedette mise à jour en base de données.`);
+
+    console.log(`✅ [DB] Session mise à jour avec spotlightedParticipantSid: ${participantSid}`);
 
     const channelName = `presence-session-${sessionId}`;
-    await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
-    console.log(`📡 [Pusher] Événement 'participant-spotlighted' diffusé sur ${channelName}.`);
+    console.log(`📡 [Pusher][OUT] Envoi événement 'participant-spotlighted' sur ${channelName}`);
+    
+    // AJOUTEZ CETTE VÉRIFICATION
+    try {
+        await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
+        console.log(`✅ [Pusher] Événement envoyé avec succès sur le canal: ${channelName}`);
+    } catch (error) {
+        console.error(`❌ [Pusher] Erreur lors de l'envoi:`, error);
+        throw error;
+    }
     
     revalidatePath(`/session/${sessionId}`);
+    console.log(`🔄 [Revalidation] Page de session ${sessionId} invalidée`);
 }
 
 export async function endCoursSession(sessionId: string) {
