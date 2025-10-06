@@ -8,7 +8,7 @@ import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users } from 'lucide-react';
+import { Users, Star } from 'lucide-react';
 import { Separator } from '../ui/separator';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
@@ -41,10 +41,10 @@ export function TeacherSessionView({
 }) {
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
-    const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
     const localUserId = teacher?.id;
 
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
+    
     const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
         ? localStream 
         : remoteStreamsMap.get(spotlightedUser?.id ?? '');
@@ -53,7 +53,27 @@ export function TeacherSessionView({
 
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 h-full py-6">
+
+            {/* Colonne de gauche: Participant en vedette */}
+            <div className="lg:col-span-1 flex flex-col gap-4">
+                <h3 className="font-semibold text-center flex items-center justify-center gap-2 text-primary">
+                    <Star className='h-4 w-4'/> En Vedette
+                </h3>
+                {spotlightedUser && (
+                     <Participant
+                        stream={spotlightedParticipantStream}
+                        isLocal={spotlightedUser.id === localUserId}
+                        isTeacher={true}
+                        participantUserId={spotlightedUser.id}
+                        displayName={spotlightedUser.name ?? "Utilisateur"}
+                        onGiveWhiteboardControl={onGiveWhiteboardControl}
+                        onSpotlightParticipant={onSpotlightParticipant}
+                        isWhiteboardController={spotlightedUser.id === whiteboardControllerId}
+                        isSpotlighted={true}
+                    />
+                )}
+            </div>
 
             {/* Colonne centrale: Tableau blanc */}
             <div className="lg:col-span-4 h-full min-h-[600px]">
@@ -64,42 +84,19 @@ export function TeacherSessionView({
                />
             </div>
             
-            {/* Colonne de droite: Participants */}
+            {/* Colonne de droite: Reste des participants */}
             <div className="lg:col-span-1 flex flex-col gap-6 min-h-0">
                  <Card className="flex-1 flex flex-col min-h-0 bg-background/80">
-                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
+                     <CardHeader className="p-4">
+                        <CardTitle className="flex items-center gap-2 text-base">
                             <Users />
-                            Participants
+                            Classe
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
-                           <div className="space-y-4 pr-2">
-                                {/* Participant en Vedette */}
-                                {spotlightedUser && (
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-muted-foreground px-2 mb-2">En Vedette</h4>
-                                        <Participant
-                                            stream={spotlightedParticipantStream}
-                                            isLocal={spotlightedUser.id === localUserId}
-                                            isTeacher={true}
-                                            participantUserId={spotlightedUser.id}
-                                            displayName={spotlightedUser.name ?? "Utilisateur"}
-                                            onGiveWhiteboardControl={onGiveWhiteboardControl}
-                                            onSpotlightParticipant={onSpotlightParticipant}
-                                            isWhiteboardController={spotlightedUser.id === whiteboardControllerId}
-                                            isSpotlighted={true}
-                                        />
-                                    </div>
-                                )}
-                               
-                               <Separator className='my-4' />
-                               <h4 className="text-sm font-semibold text-muted-foreground px-2 mb-2">Autres Participants</h4>
-                               
-                               {/* Reste des participants */}
-                                <div className="space-y-3">
-                                {otherParticipants.map((user) => {
+                           <div className="space-y-3 pr-2">
+                               {otherParticipants.map((user) => {
                                     const remoteStream = remoteStreamsMap.get(user.id);
                                     const isUserLocal = user.id === localUserId;
 
@@ -135,7 +132,7 @@ export function TeacherSessionView({
                                                 isSpotlighted={false}
                                             />
                                         );
-_                                    } else if (user.role === 'ELEVE') {
+                                    } else if (user.role === 'ELEVE') {
                                         return (
                                             <StudentPlaceholder 
                                                 key={user.id}
@@ -146,7 +143,6 @@ _                                    } else if (user.role === 'ELEVE') {
                                     }
                                     return null;
                                 })}
-                                </div>
                            </div>
                         </ScrollArea>
                     </CardContent>
