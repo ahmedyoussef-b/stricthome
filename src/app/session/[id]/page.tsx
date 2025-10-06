@@ -1,4 +1,3 @@
-
 // src/app/session/[id]/page.tsx
 'use client';
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
@@ -9,7 +8,7 @@ import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, setWhiteboardController, spotlightParticipant } from '@/lib/actions';
+import { setWhiteboardController, spotlightParticipant } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -64,8 +63,6 @@ function SessionPageContent() {
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    const [isEndingSession, setIsEndingSession] = useState(false);
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
     const classStudents = allSessionUsers.filter(u => u.role === 'ELEVE');
@@ -301,32 +298,6 @@ function SessionPageContent() {
         };
     }, []);
 
-    const handleGoBack = async () => {
-        console.log('🎬 [handleGoBack] Démarrage du processus de fin de session.');
-        setIsEndingSession(true);
-        try {
-            if (isTeacher) {
-                console.log('🚪 [Action] Le professeur quitte et termine la session.');
-                await endCoursSession(sessionId);
-                console.log('✅ [Action] Session terminée avec succès');
-                // The pusher event 'session-ended' will trigger the cleanup and redirect for everyone
-            } else {
-                console.log('🚪 [Action] L\'élève quitte la session.');
-                handleEndSession(); // Student just disconnects and leaves
-            }
-        } catch (error) {
-            console.error('❌ [Action] Erreur lors de la fin de session:', error);
-            toast({
-                variant: "destructive",
-                title: "Erreur",
-                description: "Impossible de terminer la session.",
-            });
-        } finally {
-            setIsEndingSession(false);
-            console.log('🔚 [handleGoBack] Fin du processus de fin de session.');
-        }
-    };
-
     const handleGiveWhiteboardControl = useCallback(async (participantUserId: string) => {
         if (!isTeacher) return;
         console.log(`✍️ [Action][OUT] Le professeur donne le contrôle du tableau à ${participantUserId}`);
@@ -452,13 +423,12 @@ function SessionPageContent() {
             <SessionHeader 
                 sessionId={sessionId}
                 isTeacher={isTeacher}
-                onGoBack={handleGoBack}
+                onGoBack={handleEndSession}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
                 onStartTimer={handleStartTimer}
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
-                isEndingSession={isEndingSession}
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />
