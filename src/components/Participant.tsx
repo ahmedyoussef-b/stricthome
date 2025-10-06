@@ -61,7 +61,7 @@ function ParticipantComponent({
   return (
     <Card className={cn(
         "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group",
-        isSpotlighted && "ring-2 ring-amber-500 shadow-lg"
+        isSpotlighted && "ring-4 ring-amber-500 shadow-lg"
     )}>
         <video ref={videoRef} autoPlay playsInline muted={isLocal} className={cn("w-full h-full object-cover", !hasVideo && "hidden")} />
 
@@ -96,7 +96,7 @@ function ParticipantComponent({
                         </Tooltip>
                      </>
                  )}
-                {isTeacher && (
+                {isTeacher && onSpotlightParticipant && (
                     <>
                      <Tooltip>
                         <TooltipTrigger asChild>

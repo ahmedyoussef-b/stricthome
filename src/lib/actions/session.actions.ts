@@ -27,7 +27,7 @@ export async function createCoursSession(professeurId: string, studentIds: strin
                 connect: { id: professeurId }
             },
             participants: {
-                connect: studentIds.map(id => ({ id }))
+                connect: [{id: professeurId}, ...studentIds.map(id => ({ id }))]
             },
             classe: {
                 connect: { id: firstStudent.classeId }

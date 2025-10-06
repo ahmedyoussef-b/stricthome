@@ -245,7 +245,7 @@ function SessionPageContent() {
         // Gérer les candidats ICE
         pc.onicecandidate = event => {
             if (event.candidate) {
-                sendSignal({ to: peerId, ice: event.candidate });
+                sendSignal({ to: peerId, from: userId, ice: event.candidate });
             }
         };
 
@@ -255,7 +255,7 @@ function SessionPageContent() {
                 try {
                     const offer = await pc.createOffer();
                     await pc.setLocalDescription(offer);
-                    sendSignal({ to: peerId, sdp: pc.localDescription });
+                    sendSignal({ to: peerId, from: userId, sdp: pc.localDescription });
                 } catch (error) {
                     console.error("❌ [WebRTC] Erreur createOffer:", error);
                 }
@@ -299,7 +299,7 @@ function SessionPageContent() {
                 if (sdp.type === 'offer') {
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
-                    sendSignal({ to: from, sdp: pc.localDescription });
+                    sendSignal({ to: from, from: userId, sdp: pc.localDescription });
                 }
             } else if (ice) {
                 await pc.addIceCandidate(new RTCIceCandidate(ice));
@@ -329,6 +329,16 @@ function SessionPageContent() {
             setSpotlightedParticipantId(participantId);
         } catch (error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
+        }
+    }, [isTeacher, sessionId, toast]);
+
+    const handleGiveWhiteboardControl = useCallback(async (participantId: string) => {
+        if (!isTeacher) return;
+        try {
+            await setWhiteboardController(sessionId, participantId);
+            setWhiteboardControllerId(participantId);
+        } catch(error) {
+            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }
     }, [isTeacher, sessionId, toast]);
 
@@ -372,7 +382,7 @@ function SessionPageContent() {
                         whiteboardControllerId={whiteboardControllerId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerUser={controllerUser}
-                        onGiveWhiteboardControl={() => {}}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
                     />
                 ) : (
                     <StudentSessionView
