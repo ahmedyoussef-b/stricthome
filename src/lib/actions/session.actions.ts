@@ -138,7 +138,6 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
     const channelName = `presence-session-${sessionId}`;
     console.log(`📡 [Pusher][OUT] Envoi événement 'participant-spotlighted' sur ${channelName}`);
     
-    // AJOUTEZ CETTE VÉRIFICATION
     try {
         await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
         console.log(`✅ [Pusher] Événement envoyé avec succès sur le canal: ${channelName}`);
