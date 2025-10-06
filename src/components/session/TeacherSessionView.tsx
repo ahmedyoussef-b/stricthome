@@ -48,7 +48,7 @@ export function TeacherSessionView({
     const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
         ? localStream 
         : remoteStreamsMap.get(spotlightedUser?.id ?? '');
-
+    
     const otherParticipants = allSessionUsers.filter(u => u.id !== spotlightedUser?.id);
 
 
