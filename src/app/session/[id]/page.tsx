@@ -112,23 +112,27 @@ function SessionPageContent() {
      useEffect(() => {
         if (!room) return;
     
+        console.log(`🎯 [Spotlight] Mise à jour du participant en vedette. SID actuel: ${spotlightedParticipantSid}`);
+    
         const findParticipant = (sid: string) => {
             if (room.localParticipant.sid === sid) {
                 return room.localParticipant;
             }
             return room.participants.get(sid) || null;
         };
-
+    
         let newSpotlightedParticipant: TwilioParticipant | null = null;
     
         if (spotlightedParticipantSid) {
             newSpotlightedParticipant = findParticipant(spotlightedParticipantSid);
+            console.log(`🎯 [Spotlight] Participant trouvé pour SID ${spotlightedParticipantSid}:`, !!newSpotlightedParticipant);
         }
     
         if (!newSpotlightedParticipant) {
-             const teacherParticipant = Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-')) || 
-                                       (room.localParticipant.identity.startsWith('teacher-') ? room.localParticipant : null);
-             newSpotlightedParticipant = teacherParticipant || room.localParticipant;
+            const teacherParticipant = Array.from(room.participants.values()).find(p => p.identity.startsWith('teacher-')) || 
+                                      (room.localParticipant.identity.startsWith('teacher-') ? room.localParticipant : null);
+            newSpotlightedParticipant = teacherParticipant || room.localParticipant;
+            console.log(`🎯 [Spotlight] Participant par défaut: ${newSpotlightedParticipant.identity}`);
         }
         
         setSpotlightedParticipant(newSpotlightedParticipant as LocalParticipant | RemoteParticipant | null);
@@ -194,6 +198,9 @@ function SessionPageContent() {
         const handleSpotlight = (data: { participantSid: string }) => {
             console.log(`🔦 [Pusher] Événement 'participant-spotlighted' reçu pour SID: ${data.participantSid}`);
             setSpotlightedParticipantSid(data.participantSid);
+            
+            // Log supplémentaire pour déboguer
+            console.log(`🎯 [State] spotlightedParticipantSid mis à jour: ${data.participantSid}`);
         };
         
         const handleWhiteboardControl = (data: { controllerId: string; senderId: string; }) => {
@@ -486,4 +493,5 @@ export default function SessionPage() {
     )
 }
 
+    
     
