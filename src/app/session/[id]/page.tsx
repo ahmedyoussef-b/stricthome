@@ -289,11 +289,13 @@ function SessionPageContent() {
         
         try {
             if (sdp) {
-                await pc.setRemoteDescription(new RTCSessionDescription(sdp));
                 if (sdp.type === 'offer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     sendSignal({ to: from, from: userId, sdp: pc.localDescription });
+                } else if (sdp.type === 'answer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
                 }
                  // Process any queued ICE candidates
                 const queue = iceCandidateQueueRef.current.get(from);
@@ -419,5 +421,3 @@ export default function SessionPage() {
         </Suspense>
     )
 }
-
-    
