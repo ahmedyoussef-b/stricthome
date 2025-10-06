@@ -77,7 +77,7 @@ function ParticipantComponent({
        
         <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
              <TooltipProvider>
-                 {isTeacher && !isLocal && onSpotlightParticipant && (
+                 {isTeacher && onSpotlightParticipant && (
                     <>
                      <Tooltip>
                         <TooltipTrigger asChild>
