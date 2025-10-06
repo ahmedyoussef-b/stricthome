@@ -36,14 +36,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(authResponse);
     }
     
-    // Autorisation pour les canaux privés (conversations directes)
-    if (channelName.startsWith('private-conversation-')) {
-      const conversationId = channelName.replace('private-conversation-', '');
-      // Note: Pour une sécurité renforcée, vous devriez vérifier ici
-      // si l'utilisateur (session.user.id) est bien un participant
-      // de la conversation avec l'ID `conversationId`.
-      // Pour la simplicité de ce PoC, nous autorisons l'abonnement
-      // si l'utilisateur est authentifié.
+    // Autorisation pour les canaux privés (conversations directes, signalisation WebRTC)
+    if (channelName.startsWith('private-')) {
+      // Pour la signalisation WebRTC, nous avons besoin d'un canal privé mais pas d'une logique d'autorisation complexe
+      // Pour les conversations, une logique plus stricte serait nécessaire en production.
       const authResponse = pusherServer.authorizeChannel(socketId, channelName);
       return NextResponse.json(authResponse);
     }

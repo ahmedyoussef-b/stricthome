@@ -33,6 +33,7 @@ export async function createCoursSession(professeurId: string, studentIds: strin
                 connect: { id: firstStudent.classeId }
             },
             whiteboardControllerId: professeurId, // Teacher has control by default
+            spotlightedParticipantSid: professeurId, // Teacher is in spotlight by default
         },
     });
 
@@ -101,8 +102,8 @@ export async function setWhiteboardController(sessionId: string, participantUser
     revalidatePath(`/session/${sessionId}`);
 }
 
-export async function spotlightParticipant(sessionId: string, participantSid: string) {
-    console.log(`🔦 [Action Server] Début de spotlightParticipant - Session: ${sessionId}, ParticipantSID: ${participantSid}`);
+export async function spotlightParticipant(sessionId: string, participantId: string) {
+    console.log(`🔦 [Action Server] Début de spotlightParticipant - Session: ${sessionId}, ParticipantID: ${participantId}`);
     
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
@@ -129,17 +130,17 @@ export async function spotlightParticipant(sessionId: string, participantSid: st
     await prisma.coursSession.update({
         where: { id: sessionId },
         data: { 
-            spotlightedParticipantSid: participantSid,
+            spotlightedParticipantSid: participantId,
         }
     });
 
-    console.log(`✅ [DB] Session mise à jour avec spotlightedParticipantSid: ${participantSid}`);
+    console.log(`✅ [DB] Session mise à jour avec spotlightedParticipantId: ${participantId}`);
 
     const channelName = `presence-session-${sessionId}`;
     console.log(`📡 [Pusher][OUT] Envoi événement 'participant-spotlighted' sur ${channelName}`);
     
     try {
-        await pusherServer.trigger(channelName, 'participant-spotlighted', { participantSid });
+        await pusherServer.trigger(channelName, 'participant-spotlighted', { participantId });
         console.log(`✅ [Pusher] Événement envoyé avec succès sur le canal: ${channelName}`);
     } catch (error) {
         console.error(`❌ [Pusher] Erreur lors de l'envoi:`, error);

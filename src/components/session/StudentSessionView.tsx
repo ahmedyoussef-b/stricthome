@@ -1,9 +1,8 @@
 // src/components/session/StudentSessionView.tsx
 'use client';
 
-import { LocalParticipant, RemoteParticipant, Participant as TwilioParticipant } from 'twilio-video';
 import { Loader2 } from 'lucide-react';
-import { Participant } from '@/components/session/Participant';
+import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
@@ -12,22 +11,21 @@ type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role:
 
 interface StudentSessionViewProps {
     sessionId: string;
-    mainParticipant: LocalParticipant | RemoteParticipant | null;
-    localParticipant: LocalParticipant | null;
-    mainParticipantUser: SessionParticipant | null | undefined;
+    localStream: MediaStream | null;
+    remoteStreams: Map<string, MediaStream>;
+    spotlightedStream: MediaStream | null;
+    spotlightedUser: SessionParticipant | null | undefined;
     whiteboardControllerId: string | null;
     isControlledByCurrentUser: boolean;
     controllerUser: SessionParticipant | null | undefined;
-    allVideoParticipants: Array<LocalParticipant | RemoteParticipant>;
-    findUserByParticipant: (participant: TwilioParticipant) => SessionParticipant | undefined;
     onGiveWhiteboardControl: (userId: string) => void;
 }
 
 export function StudentSessionView({
     sessionId,
-    mainParticipant,
-    localParticipant,
-    mainParticipantUser,
+    localStream,
+    spotlightedStream,
+    spotlightedUser,
     whiteboardControllerId,
     isControlledByCurrentUser,
     controllerUser,
@@ -36,19 +34,16 @@ export function StudentSessionView({
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 py-8 flex-1">
             <div className="lg:col-span-4 flex flex-col gap-6">
-                 {mainParticipant ? (
+                 {spotlightedStream ? (
                     <Participant 
-                        key={mainParticipant.sid}
-                        participant={mainParticipant}
-                        isLocal={mainParticipant === localParticipant}
+                        stream={spotlightedStream}
+                        isLocal={localStream === spotlightedStream}
                         isSpotlighted={true}
-                        // Pour la vue élève, isTeacher est toujours false pour masquer les contrôles prof
                         isTeacher={false}
-                        sessionId={sessionId}
-                        displayName={mainParticipantUser?.name ?? undefined}
-                        participantUserId={mainParticipantUser?.id ?? ''}
+                        participantUserId={spotlightedUser?.id ?? ''}
+                        displayName={spotlightedUser?.name ?? undefined}
                         onGiveWhiteboardControl={onGiveWhiteboardControl}
-                        isWhiteboardController={mainParticipantUser?.id === whiteboardControllerId}
+                        isWhiteboardController={spotlightedUser?.id === whiteboardControllerId}
                     />
                 ) : (
                     <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
