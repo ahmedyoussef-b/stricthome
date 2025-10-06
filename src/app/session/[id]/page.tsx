@@ -340,9 +340,19 @@ function SessionPageContent() {
     
     const handleSpotlightParticipant = useCallback(async (participantSid: string) => {
         if (!isTeacher) return;
+        
+        console.log(`🔦 [SessionPage] Mise en vedette du participant SID: ${participantSid}`);
+        
         try {
+            // AJOUTEZ CETTE LIGNE pour appeler l'action serveur
             await spotlightParticipant(sessionId, participantSid);
+            console.log(`✅ [SessionPage] Participant ${participantSid} mis en vedette avec succès`);
+            
+            // Mise à jour optimiste de l'état local
+            setSpotlightedParticipantSid(participantSid);
+            
         } catch (error) {
+            console.error(`❌ [SessionPage] Erreur lors de la mise en vedette:`, error);
             toast({
                 variant: 'destructive',
                 title: 'Erreur',
