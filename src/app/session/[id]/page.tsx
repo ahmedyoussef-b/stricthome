@@ -8,7 +8,7 @@ import { pusherClient } from '@/lib/pusher/client';
 import dynamic from 'next/dynamic';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { setWhiteboardController, spotlightParticipant } from '@/lib/actions';
+import { endCoursSession, setWhiteboardController, spotlightParticipant } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -53,6 +53,7 @@ function SessionPageContent() {
     const [spotlightedParticipant, setSpotlightedParticipant] = useState<LocalParticipant | RemoteParticipant | null>(null);
     
     const [isLoading, setIsLoading] = useState(true);
+    const [isEndingSession, setIsEndingSession] = useState(false);
     
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
 
@@ -82,14 +83,35 @@ function SessionPageContent() {
             description: "La session a pris fin.",
         });
     
-        if (role === 'teacher') {
+        if (isTeacher) {
             router.push('/teacher');
         } else if (userId) {
             router.push(`/student/${userId}`);
         } else {
             router.push('/');
         }
-    }, [router, toast, userId, role]);
+    }, [router, toast, userId, isTeacher]);
+
+    const handleEndSessionForEveryone = async () => {
+        if (!isTeacher || isEndingSession) return;
+        
+        console.log('🎬 [Action] Le professeur lance la fin de session pour tout le monde.');
+        setIsEndingSession(true);
+
+        try {
+            await endCoursSession(sessionId);
+            // La redirection et le nettoyage sont maintenant gérés par l'événement Pusher 'session-ended'
+            // qui sera également reçu par le professeur.
+        } catch (error) {
+            console.error("❌ Erreur lors de la tentative de fin de session:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur',
+                description: "Impossible de terminer la session."
+            });
+            setIsEndingSession(false);
+        }
+    }
     
     
      const onConnected = useCallback((newRoom: Room) => {
@@ -209,22 +231,13 @@ function SessionPageContent() {
             }
         };
     
-        const handleTimerStart = (data: { duration: number }) => {
-            console.log(`▶️ [Pusher] Événement 'timer-start' reçu. Durée: ${data.duration}`);
-            setTimeLeft(data.duration);
-            setIsTimerRunning(true);
-        };
-        const handleTimerPause = () => {
-            console.log("⏸️ [Pusher] Événement 'timer-pause' reçu.");
-            setIsTimerRunning(false);
-        };
-        const handleTimerReset = (data: { duration: number }) => {
-            console.log(`🔄 [Pusher] Événement 'timer-reset' reçu. Durée: ${data.duration}`);
-            setIsTimerRunning(false);
-            setTimeLeft(data.duration);
-        };
         const handleTimerTick = (data: { timeLeft: number }) => {
             setTimeLeft(data.timeLeft);
+            if (data.timeLeft > 0 && !isTimerRunning) {
+                setIsTimerRunning(true);
+            } else if (data.timeLeft === 0 && isTimerRunning) {
+                setIsTimerRunning(false);
+            }
         };
         
         const handleSessionEnded = (data: { sessionId: string }) => {
@@ -237,25 +250,23 @@ function SessionPageContent() {
         channel.bind('participant-spotlighted', handleSpotlight);
         channel.bind('whiteboard-control-changed', handleWhiteboardControl);
         channel.bind('session-ended', handleSessionEnded);
-    
-        if (!isTeacher) {
-            channel.bind('timer-start', handleTimerStart);
-            channel.bind('timer-pause', handleTimerPause);
-            channel.bind('timer-reset', handleTimerReset);
-            channel.bind('timer-tick', handleTimerTick);
-        }
+        channel.bind('timer-tick', handleTimerTick);
     
         return () => {
-            console.log("🧹 [useEffect] Nettoyage des effets Pusher uniquement.");
+            console.log("🧹 [useEffect] Nettoyage des effets Pusher et déconnexion Twilio.");
             
             if (channel) {
                 channel.unbind_all();
                 pusherClient.unsubscribe(channelName);
                 console.log(`📡 [Pusher] Désabonnement du canal ${channelName}.`);
             }
+             if (roomRef.current) {
+                roomRef.current.disconnect();
+                console.log("🔌 [Twilio] Salle déconnectée lors du nettoyage du useEffect.");
+            }
         };
     
-    }, [sessionId, toast, isTeacher, handleEndSession, userId]);
+    }, [sessionId, toast, handleEndSession, userId, isTimerRunning]);
     
     // Effet pour gérer les événements de la salle Twilio
     useEffect(() => {
@@ -279,24 +290,21 @@ function SessionPageContent() {
 
         room.on('participantConnected', handleParticipantConnected);
         room.on('participantDisconnected', handleParticipantDisconnected);
+        room.on('disconnected', () => {
+            console.log("🚪 [Twilio] Déconnecté de la salle (événement 'disconnected').");
+            // Le nettoyage principal est géré par handleEndSession ou le unmount.
+        });
 
         return () => {
             console.log("🧹 [Twilio] Nettoyage des écouteurs d'événements");
-            room.off('participantConnected', handleParticipantConnected);
-            room.off('participantDisconnected', handleParticipantDisconnected);
+            if (room) {
+                room.off('participantConnected', handleParticipantConnected);
+                room.off('participantDisconnected', handleParticipantDisconnected);
+                room.off('disconnected', () => {});
+            }
         };
     }, [room]);
     
-    // Effet pour le nettoyage final au démontage du composant
-    useEffect(() => {
-        return () => {
-            console.log("🧹 [SessionPage] Démontage du composant - nettoyage complet.");
-            if (roomRef.current) {
-                roomRef.current.disconnect();
-                console.log("🔌 [Twilio] Salle déconnectée lors du démontage du composant.");
-            }
-        };
-    }, []);
 
     const handleGiveWhiteboardControl = useCallback(async (participantUserId: string) => {
         if (!isTeacher) return;
@@ -341,6 +349,7 @@ function SessionPageContent() {
 
 
     const broadcastTimerEvent = useCallback(async (event: string, data?: any) => {
+        if(!isTeacher) return;
         try {
             await fetch('/api/pusher/timer', {
                 method: 'POST',
@@ -351,51 +360,49 @@ function SessionPageContent() {
             console.error(`❌ [Pusher] Échec de la diffusion de l'événement de minuterie ${event}`, error);
             toast({ variant: 'destructive', title: 'Erreur de synchronisation', description: 'Le minuteur n\'a pas pu être synchronisé.' });
         }
-    }, [sessionId, toast]);
+    }, [sessionId, toast, isTeacher]);
 
     const handleStartTimer = () => {
+        if (!isTeacher) return;
         console.log('▶️ [Timer] Démarrage du minuteur par le professeur');
         setIsTimerRunning(true);
-        broadcastTimerEvent('timer-start', { duration: timeLeft });
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        
+        timerIntervalRef.current = setInterval(() => {
+            setTimeLeft(prevTime => {
+                const newTime = prevTime > 0 ? prevTime - 1 : 0;
+                if (newTime % 5 === 0) console.log(`⏳ [Timer] Tick: ${newTime}s restantes, diffusion...`);
+                broadcastTimerEvent('timer-tick', { timeLeft: newTime });
+                if (newTime === 0) {
+                    console.log('⌛ [Timer] Le minuteur a atteint zéro');
+                    setIsTimerRunning(false);
+                    if(timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                    handleEndSessionForEveryone();
+                }
+                return newTime;
+            });
+        }, 1000);
     };
 
     const handlePauseTimer = () => {
+        if (!isTeacher) return;
         console.log('⏸️ [Timer] Pause du minuteur par le professeur');
         setIsTimerRunning(false);
-        broadcastTimerEvent('timer-pause');
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+        }
     };
 
     const handleResetTimer = () => {
+        if (!isTeacher) return;
         console.log('🔄 [Timer] Réinitialisation du minuteur par le professeur');
         setIsTimerRunning(false);
-        setTimeLeft(duration);
-        broadcastTimerEvent('timer-reset', { duration });
-    };
-
-    useEffect(() => {
-        if (isTeacher && isTimerRunning) {
-            timerIntervalRef.current = setInterval(() => {
-                setTimeLeft(prevTime => {
-                    const newTime = prevTime > 0 ? prevTime - 1 : 0;
-                    if (newTime % 10 === 0) console.log(`⏳ [Timer] Tick: ${newTime}s restantes`);
-                    broadcastTimerEvent('timer-tick', { timeLeft: newTime });
-                    if (newTime === 0) {
-                        console.log('⌛ [Timer] Le minuteur a atteint zéro');
-                        setIsTimerRunning(false);
-                    }
-                    return newTime;
-                });
-            }, 1000);
-        } else if (timerIntervalRef.current) {
+        if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
         }
-
-        return () => {
-            if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-            }
-        };
-    }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
+        setTimeLeft(duration);
+        broadcastTimerEvent('timer-tick', { timeLeft: duration });
+    };
 
      const allVideoParticipants = room ? [room.localParticipant, ...Array.from(remoteParticipants.values())] : [];
     
@@ -423,7 +430,8 @@ function SessionPageContent() {
             <SessionHeader 
                 sessionId={sessionId}
                 isTeacher={isTeacher}
-                onGoBack={handleEndSession}
+                onEndSession={handleEndSessionForEveryone}
+                isEndingSession={isEndingSession}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
                 onStartTimer={handleStartTimer}
@@ -480,10 +488,3 @@ export default function SessionPage() {
         </Suspense>
     )
 }
-
-    
-    
-
-    
-
-    

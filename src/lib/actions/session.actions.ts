@@ -183,6 +183,7 @@ export async function endCoursSession(sessionId: string) {
       console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de classe ${channelName}.`);
   }
 
+  // Diffuser l'événement sur le canal de la session pour notifier les participants actifs
   const sessionChannelName = `presence-session-${sessionId}`;
   await pusherServer.trigger(sessionChannelName, 'session-ended', { sessionId: updatedSession.id });
   console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de session ${sessionChannelName}.`);
