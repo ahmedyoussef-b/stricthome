@@ -187,7 +187,9 @@ function SessionPageContent() {
                 presenceChannel.bind('participant-spotlighted', (data: { participantId: string }) => {
                   setSpotlightedParticipantId(data.participantId);
                 });
-
+                presenceChannel.bind('whiteboard-control-changed', (data: { controllerId: string }) => {
+                    setWhiteboardControllerId(data.controllerId);
+                });
 
                 setIsLoading(false);
 
@@ -378,7 +380,7 @@ function SessionPageContent() {
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />
                 {isLoading ? (
-                    <div className="flex items-center justify-center h-64">
+                    <div className="flex items-center justify-center h-full">
                         <Loader2 className="animate-spin h-8 w-8 text-primary" />
                         <p className='ml-2'>Chargement de la session...</p>
                     </div>
@@ -387,9 +389,9 @@ function SessionPageContent() {
                         sessionId={sessionId}
                         localStream={localStreamRef.current}
                         remoteParticipants={remoteParticipantsArray}
-                        spotlightedStream={spotlightedStream}
                         spotlightedUser={spotlightedUser}
                         allSessionUsers={allSessionUsers}
+                        onlineUserIds={onlineUsers}
                         onSpotlightParticipant={handleSpotlightParticipant}
                         whiteboardControllerId={whiteboardControllerId}
                         isControlledByCurrentUser={isControlledByCurrentUser}

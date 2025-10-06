@@ -38,7 +38,7 @@ function ParticipantComponent({
 
   const nameToDisplay = displayName || participantUserId;
   const isMuted = stream ? !stream.getAudioTracks().some(t => t.enabled) : true;
-  const hasVideo = stream ? stream.getVideoTracks().some(t => t.enabled) : false;
+  const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks().some(t => t.enabled);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -55,53 +55,34 @@ function ParticipantComponent({
     });
   }
 
+  // Placeholder functions, actual implementation would require more signaling
   const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
   const toggleVideo = () => console.log('Toggle video for', nameToDisplay);
 
   return (
     <Card className={cn(
-        "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group",
-        isSpotlighted && "ring-4 ring-amber-500 shadow-lg"
+        "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group text-white",
+        isSpotlighted && "ring-2 ring-amber-500 shadow-lg"
     )}>
         <video ref={videoRef} autoPlay playsInline muted={isLocal} className={cn("w-full h-full object-cover", !hasVideo && "hidden")} />
 
         {!hasVideo && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                <Avatar className="h-16 w-16 text-2xl">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-800">
+                <Avatar className="h-12 w-12 text-xl">
                     <AvatarFallback>{nameToDisplay?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <p className="text-sm font-semibold">{nameToDisplay}</p>
             </div>
         )}
        
-        <div className="absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
              <TooltipProvider>
-                 {isTeacher && !isLocal && (
-                     <>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={toggleMute}>
-                                    {isMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>{isMuted ? "Activer" : "Couper"} le micro</p></TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={toggleVideo}>
-                                    {hasVideo ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-destructive" />}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>{hasVideo ? "Désactiver" : "Activer"} la caméra</p></TooltipContent>
-                        </Tooltip>
-                     </>
-                 )}
-                {isTeacher && onSpotlightParticipant && (
+                 {isTeacher && !isLocal && onSpotlightParticipant && (
                     <>
                      <Tooltip>
                         <TooltipTrigger asChild>
-                             <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={handleSpotlight}>
-                                <Star className={cn("h-4 w-4", isSpotlighted && "fill-amber-500 text-amber-500")} />
+                             <Button variant="secondary" size="icon" className="h-6 w-6 bg-black/50 hover:bg-black/80 border-none" onClick={handleSpotlight}>
+                                <Star className={cn("h-3 w-3", isSpotlighted && "fill-amber-500 text-amber-500")} />
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -110,8 +91,8 @@ function ParticipantComponent({
                     </Tooltip>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                             <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/70 backdrop-blur-sm" onClick={() => onGiveWhiteboardControl(participantUserId)}>
-                                <Pen className={cn("h-4 w-4", isWhiteboardController && "fill-blue-500 text-blue-500")} />
+                             <Button variant="secondary" size="icon" className="h-6 w-6 bg-black/50 hover:bg-black/80 border-none" onClick={() => onGiveWhiteboardControl(participantUserId)}>
+                                <Pen className={cn("h-3 w-3", isWhiteboardController && "fill-blue-500 text-blue-500")} />
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -122,24 +103,19 @@ function ParticipantComponent({
                 )}
              </TooltipProvider>
         </div>
-         <p className="absolute bottom-2 left-2 text-xs font-semibold bg-black/50 text-white px-2 py-1 rounded">
+         <p className="absolute bottom-2 left-2 text-xs font-semibold bg-black/50 px-2 py-1 rounded">
             {isLocal ? 'Vous' : nameToDisplay}
         </p>
          <div className="absolute top-2 left-2 flex items-center gap-1.5">
-            <div className="bg-background/70 backdrop-blur-sm rounded-md p-1">
-                {isMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4 text-green-500" />}
+            <div className="bg-black/50 backdrop-blur-sm rounded-md p-1">
+                {isMuted ? <MicOff className="h-3 w-3 text-destructive" /> : <Mic className="h-3 w-3 text-green-500" />}
             </div>
-            {!hasVideo && (
-                <div className="bg-destructive/80 backdrop-blur-sm rounded-md p-1">
-                    <VideoOff className="h-4 w-4 text-destructive-foreground" />
-                </div>
-            )}
             {isWhiteboardController && (
                  <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
                            <div className="bg-blue-500/80 backdrop-blur-sm rounded-md p-1">
-                                <Pen className="h-4 w-4 text-white" />
+                                <Pen className="h-3 w-3 text-white" />
                             </div>
                         </TooltipTrigger>
                         <TooltipContent>
