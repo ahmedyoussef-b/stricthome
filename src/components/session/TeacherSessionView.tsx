@@ -91,22 +91,24 @@ export function TeacherSessionView({
                                     isSpotlighted={spotlightedUser?.id === teacher.id}
                                 />
                             )}
-                            {students.map(student => {
-                                const participant = remoteParticipants.find(p => p.id === student.id);
+                            {remoteParticipants.map(({ id, stream }) => {
+                                const participantUser = allSessionUsers.find(u => u.id === id);
+                                if (!participantUser) return null;
+                                
                                 return (
                                     <Participant
-                                        key={student.id}
-                                        stream={participant?.stream}
+                                        key={id}
+                                        stream={stream}
                                         isLocal={false}
                                         isTeacher={true} // isTeacher vue pour les contrôles
-                                        participantUserId={student.id}
-                                        displayName={student.name ?? "Élève"}
+                                        participantUserId={id}
+                                        displayName={participantUser.name ?? "Élève"}
                                         onGiveWhiteboardControl={onGiveWhiteboardControl}
                                         onSpotlightParticipant={onSpotlightParticipant}
-                                        isWhiteboardController={student.id === whiteboardControllerId}
-                                        isSpotlighted={spotlightedUser?.id === student.id}
+                                        isWhiteboardController={id === whiteboardControllerId}
+                                        isSpotlighted={spotlightedUser?.id === id}
                                     />
-                                )
+                                );
                             })}
                            </div>
                         </ScrollArea>
@@ -127,3 +129,5 @@ export function TeacherSessionView({
         </div>
     );
 }
+
+    

@@ -18,7 +18,7 @@ import { PermissionPrompt } from '@/components/PermissionPrompt';
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun1.l.google.com:19302' },
   ],
 };
 
@@ -34,7 +34,7 @@ type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role:
 
 interface PeerConnection {
   connection: RTCPeerConnection;
-  stream: MediaStream;
+  stream?: MediaStream;
 }
 
 function SessionPageContent() {
@@ -50,6 +50,8 @@ function SessionPageContent() {
 
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+    const iceCandidateQueueRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
     const [spotlightedParticipantId, setSpotlightedParticipantId] = useState<string | null>(null);
@@ -132,7 +134,6 @@ function SessionPageContent() {
                 ].filter((u): u is SessionParticipant => u !== null && u !== undefined);
                 setAllSessionUsers(allUsers);
                 setWhiteboardControllerId(sessionData.whiteboardControllerId);
-                // Le spotlight est maintenant géré par l'ID de l'utilisateur
                 if (sessionData.spotlightedParticipantSid) {
                   setSpotlightedParticipantId(sessionData.spotlightedParticipantSid)
                 } else if(teacher) {
@@ -144,7 +145,6 @@ function SessionPageContent() {
                 console.log("🎥 [WebRTC] Demande du flux média local...");
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
                 localStreamRef.current = stream;
-                // Mettre à jour l'état du stream en vedette si l'utilisateur local est le premier en vedette
                 if (spotlightedParticipantId === userId) {
                     setSpotlightedStream(stream);
                 }
@@ -159,19 +159,19 @@ function SessionPageContent() {
 
                 // 4. Gérer les membres de la présence
                 presenceChannel.bind('pusher:subscription_succeeded', (members: any) => {
-                    const userIds = Object.keys(members.members).map(id => members.members[id].user_id);
+                    const userIds = Object.keys(members.members).filter(id => id !== userId);
                     setOnlineUsers(userIds);
-                    // Pour chaque utilisateur déjà présent, initier une connexion
                     userIds.forEach(memberId => {
-                        if (memberId !== userId) {
-                           createPeerConnection(memberId, true);
-                        }
+                        createPeerConnection(memberId, true);
                     });
                 });
+
                 presenceChannel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
+                    if (member.id === userId) return;
                     setOnlineUsers(prev => [...prev, member.info.user_id]);
-                    // Ne rien faire ici, l'initiateur (déjà présent) créera la connexion
+                    // C'est l'arrivant qui initie la connexion aux autres
                 });
+                
                 presenceChannel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
                     setOnlineUsers(prev => prev.filter(id => id !== member.info.user_id));
                     removePeerConnection(member.info.user_id);
@@ -212,7 +212,7 @@ function SessionPageContent() {
             setSpotlightedStream(localStreamRef.current);
         } else {
             const peer = peerConnectionsRef.current.get(spotlightedParticipantId);
-            if (peer) {
+            if (peer && peer.stream) {
                 setSpotlightedStream(peer.stream);
             }
         }
@@ -224,35 +224,33 @@ function SessionPageContent() {
         console.log(`🤝 [WebRTC] Création de la connexion avec ${peerId}. Initiateur: ${initiator}`);
 
         const pc = new RTCPeerConnection(ICE_SERVERS);
+        peerConnectionsRef.current.set(peerId, { connection: pc });
 
-        // Ajouter les pistes locales à la connexion
         localStreamRef.current?.getTracks().forEach(track => {
             pc.addTrack(track, localStreamRef.current!);
         });
 
-        // Gérer la réception de pistes distantes
         pc.ontrack = event => {
             console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
             const stream = event.streams[0];
+            peerConnectionsRef.current.get(peerId)!.stream = stream;
             setRemoteStreams(prev => new Map(prev).set(peerId, stream));
 
-            // Si le participant qui vient de se connecter est en vedette, on met à jour le stream
             if (spotlightedParticipantId === peerId) {
                 setSpotlightedStream(stream);
             }
         };
 
-        // Gérer les candidats ICE
         pc.onicecandidate = event => {
             if (event.candidate) {
                 sendSignal({ to: peerId, from: userId, ice: event.candidate });
             }
         };
 
-        // Si nous sommes l'initiateur, créer une offre
         if (initiator) {
             pc.onnegotiationneeded = async () => {
                 try {
+                    console.log(`[WebRTC] onnegotiationneeded pour ${peerId}`);
                     const offer = await pc.createOffer();
                     await pc.setLocalDescription(offer);
                     sendSignal({ to: peerId, from: userId, sdp: pc.localDescription });
@@ -261,8 +259,6 @@ function SessionPageContent() {
                 }
             };
         }
-        
-        peerConnectionsRef.current.set(peerId, { connection: pc, stream: new MediaStream() });
     };
 
     const removePeerConnection = (peerId: string) => {
@@ -280,17 +276,15 @@ function SessionPageContent() {
     };
 
     const handleSignal = useCallback(async ({ from, to, sdp, ice }: { from: string, to: string, sdp?: RTCSessionDescriptionInit, ice?: RTCIceCandidateInit }) => {
-        if (to !== userId) return; // Ce signal ne nous est pas destiné
+        if (to !== userId) return;
 
         console.log(`📡 [WebRTC] Signal reçu de ${from}`);
         
         let pc = peerConnectionsRef.current.get(from)?.connection;
 
-        // Si la connexion n'existe pas, on la crée (cas du non-initiateur)
         if (!pc) {
             createPeerConnection(from, false);
-            pc = peerConnectionsRef.current.get(from)?.connection;
-            if(!pc) return console.error("Could not create peer connection");
+            pc = peerConnectionsRef.current.get(from)!.connection;
         }
         
         try {
@@ -301,8 +295,25 @@ function SessionPageContent() {
                     await pc.setLocalDescription(answer);
                     sendSignal({ to: from, from: userId, sdp: pc.localDescription });
                 }
+                 // Process any queued ICE candidates
+                const queue = iceCandidateQueueRef.current.get(from);
+                if (queue) {
+                    for (const candidate of queue) {
+                        await pc.addIceCandidate(candidate);
+                    }
+                    iceCandidateQueueRef.current.delete(from);
+                }
+
             } else if (ice) {
-                await pc.addIceCandidate(new RTCIceCandidate(ice));
+                if (pc.remoteDescription) {
+                    await pc.addIceCandidate(ice);
+                } else {
+                    // Queue the candidate if remote description is not set yet
+                    if (!iceCandidateQueueRef.current.has(from)) {
+                        iceCandidateQueueRef.current.set(from, []);
+                    }
+                    iceCandidateQueueRef.current.get(from)!.push(ice);
+                }
             }
         } catch (error) {
             console.error("❌ [WebRTC] Erreur lors du traitement du signal:", error);
@@ -310,7 +321,6 @@ function SessionPageContent() {
 
     }, [userId, sendSignal]);
     
-    // ... autres fonctions (handleEndSession, handleGiveWhiteboardControl etc. qui restent similaires) ...
     const handleEndSessionForEveryone = async () => {
         if (!isTeacher || isEndingSession) return;
         setIsEndingSession(true);
@@ -409,3 +419,5 @@ export default function SessionPage() {
         </Suspense>
     )
 }
+
+    
