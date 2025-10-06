@@ -1,7 +1,6 @@
 // src/components/session/SessionHeader.tsx
 'use client';
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -16,6 +15,7 @@ interface SessionHeaderProps {
     onStartTimer: () => void;
     onPauseTimer: () => void;
     onResetTimer: () => void;
+    isEndingSession?: boolean;
 }
 
 export function SessionHeader({ 
@@ -26,32 +26,15 @@ export function SessionHeader({
     isTimerRunning,
     onStartTimer,
     onPauseTimer,
-    onResetTimer
+    onResetTimer,
+    isEndingSession = false
 }: SessionHeaderProps) {
-    const [isEndingSession, setIsEndingSession] = useState(false);
-
-    const handleGoBack = async () => {
-        console.log("🎬 [handleGoBack] Démarrage du processus de fin de session.");
-        setIsEndingSession(true);
-        try {
-            console.log("🚀 [handleGoBack] Appel de la fonction onGoBack...");
-            await onGoBack();
-            console.log("✅ [handleGoBack] Appel onGoBack terminé avec succès.");
-            // Le composant devrait se démonter, donc pas besoin de remettre isEndingSession à false.
-        } catch (error) {
-            console.error("❌ [handleGoBack] Erreur pendant onGoBack:", error);
-            setIsEndingSession(false); // Réinitialiser le bouton en cas d'erreur.
-        } finally {
-            console.log("🔚 [handleGoBack] Fin du bloc try/catch/finally.");
-            // Ce log peut ne pas apparaître si la redirection est immédiate.
-        }
-    }
     
     return (
         <header className="border-b bg-background/95 backdrop-blur-sm z-10 sticky top-0">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
                 <div className='flex items-center gap-4'>
-                     <Button variant="outline" onClick={handleGoBack} disabled={isEndingSession}>
+                     <Button variant="outline" onClick={onGoBack} disabled={isEndingSession}>
                          {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
                         {isTeacher ? "Terminer" : "Quitter"}
                     </Button>
@@ -75,3 +58,5 @@ export function SessionHeader({
         </header>
     );
 }
+
+    

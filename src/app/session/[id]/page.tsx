@@ -65,6 +65,8 @@ function SessionPageContent() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    const [isEndingSession, setIsEndingSession] = useState(false);
+
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
     const classStudents = allSessionUsers.filter(u => u.role === 'ELEVE');
     
@@ -300,21 +302,28 @@ function SessionPageContent() {
     }, []);
 
     const handleGoBack = async () => {
-        if (isTeacher) {
-            console.log('🚪 [Action] Le professeur quitte et termine la session.');
-            try {
+        console.log('🎬 [handleGoBack] Démarrage du processus de fin de session.');
+        setIsEndingSession(true);
+        try {
+            if (isTeacher) {
+                console.log('🚪 [Action] Le professeur quitte et termine la session.');
                 await endCoursSession(sessionId);
+                console.log('✅ [Action] Session terminée avec succès');
                 // The pusher event 'session-ended' will trigger the cleanup and redirect for everyone
-            } catch (error) {
-                toast({
-                    variant: "destructive",
-                    title: "Erreur",
-                    description: "Impossible de terminer la session.",
-                });
+            } else {
+                console.log('🚪 [Action] L\'élève quitte la session.');
+                handleEndSession(); // Student just disconnects and leaves
             }
-        } else {
-            console.log('🚪 [Action] L\'élève quitte la session.');
-            handleEndSession(); // Student just disconnects and leaves
+        } catch (error) {
+            console.error('❌ [Action] Erreur lors de la fin de session:', error);
+            toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "Impossible de terminer la session.",
+            });
+        } finally {
+            setIsEndingSession(false);
+            console.log('🔚 [handleGoBack] Fin du processus de fin de session.');
         }
     };
 
@@ -451,6 +460,7 @@ function SessionPageContent() {
                 onStartTimer={handleStartTimer}
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
+                isEndingSession={isEndingSession}
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />
@@ -504,4 +514,6 @@ export default function SessionPage() {
 }
 
     
+    
+
     
