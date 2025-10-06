@@ -7,7 +7,6 @@ import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
-import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Users } from 'lucide-react';
 import { Separator } from '../ui/separator';
@@ -46,6 +45,12 @@ export function TeacherSessionView({
     const localUserId = teacher?.id;
 
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
+    const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
+        ? localStream 
+        : remoteStreamsMap.get(spotlightedUser?.id ?? '');
+
+    const otherParticipants = allSessionUsers.filter(u => u.id !== spotlightedUser?.id);
+
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full py-8">
@@ -70,52 +75,78 @@ export function TeacherSessionView({
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
-                           <div className="space-y-3 pr-2">
-                                {teacher && localUserId && (
-                                    <>
-                                    <h4 className="text-sm font-semibold text-muted-foreground px-2">Professeur</h4>
-                                    <Participant
-                                        stream={localStream}
-                                        isLocal={true}
-                                        isTeacher={true}
-                                        participantUserId={localUserId}
-                                        displayName={teacher.name ?? "Professeur"}
-                                        onGiveWhiteboardControl={onGiveWhiteboardControl}
-                                        onSpotlightParticipant={onSpotlightParticipant}
-                                        isWhiteboardController={teacher.id === whiteboardControllerId}
-                                        isSpotlighted={spotlightedUser?.id === teacher.id}
-                                    />
-                                    <Separator className='my-4' />
-                                    <h4 className="text-sm font-semibold text-muted-foreground px-2">Élèves</h4>
-                                    </>
+                           <div className="space-y-4 pr-2">
+                                {/* Participant en Vedette */}
+                                {spotlightedUser && (
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-muted-foreground px-2 mb-2">En Vedette</h4>
+                                        <Participant
+                                            stream={spotlightedParticipantStream}
+                                            isLocal={spotlightedUser.id === localUserId}
+                                            isTeacher={true}
+                                            participantUserId={spotlightedUser.id}
+                                            displayName={spotlightedUser.name ?? "Utilisateur"}
+                                            onGiveWhiteboardControl={onGiveWhiteboardControl}
+                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            isWhiteboardController={spotlightedUser.id === whiteboardControllerId}
+                                            isSpotlighted={true}
+                                        />
+                                    </div>
                                 )}
-                                {students.map((student) => {
-                                    const remoteStream = remoteStreamsMap.get(student.id);
-                                    if (remoteStream) {
+                               
+                               <Separator className='my-4' />
+                               <h4 className="text-sm font-semibold text-muted-foreground px-2 mb-2">Autres Participants</h4>
+                               
+                               {/* Reste des participants */}
+                                <div className="space-y-3">
+                                {otherParticipants.map((user) => {
+                                    const remoteStream = remoteStreamsMap.get(user.id);
+                                    const isUserLocal = user.id === localUserId;
+
+                                    if (isUserLocal && localStream) {
                                          return (
                                             <Participant
-                                                key={student.id}
-                                                stream={remoteStream}
-                                                isLocal={false}
-                                                isTeacher={true} // isTeacher view for controls
-                                                participantUserId={student.id}
-                                                displayName={student.name ?? "Élève"}
+                                                key={user.id}
+                                                stream={localStream}
+                                                isLocal={true}
+                                                isTeacher={true}
+                                                participantUserId={user.id}
+                                                displayName={user.name ?? "Utilisateur"}
                                                 onGiveWhiteboardControl={onGiveWhiteboardControl}
                                                 onSpotlightParticipant={onSpotlightParticipant}
-                                                isWhiteboardController={student.id === whiteboardControllerId}
-                                                isSpotlighted={spotlightedUser?.id === student.id}
-                                            />
-                                        );
-                                    } else {
-                                        return (
-                                            <StudentPlaceholder 
-                                                key={student.id}
-                                                student={student}
-                                                isOnline={onlineUserIds.includes(student.id)}
+                                                isWhiteboardController={user.id === whiteboardControllerId}
+                                                isSpotlighted={false}
                                             />
                                         );
                                     }
+
+                                    if (remoteStream) {
+                                         return (
+                                            <Participant
+                                                key={user.id}
+                                                stream={remoteStream}
+                                                isLocal={false}
+                                                isTeacher={true} // isTeacher view for controls
+                                                participantUserId={user.id}
+                                                displayName={user.name ?? "Utilisateur"}
+                                                onGiveWhiteboardControl={onGiveWhiteboardControl}
+                                                onSpotlightParticipant={onSpotlightParticipant}
+                                                isWhiteboardController={user.id === whiteboardControllerId}
+                                                isSpotlighted={false}
+                                            />
+                                        );
+_                                    } else if (user.role === 'ELEVE') {
+                                        return (
+                                            <StudentPlaceholder 
+                                                key={user.id}
+                                                student={user as StudentWithCareer}
+                                                isOnline={onlineUserIds.includes(user.id)}
+                                            />
+                                        );
+                                    }
+                                    return null;
                                 })}
+                                </div>
                            </div>
                         </ScrollArea>
                     </CardContent>
