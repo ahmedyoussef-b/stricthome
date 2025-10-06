@@ -31,15 +31,20 @@ export function SessionHeader({
     const [isEndingSession, setIsEndingSession] = useState(false);
 
     const handleGoBack = async () => {
+        console.log("🎬 [handleGoBack] Démarrage du processus de fin de session.");
         setIsEndingSession(true);
         try {
+            console.log("🚀 [handleGoBack] Appel de la fonction onGoBack...");
             await onGoBack();
+            console.log("✅ [handleGoBack] Appel onGoBack terminé avec succès.");
+            // Le composant devrait se démonter, donc pas besoin de remettre isEndingSession à false.
         } catch (error) {
-            // Error is handled in the parent component via toast
-            setIsEndingSession(false);
+            console.error("❌ [handleGoBack] Erreur pendant onGoBack:", error);
+            setIsEndingSession(false); // Réinitialiser le bouton en cas d'erreur.
+        } finally {
+            console.log("🔚 [handleGoBack] Fin du bloc try/catch/finally.");
+            // Ce log peut ne pas apparaître si la redirection est immédiate.
         }
-        // No need to set isEndingSession to false in the success case,
-        // as the component will unmount upon redirection.
     }
     
     return (
