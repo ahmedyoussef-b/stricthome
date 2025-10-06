@@ -1,7 +1,7 @@
 // src/components/Participant.tsx
 'use client';
 
-import React, { useEffect, useRef } from "react";
+import React, 'useEffect', 'useRef' from "react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,8 +37,9 @@ function ParticipantComponent({
   const { toast } = useToast();
 
   const nameToDisplay = displayName || participantUserId;
-  const isMuted = stream ? !stream.getAudioTracks().some(t => t.enabled) : true;
+  const isMuted = !stream || stream.getAudioTracks().length === 0 || !stream.getAudioTracks().some(t => t.enabled);
   const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks().some(t => t.enabled);
+
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -54,10 +55,6 @@ function ParticipantComponent({
         description: `${nameToDisplay} est maintenant en vedette.`
     });
   }
-
-  // Placeholder functions, actual implementation would require more signaling
-  const toggleMute = () => console.log('Toggle mute for', nameToDisplay);
-  const toggleVideo = () => console.log('Toggle video for', nameToDisplay);
 
   return (
     <Card className={cn(
