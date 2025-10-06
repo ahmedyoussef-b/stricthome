@@ -1,7 +1,7 @@
 // src/components/Participant.tsx
 'use client';
 
-import React, 'useEffect', 'useRef' from "react";
+import React, { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
