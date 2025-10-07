@@ -1,4 +1,3 @@
-
 // prisma/seed.ts
 import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
