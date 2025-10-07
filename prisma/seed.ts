@@ -18,13 +18,13 @@ async function main() {
   await prisma.studentProgress.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.annonce.deleteMany();
-  await prisma.classe.deleteMany();
   await prisma.leaderboard.deleteMany();
   
   // Then delete main entities
   await prisma.user.deleteMany();
   await prisma.metier.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.classe.deleteMany();
   console.log('✅ Données nettoyées.');
 
   // Create careers (métiers)

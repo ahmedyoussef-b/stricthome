@@ -16,7 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:push": "prisma db push --accept-data-loss",
-    "db:seed": "ts-node prisma/seed.ts",
+    "db:seed": "prisma generate && ts-node prisma/seed.ts",
     "clean": "rm -rf .next"
   },
   "dependencies": {
