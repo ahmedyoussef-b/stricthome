@@ -18,7 +18,7 @@ import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { SkillMatrix } from './SkillMatrix';
+import { AdaptiveLearningEngine } from './AdaptiveLearningEngine';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -177,6 +177,8 @@ export default function StudentPageClient({
           )}
 
           <AnnouncementsList announcements={announcements} />
+
+          <AdaptiveLearningEngine />
 
           <Card className="flex flex-col">
             <CardHeader>
