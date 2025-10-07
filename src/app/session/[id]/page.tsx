@@ -37,6 +37,14 @@ interface PeerConnection {
   stream?: MediaStream;
 }
 
+export default function SessionPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className='ml-2'>Chargement de la session...</p></div>}>
+            <SessionPageContent />
+        </Suspense>
+    )
+}
+
 function SessionPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -416,10 +424,3 @@ function SessionPageContent() {
     );
 }
 
-export default function SessionPage() {
-    return (
-        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center">Chargement de la session...</div>}>
-            <SessionPageContent />
-        </Suspense>
-    )
-}
