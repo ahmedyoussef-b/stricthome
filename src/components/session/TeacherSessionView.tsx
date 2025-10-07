@@ -9,6 +9,7 @@ import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Users, Star } from 'lucide-react';
+import { AISkillAssessment } from '../AISkillAssessment';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -80,7 +81,9 @@ export function TeacherSessionView({
                         controllerName={controllerUser?.name}
                     />
                 </div>
-                 <div className="flex-1 min-h-0 bg-muted/30 rounded-lg border-2 border-dashed"></div>
+                 <div className="flex-1 min-h-0 rounded-lg">
+                   <AISkillAssessment />
+                 </div>
             </div>
             
             {/* Colonne de droite: Reste des participants */}
