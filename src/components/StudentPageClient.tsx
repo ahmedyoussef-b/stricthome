@@ -178,8 +178,6 @@ export default function StudentPageClient({
 
           <AnnouncementsList announcements={announcements} />
 
-          <AdaptiveLearningEngine />
-
           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
