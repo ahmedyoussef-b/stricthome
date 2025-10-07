@@ -1,13 +1,14 @@
+
 // src/app/teacher/class/[id]/ClassPageClient.tsx
 "use client";
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { StudentCard } from '@/components/StudentCard';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Video, Users } from 'lucide-react';
+import { ArrowLeft, Loader2, Video, Users, Trophy } from 'lucide-react';
 import { AddStudentForm } from '@/components/AddStudentForm';
 import { createCoursSession } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +47,10 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
   const [onlineUserEmails, setOnlineUserEmails] = useState<Set<string>>(new Set());
   const router = useRouter();
   const { toast } = useToast();
+
+  const sortedStudents = useMemo(() => {
+    return [...classe.eleves].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
+  }, [classe.eleves]);
 
   useEffect(() => {
     if (!classe.id) return;
@@ -157,15 +162,15 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-                <Alert>
-                    <Users className="h-4 w-4" />
-                    <AlertTitle>Sélection des participants</AlertTitle>
+                 <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700">
+                    <Trophy className="h-4 w-4 !text-amber-600" />
+                    <AlertTitle className="text-amber-800">Classement de la Classe</AlertTitle>
                     <AlertDescription>
-                       Cochez les élèves en ligne que vous souhaitez inviter à une session vidéo.
+                       Les élèves sont classés par points. Les 3 premiers reçoivent une médaille.
                     </AlertDescription>
                 </Alert>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {classe.eleves.map((student) => {
+                    {sortedStudents.map((student, index) => {
                         const isConnected = !!student.email && onlineUserEmails.has(student.email);
                         return (
                            <StudentCard 
@@ -175,6 +180,7 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
                                 onSelectionChange={handleSelectionChange}
                                 isConnected={isConnected}
                                 isSelectable={true}
+                                rank={index + 1}
                             />
                         )
                     })}

@@ -1,3 +1,4 @@
+
 // src/app/teacher/class/[id]/page.tsx
 import prisma from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
@@ -44,6 +45,7 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       id: e.id,
       name: e.name,
       email: e.email,
+      points: e.points,
       etat: { isPunished: e.etat?.isPunished ?? false },
     }))
   };

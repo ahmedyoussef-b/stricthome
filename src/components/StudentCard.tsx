@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useTransition, useState } from 'react';
 import { Checkbox } from './ui/checkbox';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Medal } from 'lucide-react';
 import { getOrCreateConversation } from '@/lib/actions/conversation.actions';
 import { useSession } from 'next-auth/react';
 import { DirectMessage } from './DirectMessage';
@@ -21,6 +21,7 @@ interface StudentCardProps {
   onSelectionChange: (studentId: string, isSelected: boolean) => void;
   isConnected: boolean;
   isSelectable?: boolean;
+  rank?: number;
 }
 
 export function StudentCard({ 
@@ -28,7 +29,8 @@ export function StudentCard({
     isSelected, 
     onSelectionChange, 
     isConnected, 
-    isSelectable = true 
+    isSelectable = true,
+    rank
 }: StudentCardProps) {
   const [isPending, startTransition] = useTransition();
   const { data: session } = useSession();
@@ -38,6 +40,13 @@ export function StudentCard({
   const state = student.etat;
   const isEffectivelySelectable = isSelectable && isConnected;
   const isTeacherView = session?.user.role === 'PROFESSEUR';
+
+  const getMedalColor = (rank: number) => {
+    if (rank === 1) return "text-yellow-500 fill-yellow-500";
+    if (rank === 2) return "text-gray-400 fill-gray-400";
+    if (rank === 3) return "text-amber-700 fill-amber-700";
+    return "text-muted-foreground";
+  }
 
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -73,6 +82,18 @@ export function StudentCard({
         !isEffectivelySelectable && isSelectable && "opacity-60 bg-muted/50 cursor-not-allowed"
       )}
     >
+       <div className="absolute top-2 left-2 z-10">
+          {rank && (
+             <div className="flex items-center gap-1">
+                <Medal className={cn("h-5 w-5", getMedalColor(rank))} />
+                <span className={cn("font-bold text-sm", rank <= 3 && getMedalColor(rank))}>
+                  #{rank}
+                </span>
+             </div>
+          )}
+       </div>
+
+
       <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
         <div className={cn("h-2.5 w-2.5 rounded-full", isConnected ? 'bg-green-500' : 'bg-gray-400')} title={isConnected ? 'Connecté' : 'Déconnecté'}></div>
         {isSelectable && (
@@ -91,7 +112,7 @@ export function StudentCard({
         )}
       </div>
 
-      <CardHeader className="pb-2">
+      <CardHeader className="pt-8 pb-2">
         <div className="flex items-center gap-4">
           <Avatar className="h-12 w-12">
             <AvatarFallback className="text-xl">{student.name?.charAt(0)}</AvatarFallback>

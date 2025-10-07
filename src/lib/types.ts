@@ -1,3 +1,4 @@
+
 import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, TaskCompletion, Annonce, Classe, User, Metier, CoursSession } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
@@ -71,7 +72,7 @@ export type AnnouncementWithAuthor = Annonce & {
     }
 };
 
-export type StudentForCard = Pick<User, 'id' | 'name' | 'email'> & {
+export type StudentForCard = Pick<User, 'id' | 'name' | 'email' | 'points'> & {
   etat: {
     isPunished: boolean;
   } | null;
