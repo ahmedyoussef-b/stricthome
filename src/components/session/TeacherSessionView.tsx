@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { EmotionalAITutor } from '../EmotionalAITutor';
 import { VirtualClassroom } from '../VirtualClassroom';
 import { NeuroFeedback } from '../NeuroFeedback';
+import { HandRaiseController } from '../HandRaiseController';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -54,6 +55,8 @@ export function TeacherSessionView({
     const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
         ? localStream 
         : remoteStreamsMap.get(spotlightedUser?.id ?? '');
+    
+    const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id));
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
@@ -167,8 +170,9 @@ export function TeacherSessionView({
                         <TabsTrigger value="skills">Analyse Compétences</TabsTrigger>
                         <TabsTrigger value="neuro">Neuro-Feedback</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="emotion" className="flex-1 overflow-auto mt-2">
+                    <TabsContent value="emotion" className="flex-1 overflow-auto mt-2 space-y-4">
                          <EmotionalAITutor />
+                         <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
                     </TabsContent>
                     <TabsContent value="skills" className="flex-1 overflow-auto mt-2">
                          <AISkillAssessment />
