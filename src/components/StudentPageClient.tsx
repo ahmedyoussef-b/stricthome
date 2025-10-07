@@ -19,6 +19,7 @@ import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { AchievementSystem } from './AchievementSystem';
+import { CareerPredictor } from './CareerPredictor';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -196,6 +197,9 @@ export default function StudentPageClient({
           </Card>
            {!isTeacherView && (
             <AchievementSystem />
+          )}
+          {!isTeacherView && (
+             <CareerPredictor />
           )}
         </div>
 
