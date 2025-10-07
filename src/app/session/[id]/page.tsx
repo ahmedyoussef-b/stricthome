@@ -353,7 +353,7 @@ export default function SessionPage() {
     const checkAndRepairConnections = useCallback(() => {
         peerConnectionsRef.current.forEach((peer, userId) => {
             const pc = peer.connection;
-            if (pc.connectionState === 'connecting' || pc.connectionState === 'checking') {
+            if (pc.connectionState === 'connecting' || pc.iceConnectionState === 'checking') {
                 const connectionTime = Date.now() - (pc._createdAt || 0);
                 if (connectionTime > 10000) { // 10 secondes
                     console.log(`🔄 [WebRTC] Connexion ${userId} bloquée, reconnexion...`);
