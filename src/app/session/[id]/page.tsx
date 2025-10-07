@@ -38,6 +38,28 @@ interface PeerConnection {
   stream?: MediaStream;
 }
 
+// Fonction utilitaire pour valider les signaux
+const validateSignal = (signal: any): boolean => {
+  if (!signal || typeof signal !== 'object') {
+    console.error('❌ [WebRTC] Signal non objet:', signal);
+    return false;
+  }
+  
+  if (!signal.type) {
+    console.error('❌ [WebRTC] Signal sans type:', signal);
+    return false;
+  }
+  
+  const validTypes = ['offer', 'answer', 'ice-candidate'];
+  if (!validTypes.includes(signal.type)) {
+    console.error('❌- [WebRTC] Type de signal invalide:', signal.type);
+    return false;
+  }
+  
+  return true;
+};
+
+
 export default function SessionPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -232,16 +254,15 @@ export default function SessionPage() {
       }, [userId, broadcastSignal, startNegotiation, endNegotiation, spotlightedParticipantId]);
     
     const handleSignal = useCallback(async (signalData: { fromUserId: string, toUserId: string, signal: any }) => {
+        if (!validateSignal(signalData.signal)) {
+            console.log(`❌ [WebRTC] Signal de ${signalData.fromUserId} rejeté - validation échouée`);
+            return;
+        }
+
         const { fromUserId, signal } = signalData;
         if (fromUserId === userId) return;
 
         console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal?.type || 'SIGNAL INVALIDE');
-
-        // VALIDATION CRITIQUE : Rejeter les signaux sans type
-        if (!signal || !signal.type) {
-            console.error('❌ [WebRTC] Signal invalide reçu, ignoré:', signal);
-            return;
-        }
 
         // Créer automatiquement une connexion si elle n'existe pas
         let peer = peerConnectionsRef.current.get(fromUserId);
@@ -474,7 +495,6 @@ export default function SessionPage() {
     const handleEndSessionForEveryone = () => {
         if (!isTeacher || isEndingSession) return;
         setIsEndingSession(true);
-        console.log(`[SESSION END] Professeur ${userId} clique sur "Terminer la session".`);
         endCoursSession(sessionId);
     };
     
@@ -562,5 +582,7 @@ export default function SessionPage() {
         </div>
     );
 }
+
+    
 
     
