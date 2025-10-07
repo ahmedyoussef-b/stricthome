@@ -1,5 +1,5 @@
 
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Annonce, Classe, User, Metier, CoursSession } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Annonce as PrismaAnnonce, Classe, User, Metier, CoursSession } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
     include: { classe: true }
@@ -66,7 +66,7 @@ export type FullConversation = Prisma.ConversationGetPayload<{
     }
 }>
 
-export type AnnouncementWithAuthor = Annonce & {
+export type AnnouncementWithAuthor = PrismaAnnonce & {
     author: {
         name: string | null;
     }

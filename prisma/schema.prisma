@@ -1,8 +1,9 @@
 // prisma/schema.prisma
+
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 generator client {
@@ -10,65 +11,74 @@ generator client {
 }
 
 model User {
-  id                      String         @id @default(cuid()) @db.Uuid
+  id                      String          @id @default(cuid())
   name                    String?
-  email                   String?        @unique
+  email                   String?         @unique
   emailVerified           DateTime?
   image                   String?
-  role                    Role           @default(ELEVE)
+  role                    Role            @default(ELEVE)
   ambition                String?
-  points                  Int?           @default(0)
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
-  classeId                String?        @db.Uuid
-  classe                  Classe?        @relation("Appartient", fields: [classeId], references: [id])
+  points                  Int             @default(0)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  classeId                String?         @db.Uuid
+  classe                  Classe?         @relation("Appartient", fields: [classeId], references: [id])
   etat                    EtatEleve?
-  sessionsEnseignees      CoursSession[] @relation("Enseignant")
-  sessionsParticipees     CoursSession[] @relation("Participants")
-  annonces                Annonce[]
+  sessionsEnseignees      CoursSession[]  @relation("Enseignant")
+  sessionsParticipees     CoursSession[]  @relation("Participants")
   messages                Message[]
   reactions               Reaction[]
-  studentProgress         StudentProgress[]
+  conversationsInitiated  Conversation[]  @relation("Initiator")
+  conversationsReceived   Conversation[]  @relation("Receiver")
+  annonces                Annonce[]
+  progress                StudentProgress[]
   leaderboardEntry        Leaderboard?
-  conversationsInitiated  Conversation[] @relation("Initiator")
-  conversationsReceived   Conversation[] @relation("Receiver")
-
-  @@map("users")
+  accounts                Account[]
+  sessions                Session[]
 }
 
-enum Role {
-  ELEVE
-  PROFESSEUR
+model Annonce {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  classeId    String?   @db.Uuid
+  classe      Classe?   @relation(fields: [classeId], references: [id])
+
+  @@map("annonces")
 }
 
 model Classe {
-  id           String         @id @default(cuid()) @db.Uuid
-  nom          String
-  professeurId String         @db.Uuid
-  professeur   User           @relation("Enseigne", fields: [professeurId], references: [id])
-  eleves       User[]         @relation("Appartient")
-  sessions     CoursSession[]
-  annonces     Annonce[]
-  messages     Message[]
+  id                      String          @id @default(cuid()) @db.Uuid
+  nom                     String
+  professeurId            String          @db.Uuid
+  professeur              User            @relation("Enseigne", fields: [professeurId], references: [id])
+  eleves                  User[]          @relation("Appartient")
+  messages                Message[]
+  sessions                CoursSession[]
+  annonces                Annonce[]
 
   @@map("classes")
 }
 
 model Metier {
   id          String      @id @default(cuid())
-  nom         String
+  nom         String      @unique
   description String
   icon        String?
   theme       Json
-  eleves      EtatEleve[]
+  etatsEleves EtatEleve[]
 
   @@map("metiers")
 }
 
 model EtatEleve {
   id         String  @id @default(cuid())
-  eleveId    String  @unique @db.Uuid
-  eleve      User    @relation(fields: [eleveId], references: [id], onDelete: Cascade)
+  eleveId    String  @unique
+  eleve      User    @relation(fields: [eleveId], references: [id])
   isPunished Boolean @default(false)
   metierId   String?
   metier     Metier? @relation(fields: [metierId], references: [id])
@@ -77,75 +87,144 @@ model EtatEleve {
 }
 
 model CoursSession {
-  id                        String    @id @default(cuid())
-  professeurId              String    @db.Uuid
-  professeur                User      @relation("Enseignant", fields: [professeurId], references: [id])
-  participants              User[]    @relation("Participants")
-  createdAt                 DateTime  @default(now())
+  id                        String   @id @default(cuid())
+  professeurId              String   @db.Uuid
+  professeur                User     @relation("Enseignant", fields: [professeurId], references: [id])
+  participants              User[]   @relation("Participants")
+  createdAt                 DateTime @default(now())
   endedAt                   DateTime?
-  classeId                  String?   @db.Uuid
-  classe                    Classe?   @relation(fields: [classeId], references: [id])
   spotlightedParticipantSid String?
   whiteboardControllerId    String?
+  classeId                  String?   @db.Uuid
+  classe                    Classe?  @relation(fields: [classeId], references: [id])
 
   @@map("cours_sessions")
 }
 
-model Conversation {
-  id          String    @id @default(cuid())
-  initiatorId String    @db.Uuid
-  receiverId  String    @db.Uuid
-  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade)
-  receiver    User      @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
-  messages    Message[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("conversations")
-}
-
 model Message {
-  id             String        @id @default(cuid())
-  message        String
-  senderId       String        @db.Uuid
-  sender         User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  senderName     String
-  classeId       String?       @db.Uuid
-  classe         Classe?       @relation(fields: [classeId], references: [id], onDelete: Cascade)
-  conversationId String?
-  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  reactions      Reaction[]
-  createdAt      DateTime      @default(now())
+  id              String         @id @default(cuid())
+  message         String
+  createdAt       DateTime       @default(now())
+  senderId        String
+  senderName      String
+  sender          User           @relation(fields: [senderId], references: [id])
+  classeId        String?        @db.Uuid
+  classe          Classe?        @relation(fields: [classeId], references: [id])
+  conversationId  String?
+  conversation    Conversation?  @relation(fields: [conversationId], references: [id])
+  reactions       Reaction[]
 
   @@map("messages")
 }
 
 model Reaction {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   emoji     String
-  userId    String  @db.Uuid
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   messageId String
-  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reactions")
 }
 
-model Annonce {
-  id         String   @id @default(cuid())
-  title      String
-  content    String
-  authorId   String   @db.Uuid
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  classeId   String?  @db.Uuid
-  classe     Classe?  @relation(fields: [classeId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model Conversation {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  initiatorId  String
+  initiator    User      @relation("Initiator", fields: [initiatorId], references: [id])
+  receiverId   String
+  receiver     User      @relation("Receiver", fields: [receiverId], references: [id])
+  messages     Message[]
 
-  @@map("annonces")
+  @@map("conversations")
 }
 
-// Gamification Models
+model Task {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  points      Int
+  type        TaskType
+  difficulty  TaskDifficulty
+  category    TaskCategory
+  duration    Int // en jours
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  progress    StudentProgress[]
+
+  @@map("tasks")
+}
+
+model StudentProgress {
+  id             String    @id @default(cuid())
+  studentId      String
+  student        User      @relation(fields: [studentId], references: [id])
+  taskId         String
+  task           Task      @relation(fields: [taskId], references: [id])
+  status         ProgressStatus @default(NOT_STARTED)
+  completionDate DateTime?
+  pointsAwarded  Int?
+
+  @@unique([studentId, taskId])
+  @@map("student_progress")
+}
+
+model Leaderboard {
+  id             String @id @default(cuid())
+  studentId      String @unique
+  student        User   @relation(fields: [studentId], references: [id])
+  totalPoints    Int
+  rank           Int
+  completedTasks Int
+  updatedAt      DateTime @updatedAt
+
+  @@map("leaderboards")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum Role {
+  ELEVE
+  PROFESSEUR
+}
+
 enum TaskType {
   DAILY
   WEEKLY
@@ -167,55 +246,9 @@ enum TaskCategory {
   PERSONAL
 }
 
-model Task {
-  id              String   @id @default(cuid())
-  title           String
-  description     String
-  points          Int
-  type            TaskType
-  difficulty      TaskDifficulty     @default(EASY)
-  category        TaskCategory       @default(ACADEMIC)
-  duration        Int                @default(1) // in days
-  studentProgress StudentProgress[]
-  createdAt       DateTime           @default(now())
-
-  @@map("tasks")
-}
-
-model StudentProgress {
-  id             String    @id @default(cuid())
-  studentId      String    @db.Uuid
-  student        User      @relation(fields: [studentId], references: [id])
-  taskId         String
-  task           Task      @relation(fields: [taskId], references: [id])
-  status         String // e.g., 'IN_PROGRESS', 'COMPLETED', 'VERIFIED'
-  completionDate DateTime?
-  pointsAwarded  Int?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  @@unique([studentId, taskId])
-  @@map("student_progress")
-}
-
-model Leaderboard {
-  id             String   @id @default(cuid())
-  studentId      String   @unique @db.Uuid
-  student        User     @relation(fields: [studentId], references: [id])
-  totalPoints    Int
-  rank           Int
-  completedTasks Int
-  updatedAt      DateTime @updatedAt
-
-  @@map("leaderboards")
-}
-
-model CompetitionSettings {
-  id         String   @id @default(cuid())
-  seasonName String
-  startDate  DateTime
-  endDate    DateTime
-  isActive   Boolean
-
-  @@map("competition_settings")
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
 }
