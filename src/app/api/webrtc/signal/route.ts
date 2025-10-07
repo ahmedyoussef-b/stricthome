@@ -16,19 +16,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
     
+    // VALIDATION CRITIQUE : S'assurer que le signal a un type
+    if (!signal.type) {
+      console.error('❌ [API] Signal invalide sans type:', signal);
+      return NextResponse.json({ error: 'Signal invalide' }, { status: 400 });
+    }
+
     // Le canal de la session est un canal de présence.
     const channel = `presence-session-${sessionId}`;
     const event = 'webrtc-signal';
     
     // Diffuser le signal à tous les clients du canal.
-    // La logique côté client (dans handleSignal) ignorera le message
-    // si fromUserId est le même que le userId local.
     // On envoie le signal ciblé à l'utilisateur 'toUserId'
     await pusherServer.trigger(channel, event, {
         fromUserId,
         toUserId,
-        signal,
+        signal: {
+          type: signal.type, // DOIT être défini
+          // Inclure tous les champs possibles
+          ...(signal.sdp && { sdp: signal.sdp }),
+          ...(signal.candidate && { candidate: signal.candidate })
+        }
     });
+
+    console.log(`✅ [API] Signal ${signal.type} envoyé de ${fromUserId} vers ${toUserId}`);
 
     return NextResponse.json({ success: true });
   } catch (error) {
