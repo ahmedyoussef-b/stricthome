@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp, Sparkles, Trophy, Gift, Video } from 'lucide-react';
+import { FileUp, Sparkles, Trophy, Gift, Video, Target } from 'lucide-react';
 import { StudentWithStateAndCareer, AnnouncementWithAuthor } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -109,6 +109,14 @@ export default function StudentPageClient({
                   <CardDescription>Bienvenue sur votre tableau de bord.</CardDescription>
                 </div>
               </div>
+               {isTeacherView && (
+                <Button asChild variant="outline">
+                    <Link href={`/student/${student.id}/skills`}>
+                        <Target className="mr-2 h-4 w-4" />
+                        Voir le profil de compétences
+                    </Link>
+                </Button>
+            )}
             </div>
           </CardHeader>
           <CardContent>
@@ -131,12 +139,6 @@ export default function StudentPageClient({
             )}
           </CardContent>
         </Card>
-
-        {isTeacherView && (
-          <div className="md:col-span-3">
-            <SkillMatrix studentId={student.id} classId={student.classeId} />
-          </div>
-        )}
 
         <div className="md:col-span-2 space-y-8">
           {activeSession && !isTeacherView && (
