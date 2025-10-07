@@ -6,6 +6,8 @@ import GoogleProvider from 'next-auth/providers/google';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import type { NextAuthConfig } from "next-auth"
+import type { User } from 'next-auth';
+
 
 export const config = {
   theme: {
@@ -82,21 +84,23 @@ export const config = {
           }
           // Ensure the user object passed along has the correct id and role for the session callback
           user.id = dbUser.id;
-          (user as any).role = dbUser.role;
+          (user as User).role = dbUser.role;
         }
         return true;
       },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role: Role }).role;
+        token.role = user.role;
       }
       return token;
     },
     session({ session, token }) {
-      if (token && session.user) {
+      if (token.id && session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as Role;
+      }
+      if (token.role && session.user) {
+        session.user.role = token.role;
       }
       return session;
     },
