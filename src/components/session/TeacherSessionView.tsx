@@ -12,6 +12,7 @@ import { Users, Star } from 'lucide-react';
 import { AISkillAssessment } from '../AISkillAssessment';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { EmotionalAITutor } from '../EmotionalAITutor';
+import { VirtualClassroom } from '../VirtualClassroom';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -147,7 +148,7 @@ export function TeacherSessionView({
                     />
                 </div>
                 <div className="flex-1 min-h-0 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-                    <p className="text-muted-foreground">Espace réservé</p>
+                    <VirtualClassroom />
                 </div>
             </div>
             
