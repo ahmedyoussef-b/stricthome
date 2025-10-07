@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
 import { ToggleButton } from '@/components/ToggleButton';
+import { TeacherAnalyticsDashboard } from '@/components/TeacherAnalyticsDashboard';
 
 export default async function TeacherPage() {
   const session = await getAuthSession();
@@ -86,6 +87,9 @@ export default async function TeacherPage() {
             ))}
           </div>
         )}
+
+        <TeacherAnalyticsDashboard />
+        
       </main>
     </>
   );
