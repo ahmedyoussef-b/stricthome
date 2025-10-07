@@ -77,8 +77,15 @@ export function StudentSessionView({
     
     return (
         <div className="flex gap-4 flex-1 min-h-0 py-6">
-             <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg">
-                {/* Espace réservé pour la barre latérale de l'élève */}
+             <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4">
+                 <Button 
+                    onClick={onToggleHandRaise} 
+                    size="lg"
+                    className={cn("w-full", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                >
+                   <Hand className="mr-2 h-5 w-5" />
+                   {isHandRaised ? 'Baisser la main' : 'Lever la main'}
+                </Button>
              </div>
              <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                  {sessionView === 'camera' && (
@@ -102,17 +109,6 @@ export function StudentSessionView({
                        </div>
                     </div>
                  )}
-                 
-                 <div className="fixed bottom-4 right-4 z-10">
-                    <Button 
-                        onClick={onToggleHandRaise} 
-                        size="lg"
-                        className={cn(isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
-                    >
-                       <Hand className="mr-2 h-5 w-5" />
-                       {isHandRaised ? 'Baisser la main' : 'Lever la main'}
-                    </Button>
-                </div>
             </div>
         </div>
     );
