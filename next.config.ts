@@ -12,6 +12,12 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    // This is required to allow the development server to be accessed from the Firebase Studio preview URL.
+    allowedDevOrigins: [
+      "https://6000-firebase-studio-1759130826485.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev"
+    ]
+  }
 }
 
 module.exports = nextConfig
