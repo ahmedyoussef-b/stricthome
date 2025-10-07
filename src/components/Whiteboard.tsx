@@ -173,11 +173,11 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
             }
         }
     }
-}, [history]);
+}, [history, tool]);
     
    useEffect(() => {
         redrawCanvas(mainCanvasRef.current, historyIndex);
-   }, [historyIndex, history, redrawCanvas]);
+   }, [historyIndex, redrawCanvas]);
 
   const pushToHistory = (action: Action) => {
     if (!session?.user?.id) return;
@@ -202,7 +202,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     setHistory([]);
     setHistoryIndex(-1);
     broadcastEvent('history-update', { history: [], index: -1 });
-    redrawCanvas(mainCanvasRef.current, -1);
   };
 
  const handleUndo = () => {
@@ -338,7 +337,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
             
             setHistory(data.history);
             setHistoryIndex(data.index);
-            redrawCanvas(mainCanvasRef.current, data.index);
         } else {
             console.error('❌ [Whiteboard] Données d\'historique invalides reçues:', data);
         }
@@ -350,7 +348,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
       channel.unbind('history-update', historyUpdateHandler);
       pusherClient.unsubscribe(channelName);
     };
-  }, [sessionId, redrawCanvas]);
+  }, [sessionId]);
 
   return (
     <Card className="h-full flex flex-col">
