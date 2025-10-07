@@ -1,6 +1,6 @@
 // src/app/session/[id]/page.tsx
 'use client';
-import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
@@ -38,14 +38,6 @@ interface PeerConnection {
 }
 
 export default function SessionPage() {
-    return (
-        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className='ml-2'>Chargement de la session...</p></div>}>
-            <SessionPageContent />
-        </Suspense>
-    )
-}
-
-function SessionPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -372,6 +364,15 @@ function SessionPageContent() {
 
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="animate-spin h-8 w-8 text-primary" />
+                <p className='ml-2'>Chargement de la session...</p>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
             <SessionHeader 
@@ -387,12 +388,7 @@ function SessionPageContent() {
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <Loader2 className="animate-spin h-8 w-8 text-primary" />
-                        <p className='ml-2'>Chargement de la session...</p>
-                    </div>
-                ) : isTeacher ? (
+                {isTeacher ? (
                     <TeacherSessionView
                         sessionId={sessionId}
                         localStream={localStreamRef.current}
@@ -423,4 +419,3 @@ function SessionPageContent() {
         </div>
     );
 }
-
