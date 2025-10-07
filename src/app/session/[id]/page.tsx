@@ -7,7 +7,7 @@ import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { endCoursSession, setWhiteboardController, spotlightParticipant } from '@/lib/actions';
-import type { PresenceChannel, Channel } from 'pusher-js';
+import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
@@ -69,7 +69,7 @@ export default function SessionPage() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const { isNegotiatingRef, startNegotiation, endNegotiation, addPendingOffer, processNextOffer } = useWebRTCNegotiation();
+    const { startNegotiation, endNegotiation, addPendingOffer, getPendingCount } = useWebRTCNegotiation();
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
@@ -117,11 +117,64 @@ export default function SessionPage() {
             body: JSON.stringify({ sessionId, ...signalData }),
         });
     }, [sessionId]);
+
+    const handleSignal = useCallback(async (signalData: { fromUserId: string, toUserId: string, signal: any }) => {
+        const { fromUserId, signal } = signalData;
+        if (fromUserId === userId) return;
+
+        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal.type);
+        
+        const peer = peerConnectionsRef.current.get(fromUserId);
+        if (!peer) {
+            console.log(`❌ [WebRTC] Aucune connexion pour ${fromUserId}`);
+            return;
+        }
+
+        const pc = peer.connection;
+
+        try {
+            if (signal.description) { // Offre ou Réponse
+                if (signal.description.type === 'offer') {
+                    if (!startNegotiation()) {
+                        console.log(`📥 [WebRTC] Offre de ${fromUserId} mise en attente`);
+                        addPendingOffer(fromUserId, signalData);
+                        return;
+                    }
+                    console.log(`📥 [WebRTC] Traitement offre de ${fromUserId}`);
+                    await pc.setRemoteDescription(new RTCSessionDescription(signal.description));
+                    await pc.setLocalDescription(await pc.createAnswer());
+                    console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
+                    sendSignal({ toUserId: fromUserId, fromUserId: userId, signal: { description: pc.localDescription } });
+                } else if (signal.description.type === 'answer') {
+                    console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId}`);
+                    await pc.setRemoteDescription(new RTCSessionDescription(signal.description));
+                }
+            } else if (signal.candidate) { // Candidat ICE
+                console.log(`🧊 [WebRTC] Ajout candidat ICE de ${fromUserId}`);
+                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
+        } catch (error) {
+            console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
+        } finally {
+            if (signal.description && signal.description.type === 'offer') {
+                const pendingOffer = endNegotiation();
+                if (pendingOffer) {
+                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pendingOffer.fromUserId}`);
+                    setTimeout(() => handleSignal(pendingOffer.signalData), 100);
+                }
+            }
+        }
+    }, [userId, startNegotiation, addPendingOffer, sendSignal, endNegotiation]);
     
     const createPeerConnection = useCallback((peerId: string) => {
         if (peerConnectionsRef.current.has(peerId) || !userId) return;
 
         console.log(`🤝 [WebRTC] Création de la connexion avec ${peerId}.`);
+        
+        if (peerConnectionsRef.current.get(peerId)) {
+            console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
+            peerConnectionsRef.current.get(peerId)!.connection.close();
+        }
 
         const pc = new RTCPeerConnection(ICE_SERVERS);
         const peer = { connection: pc };
@@ -130,19 +183,15 @@ export default function SessionPage() {
         localStreamRef.current?.getTracks().forEach(track => {
             pc.addTrack(track, localStreamRef.current!);
         });
+        console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
 
         pc.ontrack = event => {
             console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
             const stream = event.streams[0];
             const peerData = peerConnectionsRef.current.get(peerId);
-            if (peerData) {
-              peerData.stream = stream;
-            }
+            if (peerData) peerData.stream = stream;
             setRemoteStreams(prev => new Map(prev).set(peerId, stream));
-    
-            if (spotlightedParticipantId === peerId) {
-                setSpotlightedStream(stream);
-            }
+            if (spotlightedParticipantId === peerId) setSpotlightedStream(stream);
         };
 
         pc.onicecandidate = event => {
@@ -152,24 +201,31 @@ export default function SessionPage() {
         };
 
         pc.onnegotiationneeded = async () => {
-            if (!startNegotiation()) return;
-
-            console.log(`[WebRTC] onnegotiationneeded pour ${peerId}`);
+            console.log(`🔄 [WebRTC] onnegotiationneeded pour ${peerId}`);
+            if (!startNegotiation()) {
+                console.log(`⏳ [WebRTC] Négociation différée pour ${peerId} - attente du verrou`);
+                setTimeout(() => {
+                    if (pc.connectionState !== 'closed') pc.onnegotiationneeded?.();
+                }, 500);
+                return;
+            }
             try {
+                console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
                 await pc.setLocalDescription(await pc.createOffer());
+                console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
                 sendSignal({ toUserId: peerId, fromUserId: userId, signal: { description: pc.localDescription } });
             } catch (err) {
-                console.error(`[WebRTC] Erreur onnegotiationneeded pour ${peerId}:`, err);
+                console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, err);
             } finally {
-                const nextOffer = endNegotiation();
-                if(nextOffer) {
-                   // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                   handleSignal(nextOffer.signalData);
+                const pending = endNegotiation();
+                if (pending) {
+                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId} après négociation`);
+                    setTimeout(() => handleSignal(pending.signalData), 100);
                 }
             }
         };
 
-    }, [userId, spotlightedParticipantId, sendSignal, startNegotiation, endNegotiation]);
+    }, [userId, sendSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
 
 
     const removePeerConnection = (peerId: string) => {
@@ -186,61 +242,17 @@ export default function SessionPage() {
         });
     };
 
-    const handleSignal = useCallback(async (signalData: { fromUserId: string, signal: { description?: RTCSessionDescriptionInit, candidate?: RTCIceCandidateInit } }) => {
-        const { fromUserId, signal } = signalData;
-        if (fromUserId === userId) return;
-
-        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`);
-        
-        let peer = peerConnectionsRef.current.get(fromUserId);
-        if (!peer) {
-            createPeerConnection(fromUserId);
-            peer = peerConnectionsRef.current.get(fromUserId)!;
-        }
-        if(!peer) return;
-
-        const pc = peer.connection;
-
-        try {
-            if (signal.description) {
-                 if (signal.description.type === 'offer') {
-                    if (pc.signalingState !== 'stable') {
-                        addPendingOffer(fromUserId, signalData);
-                        return;
-                    }
-                    if (!startNegotiation()) {
-                        addPendingOffer(fromUserId, signalData);
-                        return;
-                    }
-                }
-
-                await pc.setRemoteDescription(new RTCSessionDescription(signal.description));
-                
-                if (signal.description.type === 'offer') {
-                    await pc.setLocalDescription(await pc.createAnswer());
-                    sendSignal({ toUserId: fromUserId, fromUserId: userId, signal: { description: pc.localDescription } });
-                }
-
-                 if (signal.description.type === 'offer' || signal.description.type === 'answer') {
-                    const nextOffer = endNegotiation();
-                    if(nextOffer) {
-                       handleSignal(nextOffer.signalData);
-                    }
-                }
-
-            } else if (signal.candidate) {
-                if (pc.remoteDescription) {
-                    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                }
+    // Monitoring effect
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const pendingCount = getPendingCount();
+            if (pendingCount > 0) {
+            console.log(`📊 [WebRTC] Monitoring: ${pendingCount} offre(s) en attente`);
             }
-        } catch (error) {
-            console.error("❌ [WebRTC] Erreur lors du traitement du signal:", error);
-            const nextOffer = endNegotiation(); // Unlock on error
-            if(nextOffer) {
-                handleSignal(nextOffer.signalData);
-            }
-        }
-    }, [userId, createPeerConnection, sendSignal, startNegotiation, endNegotiation, addPendingOffer]);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [getPendingCount]);
 
     // Initialisation et nettoyage de la session
      useEffect(() => {
