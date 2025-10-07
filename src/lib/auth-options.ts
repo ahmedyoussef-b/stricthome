@@ -1,22 +1,19 @@
 // src/lib/auth-options.ts
-import NextAuth from 'next-auth';
+import NextAuth, { NextAuthOptions } from 'next-auth';
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import prisma from '@/lib/prisma';
-import { Role } from '@prisma/client';
-import type { NextAuthConfig } from "next-auth"
-import type { User as PrismaUser } from '@prisma/client';
+import { Role, User as PrismaUser } from '@prisma/client';
 
-
-export const config = {
+export const authOptions: NextAuthOptions = {
   theme: {
     logo: "https://next-auth.js.org/img/logo/logo-sm.png",
   },
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     CredentialsProvider({
       name: 'Credentials',
@@ -30,7 +27,7 @@ export const config = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email: credentials.email },
         });
 
         if (!user || !user.role) {
@@ -55,43 +52,43 @@ export const config = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-        if (account?.provider === 'google' && profile?.email) {
-          let dbUser = await prisma.user.findUnique({
-            where: { email: profile.email },
-          });
-    
-          if (!dbUser) {
-            // Create user and their state in a transaction
-            const newUser = await prisma.$transaction(async (tx) => {
-              const createdUser = await tx.user.create({
-                data: {
-                  email: profile.email!,
-                  name: profile.name,
-                  image: profile.picture,
-                  role: Role.ELEVE, // Default role for new Google sign-ups
-                },
-              });
-
-              await tx.etatEleve.create({
-                data: {
-                  eleveId: createdUser.id,
-                }
-              });
-
-              return createdUser;
+      if (account?.provider === 'google' && profile?.email) {
+        let dbUser = await prisma.user.findUnique({
+          where: { email: profile.email },
+        });
+  
+        if (!dbUser) {
+          // Create user and their state in a transaction
+          const newUser = await prisma.$transaction(async (tx) => {
+            const createdUser = await tx.user.create({
+              data: {
+                email: profile.email!,
+                name: profile.name,
+                image: (profile as any).picture,
+                role: Role.ELEVE, // Default role for new Google sign-ups
+              },
             });
-            dbUser = newUser;
-          }
-          // Ensure the user object passed along has the correct id and role for the session callback
-          user.id = dbUser.id;
-          (user as PrismaUser).role = dbUser.role;
+
+            await tx.etatEleve.create({
+              data: {
+                eleveId: createdUser.id,
+              }
+            });
+
+            return createdUser;
+          });
+          dbUser = newUser;
         }
-        return true;
-      },
+        // Ensure the user object passed along has the correct id and role for the session callback
+        user.id = dbUser.id;
+        user.role = dbUser.role;
+      }
+      return true;
+    },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as PrismaUser).role;
+        token.role = user.role;
       }
       return token;
     },
@@ -110,7 +107,8 @@ export const config = {
   pages: {
     signIn: '/login',
   },
-} satisfies NextAuthConfig;
+};
 
+const handlers = NextAuth(authOptions);
 
-export const { handlers, auth, signIn, signOut } = NextAuth(config);
+export { handlers };
