@@ -1,6 +1,6 @@
 // src/app/session/[id]/page.tsx
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
@@ -37,7 +37,7 @@ interface PeerConnection {
   stream?: MediaStream;
 }
 
-export default function SessionPage() {
+function SessionPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -417,5 +417,13 @@ export default function SessionPage() {
                 )}
             </main>
         </div>
+    );
+}
+
+export default function SessionPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className='ml-2'>Chargement de la session...</p></div>}>
+            <SessionPageContent />
+        </Suspense>
     );
 }

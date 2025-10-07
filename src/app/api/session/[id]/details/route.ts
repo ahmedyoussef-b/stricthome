@@ -46,9 +46,8 @@ export async function GET(
 
     // Security check: only participants or the teacher can get details
     const isParticipant = coursSession.participants.some(p => p.id === session.user.id);
-    const isTeacher = coursSession.professeurId === session.user.id;
-
-    if (!isParticipant && !isTeacher) {
+    
+    if (!isParticipant) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     
