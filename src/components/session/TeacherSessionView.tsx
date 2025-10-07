@@ -8,7 +8,7 @@ import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users, Eye } from 'lucide-react';
+import { Users, Eye, Orbit } from 'lucide-react';
 import { AISkillAssessment } from '../AISkillAssessment';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { EmotionalAITutor } from '../EmotionalAITutor';
@@ -159,9 +159,19 @@ export function TeacherSessionView({
                         controllerName={controllerUser?.name}
                     />
                 </div>
-                <div className="flex-1 min-h-0 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-                    <VirtualClassroom />
-                </div>
+                 <Accordion type="single" collapsible className="w-full bg-muted/20 rounded-lg border-2 border-dashed border-border">
+                    <AccordionItem value="vr-classroom" className="border-b-0">
+                        <AccordionTrigger className="p-4">
+                            <div className="flex items-center gap-2 font-semibold">
+                                <Orbit className="h-5 w-5" />
+                                Classe Virtuelle - Réalité Immersive
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                            <VirtualClassroom />
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </div>
             
             {/* Colonne de droite: Outils IA */}
