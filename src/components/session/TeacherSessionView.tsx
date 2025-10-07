@@ -48,9 +48,6 @@ export function TeacherSessionView({
     const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
         ? localStream 
         : remoteStreamsMap.get(spotlightedUser?.id ?? '');
-    
-    const otherParticipants = allSessionUsers.filter(u => u.id !== spotlightedUser?.id);
-
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 h-full py-6">
@@ -75,13 +72,21 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            {/* Colonne centrale: Tableau blanc */}
-            <div className="lg:col-span-4 h-full min-h-[600px]">
-               <Whiteboard
-                    sessionId={sessionId}
-                    isControlledByCurrentUser={isControlledByCurrentUser}
-                    controllerName={controllerUser?.name}
-               />
+            {/* Colonne centrale: Tableau blanc et futurs composants */}
+            <div className="lg:col-span-4 h-full flex flex-col gap-4">
+                <div className="flex-1 min-h-[400px]">
+                    <Whiteboard
+                        sessionId={sessionId}
+                        isControlledByCurrentUser={isControlledByCurrentUser}
+                        controllerName={controllerUser?.name}
+                    />
+                </div>
+                <div className="flex-1 min-h-[150px] border-2 border-dashed border-muted-foreground/30 rounded-lg">
+                    {/* Espace vide pour future fonctionnalité 1 */}
+                </div>
+                <div className="flex-1 min-h-[150px] border-2 border-dashed border-muted-foreground/30 rounded-lg">
+                    {/* Espace vide pour future fonctionnalité 2 */}
+                </div>
             </div>
             
             {/* Colonne de droite: Reste des participants */}
@@ -96,7 +101,9 @@ export function TeacherSessionView({
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
                            <div className="space-y-3 pr-2">
-                               {otherParticipants.map((user) => {
+                               {allSessionUsers.map((user) => {
+                                   if (user.id === spotlightedUser?.id) return null;
+
                                     const remoteStream = remoteStreamsMap.get(user.id);
                                     const isUserLocal = user.id === localUserId;
 
