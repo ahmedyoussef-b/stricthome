@@ -9,6 +9,7 @@ import { Role } from '@prisma/client';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { SessionViewMode } from '@/app/session/[id]/page';
+import { Card } from '../ui/card';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -57,40 +58,46 @@ export function StudentSessionView({
             );
         }
         return (
-            <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
+            <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
                 <div className="text-center">
                     <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                     <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
                 </div>
-            </div>
+            </Card>
         );
     };
 
     const renderWhiteboard = () => (
-        <div className="flex-1 min-h-[450px] relative">
-            <Whiteboard 
-                sessionId={sessionId} 
-                isControlledByCurrentUser={isControlledByCurrentUser}
-                controllerName={controllerUser?.name}
-            />
-        </div>
+         <Whiteboard 
+            sessionId={sessionId} 
+            isControlledByCurrentUser={isControlledByCurrentUser}
+            controllerName={controllerUser?.name}
+        />
     );
     
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
-             <div className="lg:col-span-1 flex flex-col gap-4 border rounded-lg">
+        <div className="flex gap-4 flex-1 min-h-0 py-6">
+             <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg">
                 {/* Espace réservé pour la barre latérale de l'élève */}
              </div>
-             <div className="lg:col-span-5 flex flex-col gap-6">
-                 {sessionView === 'camera' && renderSpotlight()}
-                 {sessionView === 'whiteboard' && renderWhiteboard()}
+             <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+                 {sessionView === 'camera' && (
+                    <div className="w-full max-w-4xl">
+                        {renderSpotlight()}
+                    </div>
+                 )}
+                 {sessionView === 'whiteboard' && (
+                    <div className="w-full h-full">
+                        {renderWhiteboard()}
+                    </div>
+                 )}
 
                  {sessionView === 'split' && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
-                       <div className="flex flex-col justify-center">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full h-full">
+                       <div className="flex flex-col justify-center items-center">
                          {renderSpotlight()}
                        </div>
-                       <div className="min-h-[450px] xl:min-h-0">
+                       <div className="flex flex-col min-h-0">
                          {renderWhiteboard()}
                        </div>
                     </div>
