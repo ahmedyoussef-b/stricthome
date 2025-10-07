@@ -9,7 +9,6 @@ import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Users, Star } from 'lucide-react';
-import { Separator } from '../ui/separator';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -72,17 +71,14 @@ export function TeacherSessionView({
                 )}
             </div>
 
-            {/* Colonne centrale: Tableau blanc et futurs composants */}
+            {/* Colonne centrale: Tableau blanc */}
             <div className="lg:col-span-4 h-full flex flex-col gap-4">
-                <div className="flex-[3] min-h-[550px]">
+                <div className="flex-1 min-h-0">
                     <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerName={controllerUser?.name}
                     />
-                </div>
-                <div className="flex-1 min-h-[150px] border-2 border-dashed border-muted-foreground/30 rounded-lg">
-                    {/* Espace vide pour future fonctionnalité */}
                 </div>
             </div>
             
