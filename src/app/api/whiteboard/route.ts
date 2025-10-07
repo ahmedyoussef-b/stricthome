@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const { sessionId, event, data } = await request.json();
 
-    if (!sessionId || !event || !data) {
+    if (!sessionId || !event || data === undefined) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
@@ -20,12 +20,14 @@ export async function POST(request: NextRequest) {
     
     // On relaie l'événement avec les données et on ajoute l'ID de l'expéditeur
     await pusherServer.trigger(channel, event, { ...data, senderId: session.user.id });
-    
-    console.log(`📡 [API Whiteboard] Événement '${event}' diffusé sur le canal '${channel}' par ${session.user.id}.`);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 [Whiteboard API] Error:', error);
+    // Spécifiquement pour les erreurs Pusher, on peut vouloir retourner plus d'infos
+    if (error.status && error.message) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

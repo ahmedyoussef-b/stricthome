@@ -1,5 +1,4 @@
 // src/lib/session.ts
-import { getServerSession } from 'next-auth';
-import { authOptions } from './auth-options';
+import { auth } from './auth-options';
 
-export const getAuthSession = () => getServerSession(authOptions);
+export const getAuthSession = auth;

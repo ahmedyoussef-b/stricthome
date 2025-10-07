@@ -1,21 +1,20 @@
 // src/lib/auth-options.ts
-import type { NextAuthOptions } from 'next-auth';
+import NextAuth from 'next-auth';
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import type { NextAuthConfig } from "next-auth"
 
-export const authOptions: NextAuthOptions = {
-  // Use the internal URL for server-side auth operations.
-  // This is important in environments where the public URL is behind a proxy.
-  useSecureCookies: process.env.NODE_ENV === 'production',
-  ...(process.env.NEXTAUTH_URL_INTERNAL && {
-    url: process.env.NEXTAUTH_URL_INTERNAL,
-  }),
+export const config = {
+  theme: {
+    logo: "https://next-auth.js.org/img/logo/logo-sm.png",
+  },
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
     CredentialsProvider({
       name: 'Credentials',
@@ -29,7 +28,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email as string },
         });
 
         if (!user || !user.role) {
@@ -48,6 +47,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  adapter: PrismaAdapter(prisma),
   session: {
     strategy: 'jwt',
   },
@@ -63,9 +63,9 @@ export const authOptions: NextAuthOptions = {
             const newUser = await prisma.$transaction(async (tx) => {
               const createdUser = await tx.user.create({
                 data: {
-                  email: profile.email,
+                  email: profile.email!,
                   name: profile.name,
-                  image: (profile as any).picture,
+                  image: profile.picture,
                   role: Role.ELEVE, // Default role for new Google sign-ups
                 },
               });
@@ -82,14 +82,14 @@ export const authOptions: NextAuthOptions = {
           }
           // Ensure the user object passed along has the correct id and role for the session callback
           user.id = dbUser.id;
-          user.role = dbUser.role;
+          (user as any).role = dbUser.role;
         }
         return true;
       },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = (user as any).role;
       }
       return token;
     },
@@ -104,4 +104,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
   },
-};
+} satisfies NextAuthConfig;
+
+
+export const { handlers, auth, signIn, signOut } = NextAuth(config);

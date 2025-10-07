@@ -25,7 +25,6 @@ import {
   Hand
 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
-import { Slider } from './ui/slider';
 
 interface WhiteboardProps {
   sessionId: string;
@@ -80,12 +79,6 @@ const THICKNESSES = [
   { label: 'Très épais', value: 20 },
 ];
 
-// Dimensions virtuelles du tableau blanc
-const VIRTUAL_CANVAS = {
-  width: 4000,
-  height: 3000
-};
-
 function ThicknessPicker({ current, onChange }: { current: number, onChange: (value: number) => void }) {
   return (
     <div className="flex flex-col gap-2">
@@ -127,10 +120,8 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   const startPoint = useRef<Point | null>(null);
   const lastPanPoint = useRef<Point | null>(null);
 
-  // Broadcast events to other users
   const broadcastEvent = useCallback(async (event: string, data: any) => {
     try {
-      console.log(`🎨 [Whiteboard][OUT] Diffusion de l'événement '${event}'...`);
       await fetch('/api/whiteboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,7 +132,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     }
   }, [sessionId]);
 
-  // Draw action on canvas with viewport transformation
   const drawActionOnCanvas = (ctx: CanvasRenderingContext2D, action: Action) => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -183,48 +173,36 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     }
   };
 
-  // Redraw canvas with viewport transformation
-  const redrawCanvas = useCallback((canvas: HTMLCanvasElement | null, upToIndex: number) => {
+  const redrawCanvas = useCallback(() => {
+    const canvas = mainCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    const actualIndex = upToIndex === -1 ? -1 : Math.min(upToIndex, history.length - 1);
-    
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Apply viewport transformation
     ctx.save();
     ctx.translate(viewport.x, viewport.y);
     ctx.scale(viewport.scale, viewport.scale);
     
-    // Draw grid background for better orientation
     drawGrid(ctx, canvas.width, canvas.height);
     
-    // Draw history
-    if (actualIndex >= 0) {
-      for (let i = 0; i <= actualIndex; i++) {
-        if (history[i]) {
-          drawActionOnCanvas(ctx, history[i].action);
-        }
+    for (let i = 0; i <= historyIndex; i++) {
+      if (history[i]) {
+        drawActionOnCanvas(ctx, history[i].action);
       }
     }
     
     ctx.restore();
-  }, [history, viewport]);
+  }, [history, historyIndex, viewport]);
 
-  // Draw grid for better orientation
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const gridSize = 50;
-    const scaledGridSize = gridSize * viewport.scale;
     
     ctx.strokeStyle = '#f0f0f0';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 / viewport.scale;
     
-    // Calculate visible area
-    const startX = Math.floor(-viewport.x / scaledGridSize) * gridSize;
-    const startY = Math.floor(-viewport.y / scaledGridSize) * gridSize;
+    const startX = Math.floor(-viewport.x / viewport.scale / gridSize) * gridSize;
+    const startY = Math.floor(-viewport.y / viewport.scale / gridSize) * gridSize;
     const endX = startX + (width / viewport.scale) + gridSize;
     const endY = startY + (height / viewport.scale) + gridSize;
     
@@ -243,7 +221,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     }
   };
 
-  // Push action to history
   const pushToHistory = (action: Action) => {
     if (!session?.user?.id) return;
     const newEntry: HistoryEntry = {
@@ -257,37 +234,29 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     
-    console.log(`💾 [Whiteboard] Nouvelle action enregistrée localement. Envoi pour diffusion.`);
-    broadcastEvent('history-update', { history: newHistory, index: newHistory.length - 1 });
+    broadcastEvent('new-action', newEntry);
   };
 
-  // Clear canvas
   const handleClearCanvas = () => {
-    console.log("🗑️ [Whiteboard] Action: Effacer tout le tableau.");
     setHistory([]);
     setHistoryIndex(-1);
-    broadcastEvent('history-update', { history: [], index: -1 });
+    broadcastEvent('clear-history', {});
   };
 
-  // Undo action
   const handleUndo = () => {
     if (historyIndex < 0) return;
     const newIndex = historyIndex - 1;
-    console.log("↪️ [Whiteboard] Action: Annuler. Nouvel index:", newIndex);
     setHistoryIndex(newIndex);
-    broadcastEvent('history-update', { history, index: newIndex });
+    broadcastEvent('index-update', { index: newIndex });
   };
 
-  // Redo action
   const handleRedo = () => {
     if (historyIndex >= history.length - 1) return;
     const newIndex = historyIndex + 1;
-    console.log("↩️ [Whiteboard] Action: Rétablir. Nouvel index:", newIndex);
     setHistoryIndex(newIndex);
-    broadcastEvent('history-update', { history, index: newIndex });
+    broadcastEvent('index-update', { index: newIndex });
   };
 
-  // Get canvas point with viewport transformation
   const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
     const canvas = mainCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -299,7 +268,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     return { x, y };
   };
 
-  // Handle zoom
   const handleZoom = (direction: 'in' | 'out' | 'reset') => {
     setViewport(prev => {
       let newScale = prev.scale;
@@ -319,7 +287,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     });
   };
 
-  // Handle wheel zoom
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     if (!isControlledByCurrentUser) return;
     
@@ -334,7 +301,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     }));
   };
 
-  // Start drawing or panning
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isControlledByCurrentUser) return;
     
@@ -346,7 +312,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
       return;
     }
     
-    console.log(`✏️ [Whiteboard] Début du dessin (outil: ${tool}) aux coordonnées:`, point);
     setIsDrawing(true);
     startPoint.current = point;
 
@@ -360,7 +325,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     }
   };
 
-  // Draw or pan
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isControlledByCurrentUser) return;
     
@@ -386,7 +350,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
 
     previewCtx.clearRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
     
-    // Apply viewport transformation to preview
     previewCtx.save();
     previewCtx.translate(viewport.x, viewport.y);
     previewCtx.scale(viewport.scale, viewport.scale);
@@ -412,7 +375,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     previewCtx.restore();
   };
 
-  // Finish drawing or panning
   const finishDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isPanning) {
       setIsPanning(false);
@@ -423,7 +385,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     if (!isDrawing || !startPoint.current) return;
     
     const endPoint = getCanvasPoint(e);
-    console.log(`✅ [Whiteboard] Fin du dessin. Action terminée.`);
 
     const previewCtx = previewCanvasRef.current?.getContext('2d');
     if (previewCtx && previewCanvasRef.current) {
@@ -451,7 +412,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     drawingAction.current = null;
   };
 
-  // Setup canvas dimensions
   const setupCanvas = useCallback(() => {
     [mainCanvasRef.current, previewCanvasRef.current].forEach(canvas => {
       if (canvas && containerRef.current) {
@@ -460,47 +420,49 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
         canvas.height = parent.clientHeight;
       }
     });
-    redrawCanvas(mainCanvasRef.current, historyIndex);
-  }, [redrawCanvas, historyIndex]);
+    redrawCanvas();
+  }, [redrawCanvas]);
 
-  // Handle resize
   useEffect(() => {
-    const handleResize = () => {
-      setupCanvas();
-    };
-
+    const handleResize = () => setupCanvas();
     window.addEventListener('resize', handleResize);
     setupCanvas();
-
     return () => window.removeEventListener('resize', handleResize);
   }, [setupCanvas]);
+  
+  useEffect(() => {
+      redrawCanvas();
+  }, [redrawCanvas]);
 
-  // Pusher subscription for real-time updates
   useEffect(() => {
     if (!sessionId) return;
     const channelName = `presence-session-${sessionId}`;
     const channel = pusherClient.subscribe(channelName);
     
-    const historyUpdateHandler = (data: { history: HistoryEntry[], index: number, senderId: string }) => {
-      if (data.history && Array.isArray(data.history) && typeof data.index === 'number') {
-        console.log(`🔄 [Whiteboard][IN] Données reçues de ${data.senderId}. Historique: ${data.history.length} actions, index: ${data.index}`);
-        
-        setHistory(data.history);
-        setHistoryIndex(data.index);
-      } else {
-        console.error('❌ [Whiteboard] Données d\'historique invalides reçues:', data);
-      }
+    const newActionHandler = (newEntry: HistoryEntry) => {
+        setHistory(prev => [...prev.slice(0, historyIndex + 1), newEntry]);
+        setHistoryIndex(prev => prev + 1);
     };
 
-    channel.bind('history-update', historyUpdateHandler);
+    const clearHistoryHandler = () => {
+        setHistory([]);
+        setHistoryIndex(-1);
+    };
+    
+    const indexUpdateHandler = (data: { index: number }) => {
+        setHistoryIndex(data.index);
+    };
+
+    channel.bind('new-action', newActionHandler);
+    channel.bind('clear-history', clearHistoryHandler);
+    channel.bind('index-update', indexUpdateHandler);
 
     return () => {
-      channel.unbind('history-update', historyUpdateHandler);
+      channel.unbind_all();
       pusherClient.unsubscribe(channelName);
     };
-  }, [sessionId]);
+  }, [sessionId, historyIndex]);
 
-  // Get appropriate cursor
   const getCursor = () => {
     if (!isControlledByCurrentUser) return 'not-allowed';
     if (tool === 'pan' || isPanning) return 'grab';
@@ -598,14 +560,11 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
         )}
 
         <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-white">
-          {/* Main canvas for persistent drawings */}
           <canvas
             ref={mainCanvasRef}
             className="absolute top-0 left-0 h-full w-full touch-none"
             style={{ cursor: getCursor() }}
           />
-          
-          {/* Preview canvas for temporary drawings */}
           <canvas
             ref={previewCanvasRef}
             onMouseDown={startDrawing}
@@ -616,8 +575,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
             className="absolute top-0 left-0 h-full w-full touch-none"
             style={{ cursor: getCursor() }}
           />
-
-          {/* Navigation controls */}
           <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-background/80 p-2 rounded-lg border">
             <div className="flex gap-1">
               <Button variant="outline" size="sm" onClick={() => handleZoom('in')} title="Zoomer">
@@ -633,11 +590,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
             <div className="text-xs text-center px-2 py-1 bg-muted rounded">
               {Math.round(viewport.scale * 100)}%
             </div>
-          </div>
-
-          {/* Viewport position indicator */}
-          <div className="absolute top-4 right-4 bg-background/80 px-3 py-1 rounded-md text-xs">
-            Viewport: {Math.round(viewport.x)}, {Math.round(viewport.y)}
           </div>
         </div>
       </CardContent>

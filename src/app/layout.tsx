@@ -1,8 +1,8 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next';
+import { SessionProvider } from 'next-auth/react';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import AuthProvider from './AuthProvider';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({
@@ -24,11 +24,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>
+        <SessionProvider>
           {children}
           {modal}
           <Toaster />
-        </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );
