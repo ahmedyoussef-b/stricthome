@@ -162,14 +162,15 @@ export default function SessionPage() {
       
         // Surveiller les changements d'état
         pc.onconnectionstatechange = () => {
-          console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}, Signal: ${pc.signalingState}`);
+          console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}, ICE: ${pc.iceConnectionState}, Signal: ${pc.signalingState}`);
           
           if (pc.connectionState === 'connected') {
-            console.log(`✅ [WebRTC] Connexion établie avec ${peerId}`);
-          } else if (pc.connectionState === 'failed') {
+            console.log(`🎉 [WebRTC] CONNEXION ÉTABLIE avec ${peerId}`);
+          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
             console.log(`🔄 [WebRTC] Tentative de reconnexion à ${peerId}`);
             setTimeout(() => {
               if (peerConnectionsRef.current.get(peerId)?.connection === pc) {
+                console.log(`🔁 [WebRTC] Reconnexion automatique à ${peerId}`);
                 createPeerConnection(peerId);
               }
             }, 2000);
@@ -181,7 +182,15 @@ export default function SessionPage() {
         };
       
         pc.oniceconnectionstatechange = () => {
-          console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
+            console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
+            
+            // CORRECTION : Gérer les états ICE problématiques
+            if (pc.iceConnectionState === 'failed') {
+                console.log(`🔄 [WebRTC] Redémarrage ICE pour ${peerId}`);
+                // Optionnel: redémarrer la négociation ICE
+            } else if (pc.iceConnectionState === 'connected') {
+                console.log(`✅ [WebRTC] ICE connecté avec ${peerId}`);
+            }
         };
       
         // Ajouter le flux local
@@ -303,14 +312,31 @@ export default function SessionPage() {
                 }
                 
             } else if (signal.type === 'answer') {
-                console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId}`);
-                
-                // Ne traiter la réponse que si nous sommes dans l'état 'have-local-offer'
-                if (pc.signalingState === 'have-local-offer') {
+                 console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état actuel: ${pc.signalingState})`);
+  
+                // CORRECTION : Accepter la réponse même si nous sommes en état stable
+                if (pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable') {
+                    try {
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
                     console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
+                    
+                    // Vérifier si nous avons des candidats ICE en attente
+                    if (pc.remoteDescription && pc.iceConnectionState === 'checking') {
+                        console.log(`🔄 [WebRTC] Connexion en cours avec ${fromUserId} - état ICE: ${pc.iceConnectionState}`);
+                    }
+                    } catch (error) {
+                    console.error(`❌ [WebRTC] Erreur setRemoteDescription pour réponse:`, error);
+                    }
                 } else {
-                    console.warn(`⚠️ [WebRTC] Réponse ignorée - mauvais état: ${pc.signalingState}`);
+                    console.warn(`⚠️ [WebRTC] Réponse ignorée - état inattendu: ${pc.signalingState}`);
+                    
+                    // CORRECTION : Tenter quand même de traiter la réponse
+                    try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                    console.log(`✅ [WebRTC] Réponse forcée acceptée de ${fromUserId}`);
+                    } catch (fallbackError) {
+                    console.error(`❌ [WebRTC] Échec traitement réponse de secours:`, fallbackError);
+                    }
                 }
                 
             } else if (signal.type === 'ice-candidate' && signal.candidate) {
@@ -582,6 +608,8 @@ export default function SessionPage() {
         </div>
     );
 }
+
+    
 
     
 
