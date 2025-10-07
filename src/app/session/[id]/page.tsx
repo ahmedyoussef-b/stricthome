@@ -110,73 +110,120 @@ export default function SessionPage() {
         handleEndSession();
     };
 
-    const sendSignal = useCallback(async (signalData: any) => {
+    const broadcastSignal = useCallback(async (toUserId: string, signal: any) => {
         await fetch('/api/webrtc/signal', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, ...signalData }),
+            body: JSON.stringify({ sessionId, toUserId, fromUserId: userId, signal }),
         });
-    }, [sessionId]);
+    }, [sessionId, userId]);
 
     const handleSignal = useCallback(async (signalData: { fromUserId: string, toUserId: string, signal: any }) => {
         const { fromUserId, signal } = signalData;
         if (fromUserId === userId) return;
 
-        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal?.type || 'type indéfini');
+        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal?.type || 'SIGNAL INVALIDE');
 
-        // ⚠️ CORRECTION : Créer automatiquement une connexion si elle n'existe pas
+        // VALIDATION CRITIQUE : Rejeter les signaux sans type
+        if (!signal || !signal.type) {
+            console.error('❌ [WebRTC] Signal invalide reçu, ignoré:', signal);
+            return;
+        }
+
+        // Créer automatiquement une connexion si elle n'existe pas
         let peer = peerConnectionsRef.current.get(fromUserId);
         if (!peer) {
             console.log(`🔗 [WebRTC] Création automatique de connexion vers ${fromUserId}`);
-            // isPolite = true car nous sommes le récepteur, nous devons être "polis" et laisser l'initiateur gérer les collisions.
-            peer = createPeerConnection(fromUserId); 
+            peer = createPeerConnection(fromUserId);
         }
-
         const pc = peer.connection;
 
-        // Vérifier que le signal a un type valide
-        if (!signal || !signal.description) {
-            if(signal.candidate) {
-                 // C'est un candidat ICE, c'est valide
-            } else {
-                console.error('❌ [WebRTC] Signal invalide ou sans description reçu:', signal);
-                return;
-            }
-        }
-        
         try {
-            if (signal.description) { // Offre ou Réponse
-                if (signal.description.type === 'offer') {
-                    if (!startNegotiation()) {
-                        console.log(`📥 [WebRTC] Offre de ${fromUserId} mise en attente`);
-                        addPendingOffer(fromUserId, signalData);
-                        return;
-                    }
-                    console.log(`📥 [WebRTC] Traitement offre de ${fromUserId}`);
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.description));
-                    await pc.setLocalDescription(await pc.createAnswer());
-                    console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
-                    sendSignal({ toUserId: fromUserId, fromUserId: userId, signal: { description: pc.localDescription } });
-                } else if (signal.description.type === 'answer') {
-                    console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId}`);
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.description));
+            if (signal.type === 'offer') {
+                if (!startNegotiation()) {
+                    console.log(`📥 [WebRTC] Offre de ${fromUserId} mise en attente`);
+                    addPendingOffer(fromUserId, signalData);
+                    return;
                 }
-            } else if (signal.candidate) { // Candidat ICE
-                console.log(`🧊 [WebRTC] Ajout candidat ICE de ${fromUserId}`);
-                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+
+                console.log(`📥 [WebRTC] Traitement offre de ${fromUserId}`);
+                
+                // IMPORTANT: Réinitialiser la connexion si elle est dans un mauvais état
+                if (pc.signalingState !== 'stable') {
+                    console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId} - état: ${pc.signalingState}`);
+                    pc.close();
+                    peer = createPeerConnection(fromUserId);
+                    const newPc = peer.connection;
+                    await newPc.setRemoteDescription(new RTCSessionDescription(signal));
+                    const answer = await newPc.createAnswer();
+                    await newPc.setLocalDescription(answer);
+                    console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
+                    await broadcastSignal(fromUserId, newPc.localDescription!);
+
+                } else {
+                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
+                    await broadcastSignal(fromUserId, pc.localDescription!);
+                }
+                
+            } else if (signal.type === 'answer') {
+                console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId}`);
+                
+                // Ne traiter la réponse que si nous sommes dans l'état 'have-local-offer'
+                if (pc.signalingState === 'have-local-offer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                    console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
+                } else {
+                    console.warn(`⚠️ [WebRTC] Réponse ignorée - mauvais état: ${pc.signalingState}`);
+                }
+                
+            } else if (signal.type === 'ice-candidate' && signal.candidate) {
+                console.log(`🧊 [WebRTC] Candidat ICE reçu de ${fromUserId}`);
+                
+                // ATTENDRE que la description distante soit définie avant d'ajouter les candidats ICE
+                if (pc.remoteDescription && pc.remoteDescription.type) {
+                    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                    console.log(`✅ [WebRTC] Candidat ICE ajouté de ${fromUserId}`);
+                } else {
+                    console.log(`⏳ [WebRTC] Candidat ICE mis en attente pour ${fromUserId} - attente description distante`);
+                    // Stocker les candidats ICE en attente et les ajouter plus tard
+                    setTimeout(() => {
+                        if (pc.remoteDescription && pc.remoteDescription.type) {
+                            pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                            console.log(`✅ [WebRTC] Candidat ICE retardé ajouté de ${fromUserId}`);
+                        }
+                    }, 1000);
+                }
             }
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
+            
+            // Gestion spécifique des erreurs
+            if (error instanceof Error) {
+                if (error.name === 'InvalidStateError') {
+                    console.log(`🔄 [WebRTC] Reconnexion à ${fromUserId} après InvalidStateError`);
+                    setTimeout(() => {
+                        createPeerConnection(fromUserId);
+                    }, 1000);
+                } else if (error.name === 'TypeError' && error.message.includes('candidate')) {
+                    console.log(`⚠️ [WebRTC] Candidat ICE ignoré (déjà traité ou invalide)`);
+                }
+            }
         } finally {
-            if (signal.description && signal.description.type === 'offer') {
-                const pendingOffer = endNegotiation();
-                if (pendingOffer) {
-                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pendingOffer.fromUserId}`);
-                    setTimeout(() => handleSignal(pendingOffer.signalData), 100);
+            // IMPORTANT: Toujours libérer le verrou après une offre
+            if (signal.type === 'offer') {
+                const pending = endNegotiation();
+                if (pending) {
+                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
+                    setTimeout(() => {
+                        handleSignal(pending.signalData);
+                    }, 200);
                 }
             }
         }
-    }, [userId, startNegotiation, addPendingOffer, sendSignal, endNegotiation]);
+    }, [userId, startNegotiation, addPendingOffer, broadcastSignal, endNegotiation, createPeerConnection]);
     
     const createPeerConnection = useCallback((peerId: string) => {
         if (peerConnectionsRef.current.has(peerId) || !userId) return peerConnectionsRef.current.get(peerId)!;
@@ -212,7 +259,7 @@ export default function SessionPage() {
 
         pc.onicecandidate = event => {
             if (event.candidate) {
-                sendSignal({ toUserId: peerId, fromUserId: userId, signal: { candidate: event.candidate } });
+                broadcastSignal(peerId, { type: 'ice-candidate', candidate: event.candidate });
             }
         };
 
@@ -232,7 +279,7 @@ export default function SessionPage() {
                 console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
                 await pc.setLocalDescription(await pc.createOffer());
                 console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
-                sendSignal({ toUserId: peerId, fromUserId: userId, signal: { description: pc.localDescription } });
+                broadcastSignal(peerId, pc.localDescription);
             } catch (err) {
                 console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, err);
             } finally {
@@ -246,7 +293,7 @@ export default function SessionPage() {
 
         return peer;
 
-    }, [userId, sendSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
+    }, [userId, broadcastSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
 
 
     const removePeerConnection = (peerId: string) => {
@@ -485,3 +532,5 @@ export default function SessionPage() {
         </div>
     );
 }
+
+    
