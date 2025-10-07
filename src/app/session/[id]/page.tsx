@@ -284,24 +284,20 @@ export default function SessionPage() {
 
                 console.log(`📥 [WebRTC] Traitement offre de ${fromUserId}`);
                 
-                if (pc.signalingState !== 'stable') {
-                    console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId} - état: ${pc.signalingState}`);
+                if (pc.signalingState === 'closed' || pc.connectionState === 'failed') {
+                    console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId} - état critique: ${pc.signalingState}`);
                     pc.close();
                     peer = createPeerConnection(fromUserId);
-                    const newPc = peer.connection;
-                    await newPc.setRemoteDescription(new RTCSessionDescription(signal));
-                    const answer = await newPc.createAnswer();
-                    await newPc.setLocalDescription(answer);
-                    console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
-                    await broadcastSignal(fromUserId, newPc.localDescription!);
-
-                } else {
+                } else if (pc.signalingState !== 'stable') {
+                    console.log(`⏳ [WebRTC] Attente état stable pour ${fromUserId} (actuel: ${pc.signalingState})`);
+                    // Attendre au lieu de réinitialiser immédiatement
+                    return;
+                }
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
                     await broadcastSignal(fromUserId, pc.localDescription!);
-                }
                 
             } else if (signal.type === 'answer') {
                  console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état actuel: ${pc.signalingState})`);
