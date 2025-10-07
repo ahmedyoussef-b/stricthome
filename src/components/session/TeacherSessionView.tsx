@@ -17,6 +17,8 @@ import { NeuroFeedback } from '../NeuroFeedback';
 import { HandRaiseController } from '../HandRaiseController';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AttentionTracker } from '../AttentionTracker';
+import { SessionViewControls } from './SessionViewControls';
+import { SessionViewMode } from '@/app/session/[id]/page';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -34,6 +36,8 @@ export function TeacherSessionView({
     controllerUser,
     onGiveWhiteboardControl,
     raisedHands,
+    sessionView,
+    onSetSessionView,
 }: {
     sessionId: string;
     localStream: MediaStream | null;
@@ -47,6 +51,8 @@ export function TeacherSessionView({
     controllerUser: SessionParticipant | null | undefined;
     onGiveWhiteboardControl: (userId: string) => void;
     raisedHands: Set<string>;
+    sessionView: SessionViewMode;
+    onSetSessionView: (view: SessionViewMode) => void;
 }) {
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
@@ -152,6 +158,10 @@ export function TeacherSessionView({
 
             {/* Colonne centrale: Tableau blanc */}
             <div className="lg:col-span-3 h-full flex flex-col gap-4 min-h-0">
+                 <SessionViewControls
+                    currentView={sessionView}
+                    onSetView={onSetSessionView}
+                />
                 <div className="flex-1 min-h-0">
                     <Whiteboard
                         sessionId={sessionId}

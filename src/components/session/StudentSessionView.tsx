@@ -8,6 +8,7 @@ import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { SessionViewMode } from '@/app/session/[id]/page';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -23,6 +24,7 @@ interface StudentSessionViewProps {
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
     onGiveWhiteboardControl: (userId: string) => void;
+    sessionView: SessionViewMode;
 }
 
 export function StudentSessionView({
@@ -36,45 +38,69 @@ export function StudentSessionView({
     isHandRaised,
     onToggleHandRaise,
     onGiveWhiteboardControl,
+    sessionView,
 }: StudentSessionViewProps) {
+
+    const renderSpotlight = () => {
+        if (spotlightedStream) {
+            return (
+                <Participant 
+                    stream={spotlightedStream}
+                    isLocal={localStream === spotlightedStream}
+                    isSpotlighted={true}
+                    isTeacher={false}
+                    participantUserId={spotlightedUser?.id ?? ''}
+                    displayName={spotlightedUser?.name ?? undefined}
+                    onGiveWhiteboardControl={onGiveWhiteboardControl}
+                    isWhiteboardController={spotlightedUser?.id === whiteboardControllerId}
+                />
+            );
+        }
+        return (
+            <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
+                <div className="text-center">
+                    <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                    <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                </div>
+            </div>
+        );
+    };
+
+    const renderWhiteboard = () => (
+        <div className="flex-1 min-h-[450px] relative">
+            <Whiteboard 
+                sessionId={sessionId} 
+                isControlledByCurrentUser={isControlledByCurrentUser}
+                controllerName={controllerUser?.name}
+            />
+        </div>
+    );
+    
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 py-8 flex-1">
-            <div className="lg:col-span-4 flex flex-col gap-6">
-                 {spotlightedStream ? (
-                    <Participant 
-                        stream={spotlightedStream}
-                        isLocal={localStream === spotlightedStream}
-                        isSpotlighted={true}
-                        isTeacher={false}
-                        participantUserId={spotlightedUser?.id ?? ''}
-                        displayName={spotlightedUser?.name ?? undefined}
-                        onGiveWhiteboardControl={onGiveWhiteboardControl}
-                        isWhiteboardController={spotlightedUser?.id === whiteboardControllerId}
-                    />
-                ) : (
-                    <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
-                        <div className="text-center">
-                            <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                            <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
-                        </div>
-                    </div>
-                )}
-                 <div className="flex-1 min-h-[450px] relative">
-                    <Whiteboard 
-                        sessionId={sessionId} 
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerName={controllerUser?.name}
-                    />
-                    <div className="absolute bottom-4 right-4 z-10">
-                        <Button 
-                            onClick={onToggleHandRaise} 
-                            size="lg"
-                            className={cn(isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
-                        >
-                           <Hand className="mr-2 h-5 w-5" />
-                           {isHandRaised ? 'Baisser la main' : 'Lever la main'}
-                        </Button>
-                    </div>
+            <div className={cn(
+                "lg:col-span-4 flex flex-col gap-6",
+                sessionView === 'whiteboard' && 'h-full'
+            )}>
+                 {sessionView === 'camera' && renderSpotlight()}
+                 {sessionView === 'whiteboard' && renderWhiteboard()}
+
+                 {sessionView === 'split' && (
+                    <>
+                        {renderSpotlight()}
+                        {renderWhiteboard()}
+                    </>
+                 )}
+                 
+                 <div className="fixed bottom-4 right-4 z-10">
+                    <Button 
+                        onClick={onToggleHandRaise} 
+                        size="lg"
+                        className={cn(isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                    >
+                       <Hand className="mr-2 h-5 w-5" />
+                       {isHandRaised ? 'Baisser la main' : 'Lever la main'}
+                    </Button>
                 </div>
             </div>
         </div>

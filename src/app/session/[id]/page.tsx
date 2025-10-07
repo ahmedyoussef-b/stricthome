@@ -59,6 +59,8 @@ const validateSignal = (signal: any): signal is WebRTCSignal => {
   return true;
 };
 
+export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
+
 
 export default function SessionPage() {
     const router = useRouter();
@@ -91,6 +93,7 @@ export default function SessionPage() {
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [sessionView, setSessionView] = useState<SessionViewMode>('split');
 
     const { startNegotiation, endNegotiation, addPendingOffer, getPendingCount } = useWebRTCNegotiation();
 
@@ -393,7 +396,6 @@ export default function SessionPage() {
         return () => clearInterval(interval);
     }, [getPendingCount]);
 
-    // Timer logic
     const broadcastTimerEvent = async (event: string, data?: any) => {
         await fetch('/api/pusher/timer', {
             method: 'POST',
@@ -424,7 +426,7 @@ export default function SessionPage() {
                 });
             }, 1000);
         }
-    }, [isTimerRunning, isTeacher, sessionId]);
+    }, [isTimerRunning, isTeacher]);
 
     const pauseTimer = useCallback(() => {
         if (isTimerRunning) {
@@ -436,7 +438,7 @@ export default function SessionPage() {
                 clearInterval(timerIntervalRef.current);
             }
         }
-    }, [isTimerRunning, isTeacher, sessionId]);
+    }, [isTimerRunning, isTeacher]);
 
     const resetTimer = useCallback(() => {
         if (isTeacher) {
@@ -447,7 +449,22 @@ export default function SessionPage() {
             clearInterval(timerIntervalRef.current);
         }
         setTimeLeft(duration);
-    }, [isTeacher, duration, sessionId]);
+    }, [isTeacher, duration]);
+
+    const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
+        await fetch('/api/pusher/timer', { // Reusing timer API for generic session events
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, event: 'session-view-changed', data: { view } }),
+        });
+    }, [sessionId]);
+
+    const handleSetSessionView = useCallback((view: SessionViewMode) => {
+        if (isTeacher) {
+            setSessionView(view);
+            broadcastViewChange(view);
+        }
+    }, [isTeacher, broadcastViewChange]);
 
 
     // Initialisation et nettoyage de la session
@@ -557,6 +574,11 @@ export default function SessionPage() {
                     setIsTimerRunning(false);
                     setDuration(data.duration);
                     setTimeLeft(data.duration);
+                });
+                presenceChannel.bind('session-view-changed', (data: { view: SessionViewMode }) => {
+                    if (!isTeacher) {
+                        setSessionView(data.view);
+                    }
                 });
 
                 setIsLoading(false);
@@ -702,6 +724,8 @@ export default function SessionPage() {
                         controllerUser={controllerUser}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
+                        sessionView={sessionView}
+                        onSetSessionView={handleSetSessionView}
                     />
                 ) : (
                     <StudentSessionView
@@ -716,6 +740,7 @@ export default function SessionPage() {
                         onGiveWhiteboardControl={() => {}} // Les élèves ne peuvent pas donner le contrôle
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
+                        sessionView={sessionView}
                     />
                 )}
             </main>
