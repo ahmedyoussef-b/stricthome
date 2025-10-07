@@ -35,6 +35,7 @@ type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role:
 interface PeerConnection {
   connection: RTCPeerConnection;
   stream?: MediaStream;
+  polite?: boolean;
 }
 
 function SessionPageContent() {
@@ -162,14 +163,15 @@ function SessionPageContent() {
                     const userIds = Object.keys(members.members).filter(id => id !== userId);
                     setOnlineUsers(userIds);
                     userIds.forEach(memberId => {
-                        createPeerConnection(memberId, true);
+                        createPeerConnection(memberId, true); // L'utilisateur existant initie la connexion aux nouveaux
                     });
                 });
 
                 presenceChannel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
                     if (member.id === userId) return;
-                    setOnlineUsers(prev => [...prev, member.info.user_id]);
-                    // C'est l'arrivant qui initie la connexion aux autres
+                    const newMemberId = member.info.user_id;
+                    setOnlineUsers(prev => [...prev, newMemberId]);
+                    createPeerConnection(newMemberId, false); // Le nouveau membre n'initie pas, il attend les offres
                 });
                 
                 presenceChannel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
@@ -222,33 +224,37 @@ function SessionPageContent() {
 
 
     const createPeerConnection = (peerId: string, initiator: boolean) => {
-        if (peerConnectionsRef.current.has(peerId)) return;
+        if (peerConnectionsRef.current.has(peerId) || !userId) return;
         console.log(`🤝 [WebRTC] Création de la connexion avec ${peerId}. Initiateur: ${initiator}`);
-
+    
+        const polite = userId < peerId; // Le "plus petit" ID est poli
         const pc = new RTCPeerConnection(ICE_SERVERS);
-        peerConnectionsRef.current.set(peerId, { connection: pc });
-
+        peerConnectionsRef.current.set(peerId, { connection: pc, polite });
+    
         localStreamRef.current?.getTracks().forEach(track => {
             pc.addTrack(track, localStreamRef.current!);
         });
-
+    
         pc.ontrack = event => {
             console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
             const stream = event.streams[0];
-            peerConnectionsRef.current.get(peerId)!.stream = stream;
+            const peerData = peerConnectionsRef.current.get(peerId);
+            if (peerData) {
+              peerData.stream = stream;
+            }
             setRemoteStreams(prev => new Map(prev).set(peerId, stream));
-
+    
             if (spotlightedParticipantId === peerId) {
                 setSpotlightedStream(stream);
             }
         };
-
+    
         pc.onicecandidate = event => {
             if (event.candidate) {
                 sendSignal({ to: peerId, from: userId, ice: event.candidate });
             }
         };
-
+    
         if (initiator) {
             pc.onnegotiationneeded = async () => {
                 try {
@@ -257,7 +263,7 @@ function SessionPageContent() {
                     await pc.setLocalDescription(offer);
                     sendSignal({ to: peerId, from: userId, sdp: pc.localDescription });
                 } catch (error) {
-                    console.error("❌ [WebRTC] Erreur createOffer:", error);
+                    console.error(`❌ [WebRTC] Erreur createOffer pour ${peerId}:`, error);
                 }
             };
         }
@@ -279,40 +285,46 @@ function SessionPageContent() {
 
     const handleSignal = useCallback(async ({ from, to, sdp, ice }: { from: string, to: string, sdp?: RTCSessionDescriptionInit, ice?: RTCIceCandidateInit }) => {
         if (to !== userId) return;
-
+    
         console.log(`📡 [WebRTC] Signal reçu de ${from}`);
         
-        let pc = peerConnectionsRef.current.get(from)?.connection;
-
+        const peerData = peerConnectionsRef.current.get(from);
+        let pc = peerData?.connection;
+    
         if (!pc) {
+            console.log(`[WebRTC] Pas de connexion pour ${from}, création...`);
             createPeerConnection(from, false);
             pc = peerConnectionsRef.current.get(from)!.connection;
         }
         
         try {
             if (sdp) {
-                if (sdp.type === 'offer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                const isPolite = peerData?.polite ?? false;
+                const offerCollision = sdp.type === "offer" && (pc.signalingState !== "stable" || peerData?.connection.makingOffer);
+    
+                if (offerCollision && !isPolite) {
+                    console.log(`[WebRTC] Collision d'offre avec ${from}, je l'ignore (je ne suis pas poli).`);
+                    return;
+                }
+    
+                if (offerCollision && isPolite) {
+                    console.log(`[WebRTC] Collision d'offre avec ${from}, je cède (je suis poli).`);
+                    await pc.setLocalDescription({ type: "rollback" });
+                }
+    
+                await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                if (sdp.type === "offer") {
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     sendSignal({ to: from, from: userId, sdp: pc.localDescription });
-                } else if (sdp.type === 'answer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
                 }
-                 // Process any queued ICE candidates
-                const queue = iceCandidateQueueRef.current.get(from);
-                if (queue) {
-                    for (const candidate of queue) {
-                        await pc.addIceCandidate(candidate);
-                    }
-                    iceCandidateQueueRef.current.delete(from);
-                }
-
+    
             } else if (ice) {
+                // Ajouter le candidat ICE seulement si une description distante est déjà définie
                 if (pc.remoteDescription) {
                     await pc.addIceCandidate(ice);
                 } else {
-                    // Queue the candidate if remote description is not set yet
+                    // Mettre en file d'attente si la description distante n'est pas encore définie
                     if (!iceCandidateQueueRef.current.has(from)) {
                         iceCandidateQueueRef.current.set(from, []);
                     }
@@ -322,7 +334,7 @@ function SessionPageContent() {
         } catch (error) {
             console.error("❌ [WebRTC] Erreur lors du traitement du signal:", error);
         }
-
+    
     }, [userId, sendSignal]);
     
     const handleEndSessionForEveryone = async () => {
