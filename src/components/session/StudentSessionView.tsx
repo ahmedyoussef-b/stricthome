@@ -1,7 +1,7 @@
 // src/components/session/StudentSessionView.tsx
 'use client';
 
-import { Hand, Loader2 } from 'lucide-react';
+import { Hand } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { StudentWithCareer } from '@/lib/types';
@@ -10,6 +10,7 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { SessionViewMode } from '@/app/session/[id]/page';
 import { Card } from '../ui/card';
+import { Loader2 } from 'lucide-react';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -87,28 +88,22 @@ export function StudentSessionView({
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
              </div>
-             <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                 {sessionView === 'camera' && (
-                    <div className="w-full max-w-4xl">
-                        {renderSpotlight()}
-                    </div>
-                 )}
-                 {sessionView === 'whiteboard' && (
-                    <div className="w-full h-full">
-                        {renderWhiteboard()}
-                    </div>
-                 )}
-
-                 {sessionView === 'split' && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full h-full">
-                       <div className="flex flex-col justify-center items-center">
-                         {renderSpotlight()}
-                       </div>
-                       <div className="flex flex-col min-h-0">
-                         {renderWhiteboard()}
-                       </div>
-                    </div>
-                 )}
+             <div className={cn(
+                "flex-1 grid gap-6 h-full",
+                sessionView === 'split' ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
+             )}>
+                <div className={cn(
+                    "flex flex-col justify-center items-center",
+                    sessionView === 'whiteboard' && "hidden"
+                )}>
+                    {renderSpotlight()}
+                </div>
+                <div className={cn(
+                    "flex flex-col min-h-0",
+                    sessionView === 'camera' && "hidden"
+                )}>
+                    {renderWhiteboard()}
+                </div>
             </div>
         </div>
     );
