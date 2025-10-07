@@ -18,6 +18,7 @@ import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { SkillMatrix } from './SkillMatrix';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -130,6 +131,12 @@ export default function StudentPageClient({
             )}
           </CardContent>
         </Card>
+
+        {isTeacherView && (
+          <div className="md:col-span-3">
+            <SkillMatrix studentId={student.id} classId={student.classeId} />
+          </div>
+        )}
 
         <div className="md:col-span-2 space-y-8">
           {activeSession && !isTeacherView && (
