@@ -19,6 +19,20 @@ import { AnnouncementsList } from '@/components/AnnouncementsList';
 import { AnnouncementWithAuthor, ClasseWithDetails } from '@/lib/types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
+// Définition de types spécifiques pour les données Pusher
+type PusherMember = {
+  id: string;
+  info: {
+    email: string;
+    name: string;
+    user_id: string;
+  };
+};
+
+type PusherMembers = {
+  each: (callback: (member: PusherMember) => void) => void;
+};
+
 
 interface ClassPageClientProps {
     classe: ClasseWithDetails;
@@ -41,17 +55,17 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
     try {
         const channel = pusherClient.subscribe(channelName);
         
-        channel.bind('pusher:subscription_succeeded', (members: any) => {
+        channel.bind('pusher:subscription_succeeded', (members: PusherMembers) => {
             const onlineEmails = new Set<string>();
-            members.each((member: any) => onlineEmails.add(member.info.email));
+            members.each((member: PusherMember) => onlineEmails.add(member.info.email));
             setOnlineUserEmails(onlineEmails);
         });
 
-        channel.bind('pusher:member_added', (member: any) => {
+        channel.bind('pusher:member_added', (member: PusherMember) => {
             setOnlineUserEmails(prev => new Set(prev).add(member.info.email));
         });
 
-        channel.bind('pusher:member_removed', (member: any) => {
+        channel.bind('pusher:member_removed', (member: PusherMember) => {
             setOnlineUserEmails(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(member.info.email);
@@ -90,7 +104,7 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
     startSessionTransition(async () => {
       try {
         const studentIds = Array.from(selectedStudents);
-        const session = await createCoursSession(teacher.id, studentIds);
+        const session = await createCoursSession(teacher.id!, studentIds);
         toast({
           title: "Session créée !",
           description: `La session a été démarrée avec ${studentIds.length} élève(s).`,
