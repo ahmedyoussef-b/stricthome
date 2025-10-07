@@ -10,6 +10,7 @@ interface SessionHeaderProps {
     sessionId: string;
     isTeacher: boolean;
     onEndSession: () => void;
+    onLeaveSession: () => void;
     timeLeft: number;
     isTimerRunning: boolean;
     onStartTimer: () => void;
@@ -22,6 +23,7 @@ export function SessionHeader({
     sessionId, 
     isTeacher, 
     onEndSession,
+    onLeaveSession,
     timeLeft,
     isTimerRunning,
     onStartTimer,
@@ -48,15 +50,19 @@ export function SessionHeader({
                     />
                 </div>
                 
-                {isTeacher && (
-                    <Button variant="destructive" onClick={onEndSession} disabled={isEndingSession}>
-                        {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />}
-                        Terminer la session
-                    </Button>
-                )}
-
-                {/* Espace réservé pour élève pour équilibrer le flexbox */}
-                {!isTeacher && <div className="w-40"></div>}
+                <div className='w-48 flex justify-end'>
+                    {isTeacher ? (
+                        <Button variant="destructive" onClick={onEndSession} disabled={isEndingSession}>
+                            {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />}
+                            Terminer la session
+                        </Button>
+                    ) : (
+                         <Button variant="destructive" onClick={onLeaveSession}>
+                            <PhoneOff className="mr-2 h-4 w-4" />
+                            Quitter la session
+                        </Button>
+                    )}
+                </div>
             </div>
         </header>
     );

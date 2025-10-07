@@ -71,17 +71,9 @@ export default function SessionPage() {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
-    
-    const sendSignal = useCallback(async (signalData: any) => {
-        await fetch('/api/webrtc/signal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, signalData }),
-        });
-    }, [sessionId]);
-    
-    const handleEndSession = useCallback(() => {
-        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
+
+    const cleanup = useCallback(() => {
+        console.log("🧹 [Session] Nettoyage des connexions et des abonnements.");
         
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
@@ -89,6 +81,16 @@ export default function SessionPage() {
         peerConnectionsRef.current.forEach(pc => pc.connection.close());
         peerConnectionsRef.current.clear();
         setRemoteStreams(new Map());
+
+        if (sessionId) {
+            pusherClient.unsubscribe(`presence-session-${sessionId}`);
+            pusherClient.unsubscribe(`private-webrtc-session-${sessionId}`);
+        }
+    }, [sessionId]);
+    
+    const handleEndSession = useCallback(() => {
+        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
+        cleanup();
     
         toast({
             title: "Session terminée",
@@ -102,8 +104,20 @@ export default function SessionPage() {
         } else {
             router.push('/');
         }
-    }, [router, toast, userId, isTeacher]);
+    }, [cleanup, isTeacher, router, toast, userId]);
 
+    const handleLeaveSession = () => {
+        handleEndSession();
+    };
+
+    const sendSignal = useCallback(async (signalData: any) => {
+        await fetch('/api/webrtc/signal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, signalData }),
+        });
+    }, [sessionId]);
+    
     const createPeerConnection = useCallback((peerId: string) => {
         if (peerConnectionsRef.current.has(peerId) || !userId) return;
 
@@ -147,7 +161,7 @@ export default function SessionPage() {
             } catch (err) {
                 console.error(`[WebRTC] Erreur onnegotiationneeded pour ${peerId}:`, err);
             } finally {
-                peer.makingOffer = false;
+                if(peer) peer.makingOffer = false;
             }
         };
 
@@ -178,6 +192,9 @@ export default function SessionPage() {
             createPeerConnection(from);
             peer = peerConnectionsRef.current.get(from)!;
         }
+
+        if(!peer) return;
+
         const pc = peer.connection;
 
         try {
@@ -216,20 +233,6 @@ export default function SessionPage() {
 
         let presenceChannel: PresenceChannel;
         let signalChannel: Channel;
-
-        const cleanup = () => {
-            console.log("🧹 [Session] Nettoyage des connexions et des abonnements.");
-            if (localStreamRef.current) {
-                localStreamRef.current.getTracks().forEach(track => track.stop());
-                localStreamRef.current = null;
-            }
-            if (peerConnectionsRef.current) {
-                 peerConnectionsRef.current.forEach(pc => pc.connection.close());
-                 peerConnectionsRef.current.clear();
-            }
-            if (presenceChannel) pusherClient.unsubscribe(presenceChannel.name);
-            if (signalChannel) pusherClient.unsubscribe(signalChannel.name);
-        };
 
         const initialize = async () => {
             try {
@@ -386,6 +389,7 @@ export default function SessionPage() {
                 sessionId={sessionId}
                 isTeacher={isTeacher}
                 onEndSession={handleEndSessionForEveryone}
+                onLeaveSession={handleLeaveSession}
                 isEndingSession={isEndingSession}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
