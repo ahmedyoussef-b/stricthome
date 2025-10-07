@@ -83,7 +83,7 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
   const selectedCount = selectedStudents.size;
 
   const handleStartSession = () => {
-    if (selectedStudents.size === 0) return;
+    if (selectedStudents.size === 0 || !teacher.id) return;
     
     console.log(`🚀 [Session Start] Le professeur ${teacher.id} démarre une session pour ${selectedStudents.size} élève(s).`);
 
