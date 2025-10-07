@@ -405,7 +405,7 @@ export default function SessionPage() {
     };
 
     const startTimer = useCallback(() => {
-        if (!isTimerRunning) { // Removed timeLeft > 0 to allow starting a finished timer
+        if (!isTimerRunning) {
             if (isTeacher) {
                 broadcastTimerEvent('timer-started');
             }
@@ -416,9 +416,8 @@ export default function SessionPage() {
                         clearInterval(timerIntervalRef.current!);
                         timerIntervalRef.current = null;
                         setIsTimerRunning(false);
-                        // Make sure to broadcast that the timer has finished
                         if (isTeacher) {
-                            broadcastTimerEvent('timer-paused'); // Or a new 'timer-finished' event
+                            broadcastTimerEvent('timer-paused');
                         }
                         return 0;
                     }
