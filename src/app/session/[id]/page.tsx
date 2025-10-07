@@ -19,7 +19,7 @@ import { useWebRTCNegotiation } from '@/hooks/useWebRTCNegotiation';
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun1.l.google.com:19302' },
   ],
 };
 
@@ -119,29 +119,106 @@ export default function SessionPage() {
     }, [sessionId, userId]);
 
     const createPeerConnection = useCallback((peerId: string) => {
-        if (peerConnectionsRef.current.has(peerId) || !userId) return peerConnectionsRef.current.get(peerId)!;
-
-        console.log(`🤝 [WebRTC] Création de la connexion avec ${peerId}.`);
-        
-        if (peerConnectionsRef.current.get(peerId)) {
-            console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
-            peerConnectionsRef.current.get(peerId)!.connection.close();
+        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
+      
+        // Fermer l'ancienne connexion si elle existe
+        if (peerConnectionsRef.current.has(peerId)) {
+          console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
+          peerConnectionsRef.current.get(peerId)?.connection.close();
         }
+      
+        const pc = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+          ],
+          iceTransportPolicy: 'all'
+        });
 
-        const pc = new RTCPeerConnection(ICE_SERVERS);
         const peer = { connection: pc };
         peerConnectionsRef.current.set(peerId, peer);
-
+      
+        // Surveiller les changements d'état
+        pc.onconnectionstatechange = () => {
+          console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}, Signal: ${pc.signalingState}`);
+          
+          if (pc.connectionState === 'connected') {
+            console.log(`✅ [WebRTC] Connexion établie avec ${peerId}`);
+          } else if (pc.connectionState === 'failed') {
+            console.log(`🔄 [WebRTC] Tentative de reconnexion à ${peerId}`);
+            setTimeout(() => {
+              if (peerConnectionsRef.current.get(peerId)?.connection === pc) {
+                createPeerConnection(peerId);
+              }
+            }, 2000);
+          }
+        };
+      
+        pc.onsignalingstatechange = () => {
+          console.log(`🔄 [WebRTC] ${peerId} - État signalisation: ${pc.signalingState}`);
+        };
+      
+        pc.oniceconnectionstatechange = () => {
+          console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
+        };
+      
+        // Ajouter le flux local
         if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => {
-                pc.addTrack(track, localStreamRef.current!);
-            });
-            console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
-        } else {
-             console.warn(`⚠️ [WebRTC] Aucun flux local disponible pour ${userId}`);
+          localStreamRef.current.getTracks().forEach(track => {
+            pc.addTrack(track, localStreamRef.current!);
+          });
+          console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
         }
-
-        pc.ontrack = event => {
+      
+        // Gestionnaire de négociation avec meilleure gestion d'erreur
+        pc.onnegotiationneeded = async () => {
+          console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId} (état: ${pc.signalingState})`);
+          
+          if (!startNegotiation()) {
+            console.log(`⏳ [WebRTC] Négociation différée pour ${peerId}`);
+            return;
+          }
+      
+          try {
+            // S'assurer que nous sommes dans un état stable
+            if (pc.signalingState !== 'stable') {
+              console.log(`⏳ [WebRTC] Attente état stable pour ${peerId} (actuel: ${pc.signalingState})`);
+              return;
+            }
+      
+            console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
+            await broadcastSignal(peerId, pc.localDescription!);
+          } catch (error) {
+            console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
+          } finally {
+            const pending = endNegotiation();
+            if (pending) {
+              console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
+              setTimeout(() => {
+                handleSignal(pending.signalData);
+              }, 200);
+            }
+          }
+        };
+      
+        // Gestionnaire ICE
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            console.log(`🧊 [WebRTC] Envoi candidat ICE à ${peerId}`);
+            broadcastSignal(peerId, {
+              type: 'ice-candidate',
+              candidate: event.candidate
+            });
+          } else {
+            console.log(`✅ [WebRTC] Génération candidats ICE terminée pour ${peerId}`);
+          }
+        };
+      
+        pc.ontrack = (event) => {
             console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
             const stream = event.streams[0];
             const peerData = peerConnectionsRef.current.get(peerId);
@@ -149,44 +226,10 @@ export default function SessionPage() {
             setRemoteStreams(prev => new Map(prev).set(peerId, stream));
             if (spotlightedParticipantId === peerId) setSpotlightedStream(stream);
         };
-
-        pc.onicecandidate = event => {
-            if (event.candidate) {
-                broadcastSignal(peerId, { type: 'ice-candidate', candidate: event.candidate });
-            }
-        };
-
-        pc.onnegotiationneeded = async () => {
-            console.log(`🔄 [WebRTC] onnegotiationneeded pour ${peerId}`);
-            if (!startNegotiation()) {
-                console.log(`⏳ [WebRTC] Négociation différée pour ${peerId} - attente du verrou`);
-                 setTimeout(() => {
-                    if (pc.connectionState !== 'closed') {
-                         console.log(`🔄 [WebRTC] Réessai négociation pour ${peerId}`);
-                         pc.onnegotiationneeded?.();
-                    }
-                }, 500);
-                return;
-            }
-            try {
-                console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
-                await pc.setLocalDescription(await pc.createOffer());
-                console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
-                broadcastSignal(peerId, pc.localDescription);
-            } catch (err) {
-                console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, err);
-            } finally {
-                const pending = endNegotiation();
-                if (pending) {
-                    // This is where handleSignal would be called, but it's defined later.
-                    // To fix this, we'll move this definition before handleSignal
-                }
-            }
-        };
-
+      
         return peer;
-
-    }, [userId, broadcastSignal, startNegotiation, endNegotiation, spotlightedParticipantId]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [userId, broadcastSignal, startNegotiation, endNegotiation, spotlightedParticipantId]);
     
     const handleSignal = useCallback(async (signalData: { fromUserId: string, toUserId: string, signal: any }) => {
         const { fromUserId, signal } = signalData;
@@ -294,76 +337,6 @@ export default function SessionPage() {
             }
         }
     }, [userId, startNegotiation, addPendingOffer, broadcastSignal, endNegotiation, createPeerConnection]);
-
-    // This is now defined before handleSignal, which depends on it.
-    const reconnectedCreatePeerConnection = useCallback((peerId: string) => {
-        if (peerConnectionsRef.current.has(peerId) || !userId) return peerConnectionsRef.current.get(peerId)!;
-
-        console.log(`🤝 [WebRTC] Création de la connexion avec ${peerId}.`);
-        
-        if (peerConnectionsRef.current.get(peerId)) {
-            console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
-            peerConnectionsRef.current.get(peerId)!.connection.close();
-        }
-
-        const pc = new RTCPeerConnection(ICE_SERVERS);
-        const peer = { connection: pc };
-        peerConnectionsRef.current.set(peerId, peer);
-
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => {
-                pc.addTrack(track, localStreamRef.current!);
-            });
-            console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
-        } else {
-             console.warn(`⚠️ [WebRTC] Aucun flux local disponible pour ${userId}`);
-        }
-
-        pc.ontrack = event => {
-            console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
-            const stream = event.streams[0];
-            const peerData = peerConnectionsRef.current.get(peerId);
-            if (peerData) peerData.stream = stream;
-            setRemoteStreams(prev => new Map(prev).set(peerId, stream));
-            if (spotlightedParticipantId === peerId) setSpotlightedStream(stream);
-        };
-
-        pc.onicecandidate = event => {
-            if (event.candidate) {
-                broadcastSignal(peerId, { type: 'ice-candidate', candidate: event.candidate });
-            }
-        };
-
-        pc.onnegotiationneeded = async () => {
-            console.log(`🔄 [WebRTC] onnegotiationneeded pour ${peerId}`);
-            if (!startNegotiation()) {
-                console.log(`⏳ [WebRTC] Négociation différée pour ${peerId} - attente du verrou`);
-                 setTimeout(() => {
-                    if (pc.connectionState !== 'closed') {
-                         console.log(`🔄 [WebRTC] Réessai négociation pour ${peerId}`);
-                         pc.onnegotiationneeded?.();
-                    }
-                }, 500);
-                return;
-            }
-            try {
-                console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
-                await pc.setLocalDescription(await pc.createOffer());
-                console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
-                broadcastSignal(peerId, pc.localDescription);
-            } catch (err) {
-                console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, err);
-            } finally {
-                const pending = endNegotiation();
-                if (pending) {
-                    handleSignal(pending.signalData)
-                }
-            }
-        };
-
-        return peer;
-
-    }, [userId, broadcastSignal, startNegotiation, endNegotiation, spotlightedParticipantId, handleSignal]);
 
     const removePeerConnection = (peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
@@ -498,9 +471,10 @@ export default function SessionPage() {
         }
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
-    const handleEndSessionForEveryone = async () => {
+    const handleEndSessionForEveryone = () => {
         if (!isTeacher || isEndingSession) return;
         setIsEndingSession(true);
+        console.log(`[SESSION END] Professeur ${userId} clique sur "Terminer la session".`);
         endCoursSession(sessionId);
     };
     
