@@ -1,5 +1,5 @@
 
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Annonce as PrismaAnnonce, Classe, User, Metier, CoursSession } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Annonce as PrismaAnnonce, Classe, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
 
 export type UserWithClasse = Prisma.UserGetPayload<{
     include: { classe: true }
@@ -106,4 +106,4 @@ export type CoursSessionWithRelations = CoursSession & {
 };
 
 // Competition System Types
-export type { Task, StudentProgress, Leaderboard, CompetitionSettings } from '@prisma/client';
+export type { Task, StudentProgress, Leaderboard } from '@prisma/client';
