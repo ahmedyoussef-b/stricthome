@@ -84,23 +84,25 @@ export const config = {
           }
           // Ensure the user object passed along has the correct id and role for the session callback
           user.id = dbUser.id;
-          (user as User).role = dbUser.role;
+          (user as any).role = dbUser.role;
         }
         return true;
       },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = (user as any).role;
       }
       return token;
     },
     session({ session, token }) {
-      if (token.id && session.user) {
-        session.user.id = token.id as string;
-      }
-      if (token.role && session.user) {
-        session.user.role = token.role;
+      if (session.user) {
+        if (token.id) {
+          session.user.id = token.id as string;
+        }
+        if (token.role) {
+           session.user.role = token.role as Role;
+        }
       }
       return session;
     },
