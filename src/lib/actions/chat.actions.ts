@@ -6,11 +6,12 @@ import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher/server';
 import { getAuthSession } from '@/lib/session';
 import { ReactionWithUser, MessageWithReactions } from '@/lib/types';
+import type { Session } from 'next-auth';
 
 
 export async function getMessages(classeId: string): Promise<MessageWithReactions[]> {
     const session = await getAuthSession();
-    if (!session?.user?.id) {
+    if (!session?.user) {
         throw new Error("Unauthorized to fetch messages.");
     }
 
@@ -19,12 +20,12 @@ export async function getMessages(classeId: string): Promise<MessageWithReaction
     }
     
     // Security check: ensure the user is part of the class they are trying to view messages from.
-    if (session.user.role === 'PROFESSEUR') {
+    if ((session.user as any).role === 'PROFESSEUR') {
         const classe = await prisma.classe.findFirst({
             where: { id: classeId, professeurId: session.user.id }
         });
         if (!classe) throw new Error("Unauthorized: Teacher does not teach this class.");
-    } else if (session.user.role === 'ELEVE') {
+    } else if ((session.user as any).role === 'ELEVE') {
         const user = await prisma.user.findFirst({
             where: { id: session.user.id, classeId: classeId }
         });
@@ -126,7 +127,7 @@ export async function deleteChatHistory(classeId: string) {
       throw new Error('Unauthorized');
     }
     
-    if (session.user.role !== 'PROFESSEUR') {
+    if ((session.user as any).role !== 'PROFESSEUR') {
       throw new Error('Unauthorized');
     }
   
