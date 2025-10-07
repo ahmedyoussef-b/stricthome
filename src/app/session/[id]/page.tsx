@@ -122,16 +122,28 @@ export default function SessionPage() {
         const { fromUserId, signal } = signalData;
         if (fromUserId === userId) return;
 
-        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal.type);
-        
-        const peer = peerConnectionsRef.current.get(fromUserId);
+        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal?.type || 'type indéfini');
+
+        // ⚠️ CORRECTION : Créer automatiquement une connexion si elle n'existe pas
+        let peer = peerConnectionsRef.current.get(fromUserId);
         if (!peer) {
-            console.log(`❌ [WebRTC] Aucune connexion pour ${fromUserId}`);
-            return;
+            console.log(`🔗 [WebRTC] Création automatique de connexion vers ${fromUserId}`);
+            // isPolite = true car nous sommes le récepteur, nous devons être "polis" et laisser l'initiateur gérer les collisions.
+            peer = createPeerConnection(fromUserId); 
         }
 
         const pc = peer.connection;
 
+        // Vérifier que le signal a un type valide
+        if (!signal || !signal.description) {
+            if(signal.candidate) {
+                 // C'est un candidat ICE, c'est valide
+            } else {
+                console.error('❌ [WebRTC] Signal invalide ou sans description reçu:', signal);
+                return;
+            }
+        }
+        
         try {
             if (signal.description) { // Offre ou Réponse
                 if (signal.description.type === 'offer') {
@@ -167,7 +179,7 @@ export default function SessionPage() {
     }, [userId, startNegotiation, addPendingOffer, sendSignal, endNegotiation]);
     
     const createPeerConnection = useCallback((peerId: string) => {
-        if (peerConnectionsRef.current.has(peerId) || !userId) return;
+        if (peerConnectionsRef.current.has(peerId) || !userId) return peerConnectionsRef.current.get(peerId)!;
 
         console.log(`🤝 [WebRTC] Création de la connexion avec ${peerId}.`);
         
@@ -180,10 +192,14 @@ export default function SessionPage() {
         const peer = { connection: pc };
         peerConnectionsRef.current.set(peerId, peer);
 
-        localStreamRef.current?.getTracks().forEach(track => {
-            pc.addTrack(track, localStreamRef.current!);
-        });
-        console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => {
+                pc.addTrack(track, localStreamRef.current!);
+            });
+            console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
+        } else {
+             console.warn(`⚠️ [WebRTC] Aucun flux local disponible pour ${userId}`);
+        }
 
         pc.ontrack = event => {
             console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
@@ -204,8 +220,11 @@ export default function SessionPage() {
             console.log(`🔄 [WebRTC] onnegotiationneeded pour ${peerId}`);
             if (!startNegotiation()) {
                 console.log(`⏳ [WebRTC] Négociation différée pour ${peerId} - attente du verrou`);
-                setTimeout(() => {
-                    if (pc.connectionState !== 'closed') pc.onnegotiationneeded?.();
+                 setTimeout(() => {
+                    if (pc.connectionState !== 'closed') {
+                         console.log(`🔄 [WebRTC] Réessai négociation pour ${peerId}`);
+                         pc.onnegotiationneeded?.();
+                    }
                 }, 500);
                 return;
             }
@@ -224,6 +243,8 @@ export default function SessionPage() {
                 }
             }
         };
+
+        return peer;
 
     }, [userId, sendSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
 
@@ -296,9 +317,11 @@ export default function SessionPage() {
                 
                 // 4. Gérer les membres de la présence
                 presenceChannel.bind('pusher:subscription_succeeded', (members: any) => {
+                     console.log(`👥 [Pusher] ${members.count} membre(s) dans la session`);
                     const userIds = Object.values(members.members).map((m: any) => m.user_id).filter(id => id !== userId);
                     setOnlineUsers(userIds);
                     userIds.forEach(memberId => {
+                       console.log(`🔗 [WebRTC] Création connexion avec ${memberId}`);
                        createPeerConnection(memberId)
                     });
                 });
@@ -306,6 +329,7 @@ export default function SessionPage() {
                 presenceChannel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
                     if (member.info.user_id === userId) return;
                     const newMemberId = member.info.user_id;
+                    console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
                     setOnlineUsers(prev => [...prev, newMemberId]);
                     createPeerConnection(newMemberId);
                 });
