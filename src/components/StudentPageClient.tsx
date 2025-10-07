@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { BackButton } from '@/components/BackButton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TeacherCareerSelector } from '@/components/TeacherCareerSelector';
-import { TaskList } from '@/components/TaskList';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
 import { StudentHeaderContent } from '@/components/StudentHeaderContent';
 import { Task, Metier, CoursSession } from '@prisma/client';
@@ -21,6 +20,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { AchievementSystem } from './AchievementSystem';
 import { CareerPredictor } from './CareerPredictor';
+import { CompetitionDashboard } from './CompetitionDashboard';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -178,24 +178,10 @@ export default function StudentPageClient({
             </Card>
           )}
 
+          {!isTeacherView && <CompetitionDashboard />}
+
           <AnnouncementsList announcements={announcements} />
 
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles />
-                Missions et Objectifs
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <TaskList
-                tasks={tasks}
-                studentProgress={student.progress}
-                studentId={student.id}
-                isTeacherView={isTeacherView}
-              />
-            </CardContent>
-          </Card>
            {!isTeacherView && (
             <AchievementSystem />
           )}

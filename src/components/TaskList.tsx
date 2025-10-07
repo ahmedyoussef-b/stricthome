@@ -34,7 +34,9 @@ const isTaskCompletedInPeriod = (task: Task, progress: StudentProgress[]) => {
             periodStart = startOfMonth(now);
             break;
         default:
-            return false; // FINAL tasks are handled differently
+            // For 'FINAL' or other types, we might not have a periodic check
+            // For now, allow completion if not already marked as 'COMPLETED' or 'VERIFIED'
+            return progress.some(p => p.taskId === task.id && (p.status === 'COMPLETED' || p.status === 'VERIFIED'));
     }
 
     return progress.some(p => p.taskId === task.id && p.completionDate && isAfter(new Date(p.completionDate), periodStart));
