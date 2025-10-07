@@ -383,12 +383,20 @@ export default function SessionPage() {
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
     const handleEndSessionForEveryone = async () => {
+        console.log("[DEBUG] 1. handleEndSessionForEveryone a été appelé.");
         if (!isTeacher || isEndingSession) return;
+        
+        console.log("[DEBUG] 2. Début du processus de fin de session. isEndingSession -> true");
         setIsEndingSession(true);
+        
         try {
+            console.log("[DEBUG] 3. Appel de la server action 'endCoursSession'.");
             await endCoursSession(sessionId);
+            console.log("[DEBUG] 4. La server action 'endCoursSession' s'est terminée avec succès.");
         } catch (error) {
-            console.error("❌ Erreur lors de la tentative de fin de session:", error);
+            console.error("❌ [DEBUG] 5. Erreur lors de la tentative de fin de session:", error);
+        } finally {
+            console.log("[DEBUG] 6. Bloc 'finally' atteint. isEndingSession -> false.");
             setIsEndingSession(false);
         }
     };
