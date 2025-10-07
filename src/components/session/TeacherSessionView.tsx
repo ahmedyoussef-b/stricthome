@@ -8,13 +8,15 @@ import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users } from 'lucide-react';
+import { Users, Eye } from 'lucide-react';
 import { AISkillAssessment } from '../AISkillAssessment';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { EmotionalAITutor } from '../EmotionalAITutor';
 import { VirtualClassroom } from '../VirtualClassroom';
 import { NeuroFeedback } from '../NeuroFeedback';
 import { HandRaiseController } from '../HandRaiseController';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { AttentionTracker } from '../AttentionTracker';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -173,6 +175,19 @@ export function TeacherSessionView({
                     <TabsContent value="emotion" className="flex-1 overflow-auto mt-2 space-y-4">
                          <EmotionalAITutor />
                          <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
+                         <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="attention-tracker">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <Eye className="h-5 w-5" />
+                                        Suivi de l'Attention
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <AttentionTracker />
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
                     </TabsContent>
                     <TabsContent value="skills" className="flex-1 overflow-auto mt-2">
                          <AISkillAssessment />
