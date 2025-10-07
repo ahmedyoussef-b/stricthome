@@ -34,7 +34,7 @@ async function getSessionData(sessionId: string): Promise<{ session: CoursSessio
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
 interface PeerConnection {
-  connection: RTCPeerConnection;
+  connection: RTCPeerConnection & { _createdAt?: number };
   stream?: MediaStream;
 }
 
@@ -143,7 +143,6 @@ export default function SessionPage() {
     const createPeerConnection = useCallback((peerId: string) => {
         console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
       
-        // Fermer l'ancienne connexion si elle existe
         if (peerConnectionsRef.current.has(peerId)) {
           console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
           peerConnectionsRef.current.get(peerId)?.connection.close();
@@ -155,12 +154,13 @@ export default function SessionPage() {
             { urls: 'stun:global.stun.twilio.com:3478' }
           ],
           iceTransportPolicy: 'all'
-        });
+        }) as RTCPeerConnection & { _createdAt?: number };
 
+        pc._createdAt = Date.now();
+      
         const peer = { connection: pc };
         peerConnectionsRef.current.set(peerId, peer);
       
-        // Surveiller les changements d'état
         pc.onconnectionstatechange = () => {
           console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}, ICE: ${pc.iceConnectionState}, Signal: ${pc.signalingState}`);
           
@@ -184,16 +184,13 @@ export default function SessionPage() {
         pc.oniceconnectionstatechange = () => {
             console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
             
-            // CORRECTION : Gérer les états ICE problématiques
             if (pc.iceConnectionState === 'failed') {
                 console.log(`🔄 [WebRTC] Redémarrage ICE pour ${peerId}`);
-                // Optionnel: redémarrer la négociation ICE
             } else if (pc.iceConnectionState === 'connected') {
                 console.log(`✅ [WebRTC] ICE connecté avec ${peerId}`);
             }
         };
       
-        // Ajouter le flux local
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => {
             pc.addTrack(track, localStreamRef.current!);
@@ -201,7 +198,6 @@ export default function SessionPage() {
           console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
         }
       
-        // Gestionnaire de négociation avec meilleure gestion d'erreur
         pc.onnegotiationneeded = async () => {
           console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId} (état: ${pc.signalingState})`);
           
@@ -211,7 +207,6 @@ export default function SessionPage() {
           }
       
           try {
-            // S'assurer que nous sommes dans un état stable
             if (pc.signalingState !== 'stable') {
               console.log(`⏳ [WebRTC] Attente état stable pour ${peerId} (actuel: ${pc.signalingState})`);
               return;
@@ -236,7 +231,6 @@ export default function SessionPage() {
           }
         };
       
-        // Gestionnaire ICE
         pc.onicecandidate = (event) => {
           if (event.candidate) {
             console.log(`🧊 [WebRTC] Envoi candidat ICE à ${peerId}`);
@@ -273,7 +267,6 @@ export default function SessionPage() {
 
         console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal?.type || 'SIGNAL INVALIDE');
 
-        // Créer automatiquement une connexion si elle n'existe pas
         let peer = peerConnectionsRef.current.get(fromUserId);
         if (!peer) {
             console.log(`🔗 [WebRTC] Création automatique de connexion vers ${fromUserId}`);
@@ -291,7 +284,6 @@ export default function SessionPage() {
 
                 console.log(`📥 [WebRTC] Traitement offre de ${fromUserId}`);
                 
-                // IMPORTANT: Réinitialiser la connexion si elle est dans un mauvais état
                 if (pc.signalingState !== 'stable') {
                     console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId} - état: ${pc.signalingState}`);
                     pc.close();
@@ -314,13 +306,11 @@ export default function SessionPage() {
             } else if (signal.type === 'answer') {
                  console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état actuel: ${pc.signalingState})`);
   
-                // CORRECTION : Accepter la réponse même si nous sommes en état stable
                 if (pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable') {
                     try {
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
                     console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
                     
-                    // Vérifier si nous avons des candidats ICE en attente
                     if (pc.remoteDescription && pc.iceConnectionState === 'checking') {
                         console.log(`🔄 [WebRTC] Connexion en cours avec ${fromUserId} - état ICE: ${pc.iceConnectionState}`);
                     }
@@ -330,7 +320,6 @@ export default function SessionPage() {
                 } else {
                     console.warn(`⚠️ [WebRTC] Réponse ignorée - état inattendu: ${pc.signalingState}`);
                     
-                    // CORRECTION : Tenter quand même de traiter la réponse
                     try {
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
                     console.log(`✅ [WebRTC] Réponse forcée acceptée de ${fromUserId}`);
@@ -342,13 +331,11 @@ export default function SessionPage() {
             } else if (signal.type === 'ice-candidate' && signal.candidate) {
                 console.log(`🧊 [WebRTC] Candidat ICE reçu de ${fromUserId}`);
                 
-                // ATTENDRE que la description distante soit définie avant d'ajouter les candidats ICE
                 if (pc.remoteDescription && pc.remoteDescription.type) {
                     await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
                     console.log(`✅ [WebRTC] Candidat ICE ajouté de ${fromUserId}`);
                 } else {
                     console.log(`⏳ [WebRTC] Candidat ICE mis en attente pour ${fromUserId} - attente description distante`);
-                    // Stocker les candidats ICE en attente et les ajouter plus tard
                     setTimeout(() => {
                         if (pc.remoteDescription && pc.remoteDescription.type) {
                             pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
@@ -360,7 +347,6 @@ export default function SessionPage() {
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
             
-            // Gestion spécifique des erreurs
             if (error instanceof Error) {
                 if (error.name === 'InvalidStateError') {
                     console.log(`🔄 [WebRTC] Reconnexion à ${fromUserId} après InvalidStateError`);
@@ -372,7 +358,6 @@ export default function SessionPage() {
                 }
             }
         } finally {
-            // IMPORTANT: Toujours libérer le verrou après une offre
             if (signal.type === 'offer') {
                 const pending = endNegotiation();
                 if (pending) {
@@ -398,6 +383,26 @@ export default function SessionPage() {
             return newMap;
         });
     };
+
+    const checkAndRepairConnections = useCallback(() => {
+        peerConnectionsRef.current.forEach((peer, userId) => {
+            const pc = peer.connection;
+            if (pc.connectionState === 'connecting' || pc.connectionState === 'checking') {
+                const connectionTime = Date.now() - (pc._createdAt || 0);
+                if (connectionTime > 10000) { // 10 secondes
+                    console.log(`🔄 [WebRTC] Connexion ${userId} bloquée, reconnexion...`);
+                    createPeerConnection(userId);
+                }
+            }
+        });
+    }, [createPeerConnection]);
+
+    // Monitoring and repair effect
+    useEffect(() => {
+      const interval = setInterval(checkAndRepairConnections, 5000);
+      return () => clearInterval(interval);
+    }, [checkAndRepairConnections]);
+
 
     // Monitoring effect
     useEffect(() => {
