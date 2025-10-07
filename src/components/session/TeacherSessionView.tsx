@@ -150,7 +150,7 @@ export function TeacherSessionView({
                 </Card>
             </div>
 
-            {/* Colonne centrale: Tableau blanc et Espace Futur */}
+            {/* Colonne centrale: Tableau blanc */}
             <div className="lg:col-span-3 h-full flex flex-col gap-4 min-h-0">
                 <div className="flex-1 min-h-0">
                     <Whiteboard
@@ -159,19 +159,6 @@ export function TeacherSessionView({
                         controllerName={controllerUser?.name}
                     />
                 </div>
-                 <Accordion type="single" collapsible className="w-full bg-muted/20 rounded-lg border-2 border-dashed border-border">
-                    <AccordionItem value="vr-classroom" className="border-b-0">
-                        <AccordionTrigger className="p-4">
-                            <div className="flex items-center gap-2 font-semibold">
-                                <Orbit className="h-5 w-5" />
-                                Classe Virtuelle - Réalité Immersive
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4 pt-0">
-                            <VirtualClassroom />
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
             </div>
             
             {/* Colonne de droite: Outils IA */}
@@ -195,6 +182,17 @@ export function TeacherSessionView({
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <AttentionTracker />
+                                </AccordionContent>
+                            </AccordionItem>
+                            <AccordionItem value="vr-classroom">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <Orbit className="h-5 w-5" />
+                                        Classe Virtuelle
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <VirtualClassroom />
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
