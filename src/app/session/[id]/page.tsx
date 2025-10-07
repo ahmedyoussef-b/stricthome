@@ -264,7 +264,7 @@ export default function SessionPage() {
       
         return pc;
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [userId, broadcastSignal, startNegotiation, endNegotiation, spotlightedParticipantId]);
+      }, [userId, broadcastSignal, startNegotiation, endNegotiation, handleSignal]);
     
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
         if (!validateSignal(signal)) {
