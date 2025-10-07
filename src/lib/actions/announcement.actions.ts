@@ -37,12 +37,13 @@ export async function createAnnouncement(formData: FormData) {
 }
 
 export async function getPublicAnnouncements(limit: number = 3): Promise<AnnouncementWithAuthor[]> {
-    return prisma.annonce.findMany({
+    const annonces = await prisma.annonce.findMany({
         where: { classeId: null },
         orderBy: { createdAt: 'desc' },
         take: limit,
         include: { author: { select: { name: true } } }
     });
+    return annonces as unknown as AnnouncementWithAuthor[];
 }
 
 export async function getStudentAnnouncements(studentId: string): Promise<AnnouncementWithAuthor[]> {
@@ -53,7 +54,7 @@ export async function getStudentAnnouncements(studentId: string): Promise<Announ
     
     if (!student) return [];
 
-    return prisma.annonce.findMany({
+    const annonces = await prisma.annonce.findMany({
         where: {
             OR: [
                 { classeId: null }, // Public announcements
@@ -64,10 +65,11 @@ export async function getStudentAnnouncements(studentId: string): Promise<Announ
         take: 10, // Limit to recent 10
         include: { author: { select: { name: true } } }
     });
+    return annonces as unknown as AnnouncementWithAuthor[];
 }
 
 export async function getClassAnnouncements(classeId: string): Promise<AnnouncementWithAuthor[]> {
-    return prisma.annonce.findMany({
+    const annonces = await prisma.annonce.findMany({
         where: {
             OR: [
                 { classeId: null }, // Public announcements
@@ -78,4 +80,5 @@ export async function getClassAnnouncements(classeId: string): Promise<Announcem
         take: 10,
         include: { author: { select: { name: true } } }
     });
+    return annonces as unknown as AnnouncementWithAuthor[];
 }
