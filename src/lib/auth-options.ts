@@ -6,7 +6,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import type { NextAuthConfig } from "next-auth"
-import type { User } from 'next-auth';
+import type { User as PrismaUser } from '@prisma/client';
 
 
 export const config = {
@@ -84,14 +84,14 @@ export const config = {
           }
           // Ensure the user object passed along has the correct id and role for the session callback
           user.id = dbUser.id;
-          (user as any).role = dbUser.role;
+          (user as PrismaUser).role = dbUser.role;
         }
         return true;
       },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
+        token.role = (user as PrismaUser).role;
       }
       return token;
     },
