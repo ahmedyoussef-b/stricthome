@@ -10,21 +10,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { sessionId, signalData } = await request.json();
+    const { sessionId, toUserId, fromUserId, signal } = await request.json();
 
-    if (!sessionId || !signalData) {
+    if (!sessionId || !toUserId || !fromUserId || !signal) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
-
-    // Le canal de signalisation est un canal privé pour la session.
-    const channel = `private-webrtc-session-${sessionId}`;
-    const event = 'signal';
     
-    // Diffuser le signal à tous les clients du canal, sauf à l'expéditeur.
-    // L'expéditeur est identifié par le socket_id qui est automatiquement géré par Pusher.
+    // Le canal de la session est un canal de présence.
+    const channel = `presence-session-${sessionId}`;
+    const event = 'webrtc-signal';
+    
+    // Diffuser le signal à tous les clients du canal.
+    // La logique côté client (dans handleSignal) ignorera le message
+    // si fromUserId est le même que le userId local.
+    // On envoie le signal ciblé à l'utilisateur 'toUserId'
     await pusherServer.trigger(channel, event, {
-        ...signalData,
-        senderId: session.user.id, // On ajoute l'ID de l'expéditeur
+        fromUserId,
+        toUserId,
+        signal,
     });
 
     return NextResponse.json({ success: true });
