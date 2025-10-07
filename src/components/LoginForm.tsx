@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,7 @@ const GoogleIcon = () => (
 
 export function LoginForm() {
   const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
   const role = searchParams.get('role');
   const initialEmail = role === 'student' ? 'student1@example.com' : role === 'teacher' ? 'teacher@example.com' : '';
   const emailPlaceholder = role === 'student' ? 'student@example.com' : 'teacher@example.com';
@@ -43,20 +44,18 @@ export function LoginForm() {
   const [password, setPassword] = useState('password'); // Demo password
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     setEmail(initialEmail)
   }, [initialEmail]);
 
   useEffect(() => {
-    const errorParam = searchParams.get('error');
     if (errorParam === 'CredentialsSignin') {
-      setError("Les identifiants sont incorrects. Assurez-vous d'utiliser un email du script de seed et le mot de passe 'password'.");
+      setError("Identifiants incorrects. Le mot de passe par défaut est 'password'.");
     } else if (errorParam) {
-      setError("Une erreur inattendue est survenue lors de la connexion.");
+      setError("Une erreur de connexion est survenue.");
     }
-  }, [searchParams]);
+  }, [errorParam]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,13 +68,9 @@ export function LoginForm() {
       password,
       callbackUrl: searchParams.get('callbackUrl') || '/',
     });
-
-    // If signIn fails with redirect: true, it will automatically reload the page
-    // with an `error` URL parameter. The useEffect hook above will catch it.
-    // We only need to handle the case where signIn doesn't redirect, which can
-    // happen if there's a network error.
+    
     if (result && result.error) {
-      setError("La connexion a échoué. Veuillez vérifier votre connexion et réessayer.");
+      setError("La connexion a échoué. Veuillez réessayer.");
       setLoading(false);
     }
   };
