@@ -5,20 +5,20 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher/server';
 import { getAuthSession } from '@/lib/session';
-import { ReactionWithUser } from '@/lib/types';
+import { ReactionWithUser, MessageWithReactions } from '@/lib/types';
 
 
-export async function getMessages(classeId: string) {
+export async function getMessages(classeId: string): Promise<MessageWithReactions[]> {
     const session = await getAuthSession();
-    if (!session?.user) throw new Error("Unauthorized to fetch messages.");
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized to fetch messages.");
+    }
 
     if (!classeId) {
         throw new Error('Classe ID is required.');
     }
     
     // Security check: ensure the user is part of the class they are trying to view messages from.
-    // For a teacher, check if they teach the class.
-    // For a student, check if they belong to the class.
     if (session.user.role === 'PROFESSEUR') {
         const classe = await prisma.classe.findFirst({
             where: { id: classeId, professeurId: session.user.id }
@@ -52,8 +52,12 @@ export async function sendMessage(formData: FormData) {
     const messageContent = formData.get('message') as string;
     const classeId = formData.get('classeId') as string;
     
-    if (!session?.user) throw new Error("Unauthorized");
-    if (!messageContent || !classeId) throw new Error("Message and classe ID are required.");
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized");
+    }
+    if (!messageContent || !classeId) {
+        throw new Error("Message and classe ID are required.");
+    }
 
     const newMessage = await prisma.message.create({
         data: {
@@ -78,7 +82,9 @@ export async function sendMessage(formData: FormData) {
 
 export async function toggleReaction(messageId: string, emoji: string) {
     const session = await getAuthSession();
-    if (!session?.user) throw new Error("Unauthorized");
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized");
+    }
 
     const existingReaction = await prisma.reaction.findFirst({
         where: {
@@ -116,7 +122,11 @@ export async function toggleReaction(messageId: string, emoji: string) {
 
 export async function deleteChatHistory(classeId: string) {
     const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSEUR') {
+    if (!session?.user) {
+      throw new Error('Unauthorized');
+    }
+    
+    if (session.user.role !== 'PROFESSEUR') {
       throw new Error('Unauthorized');
     }
   
