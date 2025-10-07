@@ -50,6 +50,11 @@ export default async function TeacherPage() {
             <p className="text-muted-foreground">Gérez vos classes et démarrez des sessions interactives.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button asChild>
+                <Link href="/teacher/future-classroom">
+                    Classe du Futur 🚀
+                </Link>
+            </Button>
             <Button asChild variant="outline">
                 <Link href="/teacher/analytics">
                     <Brain className="mr-2" />
