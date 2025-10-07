@@ -62,17 +62,22 @@ export function LoginForm() {
     setError('');
     setLoading(true);
 
-    const result = await signIn('credentials', {
-      redirect: true,
-      email,
-      password,
-      callbackUrl: searchParams.get('callbackUrl') || '/',
-    });
-    
-    if (result && result.error) {
-      setError("La connexion a échoué. Veuillez réessayer.");
+    try {
+      await signIn('credentials', {
+        redirect: true,
+        email,
+        password,
+        callbackUrl: searchParams.get('callbackUrl') || '/',
+      });
+      // If signIn is successful, the page will redirect and this part of the
+      // code will not be reached. If it fails, NextAuth redirects back to
+      // this page with an `error` URL parameter, which is handled by the useEffect.
+    } catch (err) {
+      // This will catch network errors or other unexpected issues.
+      setError("Une erreur inattendue est survenue. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
