@@ -1,3 +1,4 @@
+
 // src/components/Whiteboard.tsx
 'use client';
 
@@ -106,7 +107,7 @@ function simplifyPath(points: Point[], tolerance: number): Point[] {
         return dx * dx + dy * dy;
     };
 
-    const simplifyRecursive = (start: number, end: number) => {
+    const simplifyRecursive = (start: number, end: number): Point[] => {
         let maxSqDist = 0;
         let index = 0;
 
@@ -278,8 +279,8 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   const pushToHistory = (action: Action) => {
     if (!session?.user?.id) return;
 
-    if (action.type === 'draw') {
-        action.path = simplifyPath(action.path, 1);
+    if (action.type === 'draw' && action.path.length > 2) {
+        action.path = simplifyPath(action.path, 1.5);
     }
 
     const newEntry: HistoryEntry = {
@@ -491,7 +492,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   
   useEffect(() => {
       redrawCanvas();
-  }, [historyIndex, redrawCanvas]);
+  }, [historyIndex, redrawCanvas, viewport]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -522,7 +523,6 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     };
   }, [sessionId, historyIndex]);
 
-  // Fix for passive event listener warning
   useEffect(() => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
