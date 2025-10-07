@@ -235,6 +235,10 @@ export default function SessionPage() {
             try {
                 // 1. Charger les données de la session
                 const { session: sessionData, students, teacher } = await getSessionData(sessionId);
+                if (sessionData.endedAt) {
+                    handleEndSession();
+                    return;
+                }
                 const allUsers: SessionParticipant[] = [
                     ...(teacher ? [{ ...teacher, role: Role.PROFESSEUR }] : []),
                     ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
@@ -277,7 +281,7 @@ export default function SessionPage() {
                     if (member.id === userId) return;
                     const newMemberId = member.info.user_id;
                     setOnlineUsers(prev => [...prev, newMemberId]);
-                    // La connexion est initiée par onnegotiationneeded
+                    createPeerConnection(newMemberId);
                 });
                 
                 presenceChannel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {

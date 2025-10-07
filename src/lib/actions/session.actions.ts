@@ -69,7 +69,7 @@ export async function getSessionDetails(sessionId: string) {
     });
 }
 
-export async function setWhiteboardController(sessionId: string, participantUserId: string) {
+export async function setWhiteboardController(sessionId: string, participantUserId: string | null) {
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized: Only teachers can set whiteboard controller.");
