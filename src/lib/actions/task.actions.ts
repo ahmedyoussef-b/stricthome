@@ -1,3 +1,4 @@
+
 // src/lib/actions/task.actions.ts
 'use server';
 
@@ -35,24 +36,30 @@ export async function completeTask(taskId: string) {
     case 'MONTHLY':
       periodStart = startOfMonth(now);
       break;
+    default:
+        // For 'FINAL' or other types, we might not have a periodic check
+        // For now, allow completion if not already marked as 'COMPLETED' or 'VERIFIED'
+      periodStart = new Date(0); // A long time ago
+      break;
   }
 
-  const existingCompletion = await prisma.taskCompletion.findFirst({
+  const existingProgress = await prisma.studentProgress.findFirst({
     where: {
-      userId,
+      studentId: userId,
       taskId,
-      completedAt: {
+      status: { in: ['COMPLETED', 'VERIFIED'] },
+      completionDate: {
         gte: periodStart,
       },
     },
   });
 
-  if (existingCompletion) {
-    throw new Error('Task already completed in this period');
+  if (existingProgress) {
+    throw new Error('Tâche déjà accomplie pour cette période.');
   }
 
-  // Use a transaction to ensure both operations succeed
-  const [, completion] = await prisma.$transaction([
+  // Use a transaction to ensure all operations succeed
+  const [, progress] = await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
       data: {
@@ -61,16 +68,33 @@ export async function completeTask(taskId: string) {
         },
       },
     }),
-    prisma.taskCompletion.create({
+    prisma.studentProgress.create({
       data: {
-        userId,
+        studentId: userId,
         taskId,
+        status: 'COMPLETED',
+        completionDate: new Date(),
+        pointsAwarded: task.points,
       },
     }),
+    // Update leaderboard
+    prisma.leaderboard.upsert({
+      where: { studentId: userId },
+      update: { 
+        totalPoints: { increment: task.points },
+        completedTasks: { increment: 1 },
+      },
+      create: {
+        studentId: userId,
+        totalPoints: task.points,
+        completedTasks: 1,
+        rank: 0, // Rank would be calculated separately
+      }
+    })
   ]);
 
   // Revalidate the student's page to show updated points and task status
   revalidatePath(`/student/${userId}`);
   
-  return completion;
+  return progress;
 }

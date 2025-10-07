@@ -1,5 +1,6 @@
+
 // prisma/seed.ts
-import { PrismaClient, Role, TaskType } from '@prisma/client';
+import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
 
 const prisma = new PrismaClient();
@@ -14,10 +15,11 @@ async function main() {
   await prisma.coursSession.deleteMany();
   await prisma.reaction.deleteMany();
   await prisma.message.deleteMany();
-  await prisma.taskCompletion.deleteMany();
+  await prisma.studentProgress.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.annonce.deleteMany();
   await prisma.classe.deleteMany();
+  await prisma.leaderboard.deleteMany();
   
   // Then delete main entities
   await prisma.user.deleteMany();
@@ -80,18 +82,23 @@ async function main() {
   console.log('🎯 Création des tâches...');
   await prisma.task.createMany({
     data: [
-      { title: 'Connexion quotidienne', description: 'Connectez-vous une fois par jour.', points: 5, type: TaskType.DAILY },
-      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY },
-      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY },
-      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY },
+      // Daily
+      { title: 'Connexion quotidienne', description: 'Connectez-vous une fois par jour.', points: 5, type: TaskType.DAILY, difficulty: TaskDifficulty.EASY, category: TaskCategory.PERSONAL, duration: 1 },
+      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, difficulty: TaskDifficulty.EASY, category: TaskCategory.COLLABORATIVE, duration: 1 },
+      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, difficulty: TaskDifficulty.EASY, category: TaskCategory.COLLABORATIVE, duration: 1 },
+      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, difficulty: TaskDifficulty.MEDIUM, category: TaskCategory.ACADEMIC, duration: 1 },
       
-      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY },
-      { title: 'Collaboration', description: 'Participez à une session de groupe.', points: 40, type: TaskType.WEEKLY },
-      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris.', points: 30, type: TaskType.WEEKLY },
+      // Weekly
+      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, difficulty: TaskDifficulty.MEDIUM, category: TaskCategory.ACADEMIC, duration: 7 },
+      { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, difficulty: TaskDifficulty.MEDIUM, category: TaskCategory.COLLABORATIVE, duration: 7 },
+      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, difficulty: TaskDifficulty.EASY, category: TaskCategory.ACADEMIC, duration: 7 },
+      { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, difficulty: TaskDifficulty.HARD, category: TaskCategory.CREATIVE, duration: 7 },
       
-      { title: 'Objectif mensuel', description: 'Participez à au moins 3 sessions en direct.', points: 100, type: TaskType.MONTHLY },
-      { title: 'Projet créatif', description: 'Soumettez un projet personnel lié à votre ambition.', points: 150, type: TaskType.MONTHLY },
-      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY },
+      // Monthly
+      { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, difficulty: TaskDifficulty.MEDIUM, category: TaskCategory.PERSONAL, duration: 30 },
+      { title: 'Projet créatif mensuel', description: 'Soumettez un projet personnel ambitieux lié à votre ambition.', points: 150, type: TaskType.MONTHLY, difficulty: TaskDifficulty.HARD, category: TaskCategory.CREATIVE, duration: 30 },
+      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY, difficulty: TaskDifficulty.EXPERT, category: TaskCategory.PERSONAL, duration: 30 },
+      { title: 'Présentation Académique', description: 'Préparez et présentez un sujet de recherche à la classe.', points: 180, type: TaskType.MONTHLY, difficulty: TaskDifficulty.EXPERT, category: TaskCategory.ACADEMIC, duration: 30 },
     ]
   })
   console.log('✅ Tâches créées.');

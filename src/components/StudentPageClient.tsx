@@ -1,3 +1,4 @@
+
 // src/components/StudentPageClient.tsx
 'use client';
 
@@ -189,7 +190,7 @@ export default function StudentPageClient({
             <CardContent className="flex-grow">
               <TaskList
                 tasks={tasks}
-                studentCompletions={student.taskCompletions}
+                studentProgress={student.progress}
                 studentId={student.id}
                 isTeacherView={isTeacherView}
               />

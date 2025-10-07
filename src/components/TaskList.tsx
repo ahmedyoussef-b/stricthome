@@ -1,7 +1,8 @@
+
 // src/components/TaskList.tsx
 "use client";
 
-import { Task, TaskCompletion, TaskType } from "@prisma/client";
+import { Task, StudentProgress, TaskType } from "@prisma/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap } from "lucide-react";
 import { Button } from "./ui/button";
@@ -13,12 +14,12 @@ import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 
 interface TaskListProps {
   tasks: Task[];
-  studentCompletions: TaskCompletion[];
+  studentProgress: StudentProgress[];
   studentId: string;
   isTeacherView: boolean;
 }
 
-const isTaskCompletedInPeriod = (task: Task, completions: TaskCompletion[]) => {
+const isTaskCompletedInPeriod = (task: Task, progress: StudentProgress[]) => {
     const now = new Date();
     let periodStart: Date;
 
@@ -33,10 +34,10 @@ const isTaskCompletedInPeriod = (task: Task, completions: TaskCompletion[]) => {
             periodStart = startOfMonth(now);
             break;
         default:
-            return false;
+            return false; // FINAL tasks are handled differently
     }
 
-    return completions.some(c => c.taskId === task.id && isAfter(new Date(c.completedAt), periodStart));
+    return progress.some(p => p.taskId === task.id && p.completionDate && isAfter(new Date(p.completionDate), periodStart));
 }
 
 
@@ -98,7 +99,7 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
     )
 }
 
-export function TaskList({ tasks, studentCompletions, studentId, isTeacherView }: TaskListProps) {
+export function TaskList({ tasks, studentProgress, studentId, isTeacherView }: TaskListProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -138,7 +139,7 @@ export function TaskList({ tasks, studentCompletions, studentId, isTeacherView }
                             key={task.id}
                             task={task}
                             studentId={studentId}
-                            isCompleted={isTaskCompletedInPeriod(task, studentCompletions)}
+                            isCompleted={isTaskCompletedInPeriod(task, studentProgress)}
                             isTeacherView={isTeacherView}
                         />
                     ))}
