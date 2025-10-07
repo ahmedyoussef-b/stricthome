@@ -137,7 +137,7 @@ export function TeacherSessionView({
                 </Card>
             </div>
 
-            {/* Colonne centrale: Tableau blanc */}
+            {/* Colonne centrale: Tableau blanc et Espace Futur */}
             <div className="lg:col-span-3 h-full flex flex-col gap-4 min-h-0">
                 <div className="flex-1 min-h-0">
                     <Whiteboard
@@ -145,6 +145,9 @@ export function TeacherSessionView({
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerName={controllerUser?.name}
                     />
+                </div>
+                <div className="flex-1 min-h-0 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
+                    <p className="text-muted-foreground">Espace réservé</p>
                 </div>
             </div>
             
