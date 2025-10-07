@@ -1,7 +1,7 @@
 // src/app/teacher/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Video } from 'lucide-react';
+import { Users, Video, Brain } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { AddClassForm } from '@/components/AddClassForm';
@@ -50,6 +50,12 @@ export default async function TeacherPage() {
             <p className="text-muted-foreground">Gérez vos classes et démarrez des sessions interactives.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+                <Link href="/teacher/analytics">
+                    <Brain className="mr-2" />
+                    Dashboard IA
+                </Link>
+            </Button>
             <ToggleButton />
             <CreateAnnouncementForm classes={classes} />
             <AddClassForm teacherId={user.id} />
