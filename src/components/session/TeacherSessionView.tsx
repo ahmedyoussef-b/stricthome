@@ -30,6 +30,7 @@ export function TeacherSessionView({
     isControlledByCurrentUser,
     controllerUser,
     onGiveWhiteboardControl,
+    raisedHands,
 }: {
     sessionId: string;
     localStream: MediaStream | null;
@@ -42,6 +43,7 @@ export function TeacherSessionView({
     isControlledByCurrentUser: boolean;
     controllerUser: SessionParticipant | null | undefined;
     onGiveWhiteboardControl: (userId: string) => void;
+    raisedHands: Set<string>;
 }) {
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
@@ -80,6 +82,7 @@ export function TeacherSessionView({
                                             onGiveWhiteboardControl={onGiveWhiteboardControl}
                                             onSpotlightParticipant={onSpotlightParticipant}
                                             isWhiteboardController={spotlightedUser.id === whiteboardControllerId}
+                                            isHandRaised={raisedHands.has(spotlightedUser.id)}
                                             isSpotlighted={true}
                                         />
                                     </div>
@@ -102,6 +105,7 @@ export function TeacherSessionView({
                                                 onGiveWhiteboardControl={onGiveWhiteboardControl}
                                                 onSpotlightParticipant={onSpotlightParticipant}
                                                 isWhiteboardController={user.id === whiteboardControllerId}
+                                                isHandRaised={raisedHands.has(user.id)}
                                                 isSpotlighted={false}
                                             />
                                         );
@@ -119,6 +123,7 @@ export function TeacherSessionView({
                                                 onGiveWhiteboardControl={onGiveWhiteboardControl}
                                                 onSpotlightParticipant={onSpotlightParticipant}
                                                 isWhiteboardController={user.id === whiteboardControllerId}
+                                                isHandRaised={raisedHands.has(user.id)}
                                                 isSpotlighted={false}
                                             />
                                         );
@@ -128,6 +133,7 @@ export function TeacherSessionView({
                                                 key={user.id}
                                                 student={user as StudentWithCareer}
                                                 isOnline={onlineUserIds.includes(user.id)}
+                                                isHandRaised={raisedHands.has(user.id)}
                                             />
                                         );
                                     }

@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Mic, MicOff, Star, Video, VideoOff, Pen } from "lucide-react";
+import { Mic, MicOff, Star, Video, VideoOff, Pen, Hand } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -18,6 +18,7 @@ interface ParticipantProps {
   displayName?: string;
   participantUserId: string;
   isWhiteboardController?: boolean;
+  isHandRaised?: boolean;
   onGiveWhiteboardControl: (userId: string) => void;
   onSpotlightParticipant?: (participantId: string) => void;
 }
@@ -30,6 +31,7 @@ function ParticipantComponent({
     displayName, 
     participantUserId,
     isWhiteboardController,
+    isHandRaised,
     onGiveWhiteboardControl,
     onSpotlightParticipant,
 }: ParticipantProps) {
@@ -59,7 +61,8 @@ function ParticipantComponent({
   return (
     <Card className={cn(
         "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group text-white",
-        isSpotlighted && "ring-2 ring-amber-500 shadow-lg"
+        isSpotlighted && "ring-2 ring-amber-500 shadow-lg",
+        isHandRaised && "ring-2 ring-blue-500"
     )}>
         <video ref={videoRef} autoPlay playsInline muted={isLocal} className={cn("w-full h-full object-cover", !hasVideo && "hidden")} />
 
@@ -117,6 +120,20 @@ function ParticipantComponent({
                         </TooltipTrigger>
                         <TooltipContent>
                            <p>Contrôle le tableau</p>
+                        </TooltipContent>
+                    </Tooltip>
+                 </TooltipProvider>
+            )}
+            {isHandRaised && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                           <div className="bg-blue-500/80 backdrop-blur-sm rounded-md p-1 animate-pulse">
+                                <Hand className="h-3 w-3 text-white" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                           <p>Main levée</p>
                         </TooltipContent>
                     </Tooltip>
                  </TooltipProvider>

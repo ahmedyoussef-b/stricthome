@@ -1,11 +1,13 @@
 // src/components/session/StudentSessionView.tsx
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { Hand, Loader2 } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -18,6 +20,8 @@ interface StudentSessionViewProps {
     whiteboardControllerId: string | null;
     isControlledByCurrentUser: boolean;
     controllerUser: SessionParticipant | null | undefined;
+    isHandRaised: boolean;
+    onToggleHandRaise: () => void;
     onGiveWhiteboardControl: (userId: string) => void;
 }
 
@@ -29,6 +33,8 @@ export function StudentSessionView({
     whiteboardControllerId,
     isControlledByCurrentUser,
     controllerUser,
+    isHandRaised,
+    onToggleHandRaise,
     onGiveWhiteboardControl,
 }: StudentSessionViewProps) {
     return (
@@ -53,12 +59,22 @@ export function StudentSessionView({
                         </div>
                     </div>
                 )}
-                 <div className="flex-1 min-h-[450px]">
+                 <div className="flex-1 min-h-[450px] relative">
                     <Whiteboard 
                         sessionId={sessionId} 
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerName={controllerUser?.name}
                     />
+                    <div className="absolute bottom-4 right-4 z-10">
+                        <Button 
+                            onClick={onToggleHandRaise} 
+                            size="lg"
+                            className={cn(isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                        >
+                           <Hand className="mr-2 h-5 w-5" />
+                           {isHandRaised ? 'Baisser la main' : 'Lever la main'}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

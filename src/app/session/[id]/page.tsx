@@ -85,6 +85,7 @@ export default function SessionPage() {
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+    const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
 
     const [duration, setDuration] = useState(300); // 5 minutes
     const [timeLeft, setTimeLeft] = useState(duration);
@@ -353,6 +354,11 @@ export default function SessionPage() {
             newMap.delete(peerId);
             return newMap;
         });
+        setRaisedHands(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(peerId);
+            return newSet;
+        });
     };
 
     const checkAndRepairConnections = useCallback(() => {
@@ -520,6 +526,24 @@ export default function SessionPage() {
                 presenceChannel.bind('whiteboard-control-changed', (data: { controllerId: string | null }) => {
                     setWhiteboardControllerId(data.controllerId);
                 });
+                presenceChannel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
+                    setRaisedHands(prev => {
+                        const newSet = new Set(prev);
+                        const user = allSessionUsers.find(u => u.id === data.userId);
+                        if (data.isRaised) {
+                            newSet.add(data.userId);
+                            if (isTeacher) {
+                                toast({
+                                    title: "Main levée",
+                                    description: `${user?.name ?? 'Un élève'} a levé la main.`,
+                                });
+                            }
+                        } else {
+                            newSet.delete(data.userId);
+                        }
+                        return newSet;
+                    });
+                });
                 // Timer events
                 presenceChannel.bind('timer-started', startTimer);
                 presenceChannel.bind('timer-paused', pauseTimer);
@@ -543,9 +567,7 @@ export default function SessionPage() {
         return () => {
             // Unbind timer events on cleanup
             if (presenceChannel) {
-                presenceChannel.unbind('timer-started', startTimer);
-                presenceChannel.unbind('timer-paused', pauseTimer);
-                presenceChannel.unbind('timer-reset');
+                presenceChannel.unbind_all();
             }
             cleanup();
         };
@@ -591,6 +613,42 @@ export default function SessionPage() {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }
     }, [isTeacher, sessionId, toast]);
+
+    const handleToggleHandRaise = useCallback(async () => {
+        if (isTeacher || !userId) return;
+        const isRaised = !raisedHands.has(userId);
+        
+        // Optimistic update
+        setRaisedHands(prev => {
+            const newSet = new Set(prev);
+            if (isRaised) {
+                newSet.add(userId);
+            } else {
+                newSet.delete(userId);
+            }
+            return newSet;
+        });
+
+        try {
+            await fetch(`/api/session/${sessionId}/raise-hand`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, isRaised }),
+            });
+        } catch (error) {
+            // Revert optimistic update on error
+            setRaisedHands(prev => {
+                const newSet = new Set(prev);
+                if (isRaised) {
+                    newSet.delete(userId);
+                } else {
+                    newSet.add(userId);
+                }
+                return newSet;
+            });
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de la main levée.' });
+        }
+    }, [isTeacher, raisedHands, sessionId, toast, userId]);
 
 
     const controllerUser = allSessionUsers.find(u => u && u.id === whiteboardControllerId);
@@ -638,6 +696,7 @@ export default function SessionPage() {
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerUser={controllerUser}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                        raisedHands={raisedHands}
                     />
                 ) : (
                     <StudentSessionView
@@ -650,6 +709,8 @@ export default function SessionPage() {
                         isControlledByCurrentUser={isControlledByCurrentUser}
                         controllerUser={controllerUser}
                         onGiveWhiteboardControl={() => {}} // Les élèves ne peuvent pas donner le contrôle
+                        isHandRaised={userId ? raisedHands.has(userId) : false}
+                        onToggleHandRaise={handleToggleHandRaise}
                     />
                 )}
             </main>
