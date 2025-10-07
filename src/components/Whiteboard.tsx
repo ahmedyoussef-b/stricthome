@@ -79,6 +79,58 @@ const THICKNESSES = [
   { label: 'Très épais', value: 20 },
 ];
 
+// Ramer-Douglas-Peucker algorithm for path simplification
+function simplifyPath(points: Point[], tolerance: number): Point[] {
+    if (points.length < 3) return points;
+
+    const getSquareDistance = (p1: Point, p2: Point) => (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
+
+    const getSquareSegmentDistance = (p: Point, p1: Point, p2: Point) => {
+        let { x, y } = p1;
+        let dx = p2.x - x;
+        let dy = p2.y - y;
+
+        if (dx !== 0 || dy !== 0) {
+            const t = ((p.x - x) * dx + (p.y - y) * dy) / (dx * dx + dy * dy);
+            if (t > 1) {
+                ({ x, y } = p2);
+            } else if (t > 0) {
+                x += dx * t;
+                y += dy * t;
+            }
+        }
+
+        dx = p.x - x;
+        dy = p.y - y;
+
+        return dx * dx + dy * dy;
+    };
+
+    const simplifyRecursive = (start: number, end: number) => {
+        let maxSqDist = 0;
+        let index = 0;
+
+        for (let i = start + 1; i < end; i++) {
+            const sqDist = getSquareSegmentDistance(points[i], points[start], points[end]);
+            if (sqDist > maxSqDist) {
+                index = i;
+                maxSqDist = sqDist;
+            }
+        }
+
+        if (maxSqDist > tolerance * tolerance) {
+            const left = simplifyRecursive(start, index);
+            const right = simplifyRecursive(index, end);
+            return left.slice(0, -1).concat(right);
+        } else {
+            return [points[start], points[end]];
+        }
+    };
+
+    return simplifyRecursive(0, points.length - 1);
+}
+
+
 function ThicknessPicker({ current, onChange }: { current: number, onChange: (value: number) => void }) {
   return (
     <div className="flex flex-col gap-2">
@@ -173,29 +225,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     }
   };
 
-  const redrawCanvas = useCallback(() => {
-    const canvas = mainCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(viewport.x, viewport.y);
-    ctx.scale(viewport.scale, viewport.scale);
-    
-    drawGrid(ctx, canvas.width, canvas.height);
-    
-    for (let i = 0; i <= historyIndex; i++) {
-      if (history[i]) {
-        drawActionOnCanvas(ctx, history[i].action);
-      }
-    }
-    
-    ctx.restore();
-  }, [history, historyIndex, viewport]);
-
-  const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const drawGrid = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const gridSize = 50;
     
     ctx.strokeStyle = '#f0f0f0';
@@ -219,10 +249,39 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
       ctx.lineTo(endX, y);
       ctx.stroke();
     }
-  };
+  }, [viewport.scale, viewport.x, viewport.y]);
+
+
+  const redrawCanvas = useCallback(() => {
+    const canvas = mainCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(viewport.x, viewport.y);
+    ctx.scale(viewport.scale, viewport.scale);
+    
+    drawGrid(ctx, canvas.width, canvas.height);
+    
+    for (let i = 0; i <= historyIndex; i++) {
+      if (history[i]) {
+        drawActionOnCanvas(ctx, history[i].action);
+      }
+    }
+    
+    ctx.restore();
+  }, [history, historyIndex, viewport, drawGrid]);
+
 
   const pushToHistory = (action: Action) => {
     if (!session?.user?.id) return;
+
+    if (action.type === 'draw') {
+        action.path = simplifyPath(action.path, 1);
+    }
+
     const newEntry: HistoryEntry = {
       id: `${session.user.id}-${Date.now()}`,
       senderId: session.user.id,
@@ -432,7 +491,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   
   useEffect(() => {
       redrawCanvas();
-  }, [redrawCanvas]);
+  }, [historyIndex, redrawCanvas]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -462,6 +521,23 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
       pusherClient.unsubscribe(channelName);
     };
   }, [sessionId, historyIndex]);
+
+  // Fix for passive event listener warning
+  useEffect(() => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      handleWheel(e as any);
+    };
+
+    canvas.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('wheel', handleWheelEvent);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isControlledByCurrentUser]);
 
   const getCursor = () => {
     if (!isControlledByCurrentUser) return 'not-allowed';
@@ -571,7 +647,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
             onMouseMove={draw}
             onMouseUp={finishDrawing}
             onMouseLeave={finishDrawing}
-            onWheel={handleWheel}
+            // onWheel is handled by useEffect
             className="absolute top-0 left-0 h-full w-full touch-none"
             style={{ cursor: getCursor() }}
           />
