@@ -1,9 +1,18 @@
 // hooks/useWebRTCNegotiation.ts
 import { useRef, useCallback } from 'react';
 
+// Définir des types plus stricts pour les signaux
+export type WebRTCSignal =
+  | RTCSessionDescriptionInit
+  | { type: 'ice-candidate', candidate: RTCIceCandidateInit | null };
+
 type PendingOffer = {
     fromUserId: string;
-    signalData: any;
+    signalData: {
+      fromUserId: string;
+      toUserId: string;
+      signal: WebRTCSignal;
+    };
 };
 
 export function useWebRTCNegotiation() {
@@ -24,7 +33,6 @@ export function useWebRTCNegotiation() {
     isNegotiating.current = false;
     console.log('🔓 [WebRTC] Fin de négociation - déverrouillé');
     
-    // Retourner la première offre en attente
     if (pendingOffers.current.length > 0) {
       const nextOffer = pendingOffers.current.shift();
       console.log(`🔄 [WebRTC] Offre en attente libérée: ${pendingOffers.current.length} restante(s)`);
@@ -33,7 +41,7 @@ export function useWebRTCNegotiation() {
     return null;
   }, []);
 
-  const addPendingOffer = useCallback((fromUserId: string, signalData: any) => {
+  const addPendingOffer = useCallback((fromUserId: string, signalData: PendingOffer['signalData']) => {
     pendingOffers.current.push({ fromUserId, signalData });
     console.log(`📥 [WebRTC] Offre mise en attente de ${fromUserId}. File: ${pendingOffers.current.length}`);
   }, []);
