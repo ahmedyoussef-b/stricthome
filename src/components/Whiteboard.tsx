@@ -1,4 +1,5 @@
 
+
 // src/components/Whiteboard.tsx
 'use client';
 
@@ -559,7 +560,7 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
           </div>
         )}
       </CardHeader>
-      <CardContent className="flex-grow p-0 relative flex">
+      <CardContent className="flex-1 p-0 relative flex">
         {isControlledByCurrentUser ? (
           <div className="p-2 border-r bg-muted/50 flex flex-col gap-1 items-center">
             <Button variant={tool === 'select' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('select')} title="Sélectionner">
@@ -673,5 +674,3 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
     </Card>
   );
 }
-
-    
