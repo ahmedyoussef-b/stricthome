@@ -98,6 +98,11 @@ export default function SessionPage() {
     const cleanup = useCallback(() => {
         console.log("🧹 [Session] Nettoyage des connexions et des abonnements.");
         
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
         
@@ -382,6 +387,58 @@ export default function SessionPage() {
         return () => clearInterval(interval);
     }, [getPendingCount]);
 
+    // Timer logic
+    const broadcastTimerEvent = async (event: string, data?: any) => {
+        await fetch('/api/pusher/timer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, event, data }),
+        });
+    };
+
+    const startTimer = useCallback(() => {
+        if (!isTimerRunning && timeLeft > 0) {
+            if (isTeacher) {
+                broadcastTimerEvent('timer-started');
+            }
+            setIsTimerRunning(true);
+            timerIntervalRef.current = setInterval(() => {
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timerIntervalRef.current!);
+                        setIsTimerRunning(false);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+    }, [isTimerRunning, timeLeft, isTeacher, sessionId]);
+
+    const pauseTimer = useCallback(() => {
+        if (isTimerRunning) {
+            if (isTeacher) {
+                broadcastTimerEvent('timer-paused');
+            }
+            setIsTimerRunning(false);
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+            }
+        }
+    }, [isTimerRunning, isTeacher, sessionId]);
+
+    const resetTimer = useCallback(() => {
+        if (isTeacher) {
+            broadcastTimerEvent('timer-reset', { duration });
+        }
+        setIsTimerRunning(false);
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+        }
+        setTimeLeft(duration);
+    }, [isTeacher, duration, sessionId]);
+
+
     // Initialisation et nettoyage de la session
      useEffect(() => {
         if (!sessionId || !userId) return;
@@ -463,6 +520,15 @@ export default function SessionPage() {
                 presenceChannel.bind('whiteboard-control-changed', (data: { controllerId: string | null }) => {
                     setWhiteboardControllerId(data.controllerId);
                 });
+                // Timer events
+                presenceChannel.bind('timer-started', startTimer);
+                presenceChannel.bind('timer-paused', pauseTimer);
+                presenceChannel.bind('timer-reset', (data: { duration: number }) => {
+                    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                    setIsTimerRunning(false);
+                    setDuration(data.duration);
+                    setTimeLeft(data.duration);
+                });
 
                 setIsLoading(false);
 
@@ -474,8 +540,15 @@ export default function SessionPage() {
         };
 
         initialize();
-        return cleanup;
-
+        return () => {
+            // Unbind timer events on cleanup
+            if (presenceChannel) {
+                presenceChannel.unbind('timer-started', startTimer);
+                presenceChannel.unbind('timer-paused', pauseTimer);
+                presenceChannel.unbind('timer-reset');
+            }
+            cleanup();
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId, userId]);
     
@@ -546,9 +619,9 @@ export default function SessionPage() {
                 isEndingSession={isEndingSession}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
-                onStartTimer={() => {}}
-                onPauseTimer={() => {}}
-                onResetTimer={() => {}}
+                onStartTimer={startTimer}
+                onPauseTimer={pauseTimer}
+                onResetTimer={resetTimer}
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />
@@ -583,5 +656,3 @@ export default function SessionPage() {
         </div>
     );
 }
-
-    
