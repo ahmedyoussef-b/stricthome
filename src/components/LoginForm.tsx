@@ -71,8 +71,8 @@ export function LoginForm() {
     
     if (result && result.error) {
       setError("La connexion a échoué. Veuillez réessayer.");
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
