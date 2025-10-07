@@ -93,13 +93,13 @@ export function StudentSessionView({
                 sessionView === 'split' ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
              )}>
                 <div className={cn(
-                    "flex flex-col justify-center items-center min-h-0",
+                    "h-full",
                     sessionView === 'whiteboard' && "hidden"
                 )}>
                     {renderSpotlight()}
                 </div>
                 <div className={cn(
-                    "flex flex-col min-h-0",
+                    "h-full",
                     sessionView === 'camera' && "hidden"
                 )}>
                     {renderWhiteboard()}
