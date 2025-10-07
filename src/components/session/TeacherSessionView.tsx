@@ -8,11 +8,12 @@ import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users, Star } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { AISkillAssessment } from '../AISkillAssessment';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { EmotionalAITutor } from '../EmotionalAITutor';
 import { VirtualClassroom } from '../VirtualClassroom';
+import { NeuroFeedback } from '../NeuroFeedback';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -155,15 +156,19 @@ export function TeacherSessionView({
             {/* Colonne de droite: Outils IA */}
             <div className="lg:col-span-2 flex flex-col gap-6 min-h-0">
                 <Tabs defaultValue="emotion" className="flex flex-col flex-1 min-h-0">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="emotion">Tuteur Émotionnel</TabsTrigger>
                         <TabsTrigger value="skills">Analyse Compétences</TabsTrigger>
+                        <TabsTrigger value="neuro">Neuro-Feedback</TabsTrigger>
                     </TabsList>
                     <TabsContent value="emotion" className="flex-1 overflow-auto mt-2">
                          <EmotionalAITutor />
                     </TabsContent>
                     <TabsContent value="skills" className="flex-1 overflow-auto mt-2">
                          <AISkillAssessment />
+                    </TabsContent>
+                    <TabsContent value="neuro" className="flex-1 overflow-auto mt-2">
+                         <NeuroFeedback />
                     </TabsContent>
                 </Tabs>
             </div>
