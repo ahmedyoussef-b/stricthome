@@ -403,23 +403,28 @@ export default function SessionPage() {
     };
 
     const startTimer = useCallback(() => {
-        if (!isTimerRunning && timeLeft > 0) {
+        if (!isTimerRunning) { // Removed timeLeft > 0 to allow starting a finished timer
             if (isTeacher) {
                 broadcastTimerEvent('timer-started');
             }
             setIsTimerRunning(true);
             timerIntervalRef.current = setInterval(() => {
-                setTimeLeft(prev => {
-                    if (prev <= 1) {
+                setTimeLeft(prevTimeLeft => {
+                    if (prevTimeLeft <= 1) {
                         clearInterval(timerIntervalRef.current!);
+                        timerIntervalRef.current = null;
                         setIsTimerRunning(false);
+                        // Make sure to broadcast that the timer has finished
+                        if (isTeacher) {
+                            broadcastTimerEvent('timer-paused'); // Or a new 'timer-finished' event
+                        }
                         return 0;
                     }
-                    return prev - 1;
+                    return prevTimeLeft - 1;
                 });
             }, 1000);
         }
-    }, [isTimerRunning, timeLeft, isTeacher, sessionId]);
+    }, [isTimerRunning, isTeacher, sessionId]);
 
     const pauseTimer = useCallback(() => {
         if (isTimerRunning) {
