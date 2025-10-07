@@ -1,7 +1,7 @@
 // src/app/session/[id]/page.tsx
 'use client';
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
@@ -39,8 +39,7 @@ interface PeerConnection {
   isPolite?: boolean;
 }
 
-
-function SessionPageContent() {
+export default function SessionPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -202,7 +201,9 @@ function SessionPageContent() {
                     sendSignal({ to: from, from: userId, description: pc.localDescription });
                 }
             } else if (candidate) {
-                await pc.addIceCandidate(candidate);
+                if (pc.remoteDescription) {
+                    await pc.addIceCandidate(candidate);
+                }
             }
         } catch (error) {
             console.error("❌ [WebRTC] Erreur lors du traitement du signal:", error);
@@ -419,13 +420,5 @@ function SessionPageContent() {
                 )}
             </main>
         </div>
-    );
-}
-
-export default function SessionPage() {
-    return (
-        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className='ml-2'>Chargement de la session...</p></div>}>
-            <SessionPageContent />
-        </Suspense>
     );
 }
