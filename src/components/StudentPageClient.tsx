@@ -18,7 +18,7 @@ import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { AdaptiveLearningEngine } from './AdaptiveLearningEngine';
+import { AchievementSystem } from './AchievementSystem';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -194,6 +194,9 @@ export default function StudentPageClient({
               />
             </CardContent>
           </Card>
+           {!isTeacherView && (
+            <AchievementSystem />
+          )}
         </div>
 
         <div className="flex flex-col gap-8">
