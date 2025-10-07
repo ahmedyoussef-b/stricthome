@@ -52,7 +52,7 @@ export function TeacherSessionView({
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0">
 
             {/* Colonne de gauche: Participant en vedette */}
-            <div className="lg:col-span-1 flex flex-col gap-4 py-8">
+            <div className="lg:col-span-1 flex flex-col gap-4 py-6">
                 <h3 className="font-semibold text-center flex items-center justify-center gap-2 text-primary">
                     <Star className='h-4 w-4'/> En Vedette
                 </h3>
@@ -72,7 +72,7 @@ export function TeacherSessionView({
             </div>
 
             {/* Colonne centrale: Tableau blanc */}
-            <div className="lg:col-span-4 h-full flex flex-col gap-4 min-h-0 py-8">
+            <div className="lg:col-span-4 h-full flex flex-col gap-4 min-h-0 py-6">
                 <div className="flex-1 min-h-0">
                     <Whiteboard
                         sessionId={sessionId}
@@ -80,10 +80,11 @@ export function TeacherSessionView({
                         controllerName={controllerUser?.name}
                     />
                 </div>
+                 <div className="flex-1 min-h-0 bg-muted/30 rounded-lg border-2 border-dashed"></div>
             </div>
             
             {/* Colonne de droite: Reste des participants */}
-            <div className="lg:col-span-1 flex flex-col gap-6 min-h-0 py-8">
+            <div className="lg:col-span-1 flex flex-col gap-6 min-h-0 py-6">
                  <Card className="flex-1 flex flex-col min-h-0 bg-background/80">
                      <CardHeader className="p-4">
                         <CardTitle className="flex items-center gap-2 text-base">
