@@ -74,7 +74,7 @@ export function TeacherSessionView({
 
             {/* Colonne centrale: Tableau blanc et futurs composants */}
             <div className="lg:col-span-4 h-full flex flex-col gap-4">
-                <div className="flex-1 min-h-[400px]">
+                <div className="flex-[3] min-h-[550px]">
                     <Whiteboard
                         sessionId={sessionId}
                         isControlledByCurrentUser={isControlledByCurrentUser}
@@ -82,10 +82,7 @@ export function TeacherSessionView({
                     />
                 </div>
                 <div className="flex-1 min-h-[150px] border-2 border-dashed border-muted-foreground/30 rounded-lg">
-                    {/* Espace vide pour future fonctionnalité 1 */}
-                </div>
-                <div className="flex-1 min-h-[150px] border-2 border-dashed border-muted-foreground/30 rounded-lg">
-                    {/* Espace vide pour future fonctionnalité 2 */}
+                    {/* Espace vide pour future fonctionnalité */}
                 </div>
             </div>
             
