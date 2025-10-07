@@ -1,68 +1,73 @@
 // src/components/VideoGrid.tsx
 'use client';
 
-import { LocalParticipant, RemoteParticipant, Participant as TwilioParticipant } from "twilio-video";
 import { Participant } from "./Participant";
 import type { UserWithClasse } from "@/lib/types";
 
 interface VideoGridProps {
     sessionId: string;
-    localParticipant: LocalParticipant | null;
-    participants: RemoteParticipant[];
-    spotlightedParticipantSid?: string | null;
+    localStream: MediaStream | null;
+    localUserId: string;
+    participants: { id: string, stream: MediaStream }[];
+    spotlightedParticipantId?: string | null;
     isTeacher: boolean;
     onGiveWhiteboardControl: (userId: string) => void;
+    onSpotlightParticipant: (userId: string) => void;
     allSessionUsers: UserWithClasse[];
+    whiteboardControllerId: string | null;
 }
 
 export function VideoGrid({ 
     sessionId, 
-    localParticipant, 
+    localStream,
+    localUserId,
     participants, 
-    spotlightedParticipantSid, 
+    spotlightedParticipantId, 
     isTeacher,
     onGiveWhiteboardControl,
-    allSessionUsers
+    onSpotlightParticipant,
+    allSessionUsers,
+    whiteboardControllerId
 }: VideoGridProps) {
 
-    const findUserByParticipant = (participant: TwilioParticipant) => {
-        return allSessionUsers.find(user => participant.identity.includes(user.id));
+    const findUserById = (userId: string) => {
+        return allSessionUsers.find(user => user.id === userId);
     };
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {localParticipant && (() => {
-                const user = findUserByParticipant(localParticipant);
+            {localStream && (() => {
+                const user = findUserById(localUserId);
                 if (!user) return null;
                 return (
                     <Participant 
-                        key={localParticipant.sid}
-                        participant={localParticipant}
+                        key={localUserId}
+                        stream={localStream}
                         isLocal={true}
-                        sessionId={sessionId}
-                        isSpotlighted={localParticipant.sid === spotlightedParticipantSid}
+                        isSpotlighted={localUserId === spotlightedParticipantId}
                         isTeacher={isTeacher}
                         participantUserId={user.id}
                         onGiveWhiteboardControl={onGiveWhiteboardControl}
-                        isWhiteboardController={false} // This should be calculated in the parent
+                        onSpotlightParticipant={onSpotlightParticipant}
+                        isWhiteboardController={user.id === whiteboardControllerId}
                         displayName={user.name ?? ''}
                     />
                 );
             })()}
             {participants.map(p => {
-                const user = findUserByParticipant(p);
+                const user = findUserById(p.id);
                 if (!user) return null;
                 return (
                     <Participant 
-                        key={p.sid}
-                        participant={p}
+                        key={p.id}
+                        stream={p.stream}
                         isLocal={false}
-                        sessionId={sessionId}
-                        isSpotlighted={p.sid === spotlightedParticipantSid}
+                        isSpotlighted={p.id === spotlightedParticipantId}
                         isTeacher={false} // Assuming only teacher can be local and teacher
                         participantUserId={user.id}
                         onGiveWhiteboardControl={onGiveWhiteboardControl}
-                        isWhiteboardController={false} // This should be calculated in the parent
+                        onSpotlightParticipant={onSpotlightParticipant}
+                        isWhiteboardController={user.id === whiteboardControllerId}
                         displayName={user.name ?? ''}
                     />
                 );
