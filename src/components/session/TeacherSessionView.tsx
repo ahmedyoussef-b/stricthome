@@ -20,9 +20,10 @@ import { HandRaiseController } from '../HandRaiseController';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AttentionTracker } from '../AttentionTracker';
 import { SessionViewControls } from './SessionViewControls';
-import { SessionViewMode } from '@/app/session/[id]/page';
+import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
 import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
+import { UnderstandingTracker } from '../UnderstandingTracker';
 
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
@@ -36,9 +37,9 @@ export function TeacherSessionView({
     allSessionUsers,
     onlineUserIds,
     onSpotlightParticipant,
-    initialWhiteboardControllerId,
     onGiveWhiteboardControl,
     raisedHands,
+    understandingStatus,
     sessionView,
     onSetSessionView,
 }: {
@@ -49,19 +50,15 @@ export function TeacherSessionView({
     allSessionUsers: SessionParticipant[];
     onlineUserIds: string[];
     onSpotlightParticipant: (participantId: string) => void;
-    initialWhiteboardControllerId: string | null;
     onGiveWhiteboardControl: (userId: string | null) => void;
     raisedHands: Set<string>;
+    understandingStatus: Map<string, UnderstandingStatus>;
     sessionView: SessionViewMode;
     onSetSessionView: (view: SessionViewMode) => void;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState(initialWhiteboardControllerId);
-
-    useEffect(() => {
-        setWhiteboardControllerId(initialWhiteboardControllerId);
-    }, [initialWhiteboardControllerId]);
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!sessionId) return;
@@ -90,6 +87,8 @@ export function TeacherSessionView({
         : remoteStreamsMap.get(spotlightedUser?.id ?? '');
     
     const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id));
+    const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
+
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
@@ -201,6 +200,7 @@ export function TeacherSessionView({
             
             {/* Colonne de droite: Outils IA */}
             <div className="lg:col-span-2 flex flex-col gap-6 min-h-0">
+                 <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
                 <Tabs defaultValue="emotion" className="flex flex-col flex-1 min-h-0">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="emotion">Tuteur Émotionnel</TabsTrigger>
@@ -208,8 +208,8 @@ export function TeacherSessionView({
                         <TabsTrigger value="neuro">Neuro-Feedback</TabsTrigger>
                     </TabsList>
                     <TabsContent value="emotion" className="flex-1 overflow-auto mt-2 space-y-4">
-                         <EmotionalAITutor />
                          <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
+                         <EmotionalAITutor />
                          <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="attention-tracker">
                                 <AccordionTrigger>

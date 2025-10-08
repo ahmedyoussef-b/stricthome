@@ -62,7 +62,7 @@ const validateSignal = (signal: any): signal is WebRTCSignal => {
 };
 
 export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
-
+export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
 
 export default function SessionPage() {
     const router = useRouter();
@@ -90,6 +90,7 @@ export default function SessionPage() {
     const [initialWhiteboardControllerId, setInitialWhiteboardControllerId] = useState<string | null>(null);
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
     const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
+    const [understandingStatus, setUnderstandingStatus] = useState<Map<string, UnderstandingStatus>>(new Map());
 
     const [duration, setDuration] = useState(300); // 5 minutes
     const [timeLeft, setTimeLeft] = useState(duration);
@@ -586,6 +587,9 @@ export default function SessionPage() {
                         return newSet;
                     });
                 });
+                presenceChannel.bind('understanding-status-updated', (data: { userId: string, status: UnderstandingStatus }) => {
+                    setUnderstandingStatus(prev => new Map(prev).set(data.userId, data.status));
+                });
                 presenceChannel.bind('timer-started', startTimer);
                 presenceChannel.bind('timer-paused', pauseTimer);
                 presenceChannel.bind('timer-reset', (data: { duration: number }) => {
@@ -697,6 +701,24 @@ export default function SessionPage() {
         }
     }, [isTeacher, raisedHands, sessionId, toast, userId]);
 
+    const handleUnderstandingChange = useCallback(async (status: UnderstandingStatus) => {
+        if (isTeacher || !userId) return;
+
+        // Optimistic update
+        setUnderstandingStatus(prev => new Map(prev).set(userId, status));
+
+        try {
+            await fetch(`/api/session/${sessionId}/understanding`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, status }),
+            });
+        } catch (error) {
+            // Revert not straightforward, maybe just toast error
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de compréhension.' });
+        }
+    }, [isTeacher, sessionId, toast, userId]);
+
 
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
 
@@ -736,9 +758,9 @@ export default function SessionPage() {
                         allSessionUsers={allSessionUsers}
                         onlineUserIds={onlineUsers}
                         onSpotlightParticipant={handleSpotlightParticipant}
-                        initialWhiteboardControllerId={initialWhiteboardControllerId}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
+                        understandingStatus={understandingStatus}
                         sessionView={sessionView}
                         onSetSessionView={handleSetSessionView}
                     />
@@ -749,11 +771,12 @@ export default function SessionPage() {
                         remoteStreams={remoteStreams}
                         spotlightedStream={spotlightedStream}
                         spotlightedUser={spotlightedUser}
-                        initialWhiteboardControllerId={initialWhiteboardControllerId}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         sessionView={sessionView}
+                        onUnderstandingChange={handleUnderstandingChange}
+                        currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
                     />
                 )}
             </main>

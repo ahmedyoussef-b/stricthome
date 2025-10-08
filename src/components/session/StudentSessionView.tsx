@@ -3,18 +3,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Hand } from 'lucide-react';
+import { Hand, Smile, Meh, Frown } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { SessionViewMode } from '@/app/session/[id]/page';
-import { Card } from '../ui/card';
+import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -24,11 +26,12 @@ interface StudentSessionViewProps {
     remoteStreams: Map<string, MediaStream>;
     spotlightedStream: MediaStream | null;
     spotlightedUser: SessionParticipant | null | undefined;
-    initialWhiteboardControllerId: string | null;
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
     onGiveWhiteboardControl: (userId: string | null) => void;
     sessionView: SessionViewMode;
+    onUnderstandingChange: (status: UnderstandingStatus) => void;
+    currentUnderstanding: UnderstandingStatus;
 }
 
 export function StudentSessionView({
@@ -36,19 +39,16 @@ export function StudentSessionView({
     localStream,
     spotlightedStream,
     spotlightedUser,
-    initialWhiteboardControllerId,
     isHandRaised,
     onToggleHandRaise,
     onGiveWhiteboardControl,
     sessionView,
+    onUnderstandingChange,
+    currentUnderstanding,
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
     const userId = session?.user.id;
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState(initialWhiteboardControllerId);
-
-    useEffect(() => {
-        setWhiteboardControllerId(initialWhiteboardControllerId);
-    }, [initialWhiteboardControllerId]);
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!sessionId) return;
@@ -80,7 +80,7 @@ export function StudentSessionView({
                     isTeacher={false}
                     participantUserId={spotlightedUser?.id ?? ''}
                     displayName={spotlightedUser?.name ?? undefined}
-                    onGiveWhiteboardControl={() => {}} // Students can't give control
+                    onGiveWhiteboardControl={onGiveWhiteboardControl}
                     isWhiteboardController={spotlightedUser?.id === whiteboardControllerId}
                 />
             );
@@ -106,34 +106,66 @@ export function StudentSessionView({
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 flex-1 min-h-0 py-6">
              <div className="w-full flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
+                 <Card>
+                    <CardHeader className='p-3'>
+                        <CardTitle className='text-sm flex items-center gap-2'>
+                           Niveau de compréhension
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className='p-3 pt-0'>
+                        <TooltipProvider>
+                            <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="understood" aria-label="J'ai compris" className='data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600'>
+                                            <Smile className="h-5 w-5" />
+                                        </ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>J'ai compris</p></TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="confused" aria-label="Je suis un peu perdu" className='data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-600'>
+                                            <Meh className="h-5 w-5" />
+                                        </ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Je suis un peu perdu</p></TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="lost" aria-label="Je n'ai pas compris" className='data-[state=on]:bg-red-500/20 data-[state=on]:text-red-600'>
+                                            <Frown className="h-5 w-5" />
+                                        </ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Je n'ai pas compris</p></TooltipContent>
+                                </Tooltip>
+                            </ToggleGroup>
+                        </TooltipProvider>
+                    </CardContent>
+                </Card>
                  <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
-                    className={cn("w-full", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                    className={cn("w-full mt-auto", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
                 >
                    <Hand className="mr-2 h-5 w-5" />
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
              </div>
-             <div className={cn(
-                "grid gap-6 h-full min-h-0",
-                sessionView === 'split' ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
-             )}>
-                <div className={cn(
-                    "h-full min-h-0",
-                    sessionView === 'whiteboard' && "hidden"
-                )}>
-                    {renderSpotlight()}
-                </div>
-                <div className={cn(
-                    "h-full min-h-0",
-                    sessionView === 'camera' && "hidden"
-                )}>
-                    {renderWhiteboard()}
+             <div className="grid gap-6 h-full min-h-0 lg:grid-cols-1" style={{ gridTemplateRows: 'auto 1fr' }}>
+                <div className="h-full min-h-0">
+                     {sessionView === 'split' ? (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+                            <div className="h-full min-h-0">{renderSpotlight()}</div>
+                            <div className="h-full min-h-0">{renderWhiteboard()}</div>
+                        </div>
+                    ) : sessionView === 'camera' ? (
+                        renderSpotlight()
+                    ) : (
+                        renderWhiteboard()
+                    )}
                 </div>
             </div>
         </div>
     );
 }
-
-    
