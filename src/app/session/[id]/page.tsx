@@ -138,9 +138,9 @@ export default function SessionPage() {
         }
     }, [cleanup, isTeacher, router, toast, userId]);
 
-    const handleLeaveSession = () => {
+    const handleLeaveSession = useCallback(() => {
         handleEndSession();
-    };
+    }, [handleEndSession]);
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
@@ -164,9 +164,6 @@ export default function SessionPage() {
         let peer = peerConnectionsRef.current.get(fromUserId);
         if (!peer) {
             console.log(`🔗 [WebRTC] Création automatique de connexion vers ${fromUserId}`);
-            // This will be handled by createPeerConnection, we just need to ensure it's not null
-            // The actual creation will be triggered by other events if needed.
-            // For an incoming offer, we must create one.
             const pc = new RTCPeerConnection({
               iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -192,8 +189,6 @@ export default function SessionPage() {
                 if (pc.signalingState === 'closed' || pc.connectionState === 'failed') {
                     console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId}`);
                     pc.close();
-                    // We need a proper way to re-create the peer connection with all its handlers
-                    // This is a complex state to recover from, for now, we'll just log
                     console.error("Cannot re-create peer connection in this state.");
                     return;
                 }
@@ -356,8 +351,7 @@ export default function SessionPage() {
         };
       
         return pc;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [userId, broadcastSignal, startNegotiation, endNegotiation, handleSignal]);
+      }, [userId, broadcastSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
 
     const removePeerConnection = (peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
@@ -419,39 +413,39 @@ export default function SessionPage() {
     };
 
     const startTimer = useCallback(() => {
-        if (!isTimerRunning) {
-            if (isTeacher) {
-                broadcastTimerEvent('timer-started');
-            }
-            setIsTimerRunning(true);
-            timerIntervalRef.current = setInterval(() => {
-                setTimeLeft(prevTimeLeft => {
-                    if (prevTimeLeft <= 1) {
-                        clearInterval(timerIntervalRef.current!);
-                        timerIntervalRef.current = null;
-                        setIsTimerRunning(false);
-                        if (isTeacher) {
-                            broadcastTimerEvent('timer-paused');
-                        }
-                        return 0;
-                    }
-                    return prevTimeLeft - 1;
-                });
-            }, 1000);
+        if (isTimerRunning) return;
+        
+        if (isTeacher) {
+            broadcastTimerEvent('timer-started');
         }
-    }, [isTimerRunning, isTeacher]);
+        setIsTimerRunning(true);
+        timerIntervalRef.current = setInterval(() => {
+            setTimeLeft(prevTimeLeft => {
+                if (prevTimeLeft <= 1) {
+                    clearInterval(timerIntervalRef.current!);
+                    timerIntervalRef.current = null;
+                    setIsTimerRunning(false);
+                    if (isTeacher) {
+                        broadcastTimerEvent('timer-paused');
+                    }
+                    return 0;
+                }
+                return prevTimeLeft - 1;
+            });
+        }, 1000);
+    }, [isTimerRunning, isTeacher, sessionId]);
 
     const pauseTimer = useCallback(() => {
-        if (isTimerRunning) {
-            if (isTeacher) {
-                broadcastTimerEvent('timer-paused');
-            }
-            setIsTimerRunning(false);
-            if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-            }
+        if (!isTimerRunning) return;
+        
+        if (isTeacher) {
+            broadcastTimerEvent('timer-paused');
         }
-    }, [isTimerRunning, isTeacher]);
+        setIsTimerRunning(false);
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+        }
+    }, [isTimerRunning, isTeacher, sessionId]);
 
     const resetTimer = useCallback(() => {
         if (isTeacher) {
@@ -462,7 +456,7 @@ export default function SessionPage() {
             clearInterval(timerIntervalRef.current);
         }
         setTimeLeft(duration);
-    }, [isTeacher, duration]);
+    }, [isTeacher, duration, sessionId]);
 
     const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
         await fetch('/api/pusher/timer', { // Reusing timer API for generic session events
@@ -525,7 +519,10 @@ export default function SessionPage() {
                             description: "Vous pouvez observer la session, mais pas y participer activement.",
                         });
                     } else {
-                        throw error; // Re-throw other errors
+                        console.error("❌ [Session] Erreur d'initialisation:", error);
+                        toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
+                        cleanup();
+                        return; // Stop initialization
                     }
                 }
 
@@ -615,7 +612,6 @@ export default function SessionPage() {
 
         initialize();
         return () => {
-            // Unbind timer events on cleanup
             if (presenceChannel) {
                 presenceChannel.unbind_all();
             }
@@ -634,21 +630,23 @@ export default function SessionPage() {
             const peer = peerConnectionsRef.current.get(spotlightedParticipantId);
             if (peer && peer.stream) {
                 setSpotlightedStream(peer.stream);
+            } else {
+                 setSpotlightedStream(remoteStreams.get(spotlightedParticipantId) || null);
             }
         }
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
-    const handleEndSessionForEveryone = () => {
+    const handleEndSessionForEveryone = useCallback(() => {
         if (!isTeacher || isEndingSession) return;
         setIsEndingSession(true);
         endCoursSession(sessionId).finally(() => setIsEndingSession(false));
-    };
+    }, [isTeacher, isEndingSession, sessionId]);
     
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         if (!isTeacher) return;
         try {
             await spotlightParticipant(sessionId, participantId);
-            setSpotlightedParticipantId(participantId);
+            // Optimistic update handled by pusher event
         } catch (error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
         }
@@ -658,6 +656,7 @@ export default function SessionPage() {
         if (!isTeacher) return;
         try {
             await setWhiteboardController(sessionId, participantId);
+             // Optimistic update handled by pusher event
         } catch(error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }
@@ -754,7 +753,7 @@ export default function SessionPage() {
                         initialWhiteboardControllerId={initialWhiteboardControllerId}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
-                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
+                        onGiveWhiteboardControl={onGiveWhiteboardControl}
                         sessionView={sessionView}
                     />
                 )}
@@ -762,5 +761,3 @@ export default function SessionPage() {
         </div>
     );
 }
-
-    
