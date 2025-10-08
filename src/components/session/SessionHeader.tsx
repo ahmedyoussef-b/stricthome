@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, PhoneOff } from "lucide-react";
 import { SessionTimer } from "./SessionTimer";
-import { EndSessionButton } from './EndSessionButton';
 
 interface SessionHeaderProps {
     sessionId: string;
     isTeacher: boolean;
+    onEndSession: () => void;
     onLeaveSession: () => void;
     timeLeft: number;
     isTimerRunning: boolean;
@@ -22,12 +22,14 @@ interface SessionHeaderProps {
 export function SessionHeader({ 
     sessionId, 
     isTeacher, 
+    onEndSession,
     onLeaveSession,
     timeLeft,
     isTimerRunning,
     onStartTimer,
     onPauseTimer,
     onResetTimer,
+    isEndingSession = false
 }: SessionHeaderProps) {
     
     return (
@@ -50,7 +52,10 @@ export function SessionHeader({
                 
                 <div className='w-48 flex justify-end'>
                     {isTeacher ? (
-                        <EndSessionButton sessionId={sessionId} />
+                        <Button variant="destructive" onClick={onEndSession} disabled={isEndingSession}>
+                            {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />}
+                            Terminer la session
+                        </Button>
                     ) : (
                          <Button variant="destructive" onClick={onLeaveSession}>
                             <PhoneOff className="mr-2 h-4 w-4" />

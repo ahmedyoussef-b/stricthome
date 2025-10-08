@@ -2,21 +2,20 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Smile, Meh, Frown, HelpCircle, LucideProps } from 'lucide-react';
+import { Smile, Meh, Frown, HelpCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { StudentWithCareer } from '@/lib/types';
-import { UnderstandingStatus } from '@/app/session/[id]/SessionWrapper';
+import { UnderstandingStatus } from '@/app/session/[id]/page';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
-import { ForwardRefExoticComponent, RefAttributes } from 'react';
 
 interface UnderstandingTrackerProps {
   students: StudentWithCareer[];
   understandingStatus: Map<string, UnderstandingStatus>;
 }
 
-const statusConfig: Record<UnderstandingStatus, { icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; label: string; }> = {
+const statusConfig = {
   understood: { icon: Smile, color: 'text-green-500', label: 'Compris' },
   confused: { icon: Meh, color: 'text-yellow-500', label: 'Confus' },
   lost: { icon: Frown, color: 'text-red-500', label: 'Perdu' },
@@ -25,9 +24,9 @@ const statusConfig: Record<UnderstandingStatus, { icon: ForwardRefExoticComponen
 
 export function UnderstandingTracker({ students, understandingStatus }: UnderstandingTrackerProps) {
   const getStatusCounts = () => {
-    const counts: Record<UnderstandingStatus, number> = { understood: 0, confused: 0, lost: 0, none: 0 };
+    const counts = { understood: 0, confused: 0, lost: 0, none: 0 };
     students.forEach(student => {
-      const status: UnderstandingStatus = understandingStatus.get(student.id) || 'none';
+      const status = understandingStatus.get(student.id) || 'none';
       counts[status]++;
     });
     return counts;
@@ -45,10 +44,9 @@ export function UnderstandingTracker({ students, understandingStatus }: Understa
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-around text-center">
-          {(Object.keys(counts) as UnderstandingStatus[]).map((key) => {
+          {Object.entries(counts).map(([key, value]) => {
             if (key === 'none') return null;
-            const config = statusConfig[key];
-            const value = counts[key];
+            const config = statusConfig[key as keyof typeof statusConfig];
             return (
               <div key={key} className="flex flex-col items-center">
                 <config.icon className={cn("h-6 w-6 mb-1", config.color)} />
@@ -62,7 +60,7 @@ export function UnderstandingTracker({ students, understandingStatus }: Understa
           <div className="space-y-2 pr-4">
             <TooltipProvider>
               {students.map(student => {
-                const status: UnderstandingStatus = understandingStatus.get(student.id) || 'none';
+                const status = understandingStatus.get(student.id) || 'none';
                 const config = statusConfig[status];
                 const Icon = config.icon;
 

@@ -1,7 +1,8 @@
+
 // src/components/session/TeacherSessionView.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Whiteboard } from '@/components/Whiteboard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
@@ -19,7 +20,7 @@ import { HandRaiseController } from '../HandRaiseController';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AttentionTracker } from '../AttentionTracker';
 import { SessionViewControls } from './SessionViewControls';
-import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/SessionWrapper';
+import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
 import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
@@ -67,21 +68,12 @@ export function TeacherSessionView({
         const handleControlChange = (data: { controllerId: string | null }) => {
             setWhiteboardControllerId(data.controllerId);
         };
-        
-        channel.bind('whiteboard-control-changed', handleControlChange);
-        
-        // Fetch initial state
-        fetch(`/api/session/${sessionId}/details`)
-            .then(res => res.json())
-            .then(data => {
-                if(data.session) {
-                    setWhiteboardControllerId(data.session.whiteboardControllerId);
-                }
-            });
 
+        channel.bind('whiteboard-control-changed', handleControlChange);
 
         return () => {
             channel.unbind('whiteboard-control-changed', handleControlChange);
+            pusherClient.unsubscribe(channelName);
         };
     }, [sessionId]);
 
@@ -94,12 +86,12 @@ export function TeacherSessionView({
         ? localStream 
         : remoteStreamsMap.get(spotlightedUser?.id ?? '');
     
-    const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id)) as StudentWithCareer[];
+    const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id));
     const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
 
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
 
             {/* Colonne de gauche: Participants */}
             <div className="lg:col-span-1 flex flex-col gap-4">
@@ -254,3 +246,5 @@ export function TeacherSessionView({
         </div>
     );
 }
+
+    

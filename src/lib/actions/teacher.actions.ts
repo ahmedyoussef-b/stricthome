@@ -25,7 +25,6 @@ export async function endAllActiveSessionsForTeacher() {
   });
 
   if (activeSessions.length === 0) {
-    console.log(`[Action] Le prof ${session.user.id} n'a aucune session active à terminer.`);
     return; // Nothing to do
   }
 
@@ -45,8 +44,7 @@ export async function endAllActiveSessionsForTeacher() {
 
   // Trigger Pusher events and revalidate paths for each ended session
   for (const endedSession of activeSessions) {
-    const firstParticipant = endedSession.participants.find(p => p.classeId);
-    
+    const firstParticipant = endedSession.participants[0];
     // Notify clients on the class channel
     if (firstParticipant?.classeId) {
       const channelName = `presence-classe-${firstParticipant.classeId}`;
