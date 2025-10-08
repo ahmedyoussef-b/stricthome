@@ -199,19 +199,12 @@ export default function SessionPage() {
                 await broadcastSignal(fromUserId, pc.localDescription!);
                 
             } else if (signal.type === 'answer') {
-                 console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état: ${pc.signalingState})`);
-  
-                if (['have-local-offer', 'stable'].includes(pc.signalingState)) {
+                if (pc.signalingState === 'have-local-offer') {
+                    console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état: ${pc.signalingState})`);
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
                     console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
                 } else {
-                    console.warn(`⚠️ [WebRTC] État inattendu pour réponse: ${pc.signalingState}, tentative quand même...`);
-                    try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                        console.log(`✅ [WebRTC] Réponse forcée acceptée de ${fromUserId}`);
-                    } catch (error) {
-                        console.error(`❌ [WebRTC] Échec traitement réponse:`, error);
-                    }
+                    console.log(`⏭️ [WebRTC] Réponse ignorée de ${fromUserId} - état incompatible: ${pc.signalingState}, attendu: have-local-offer`);
                 }
                 
             } else if (signal.type === 'ice-candidate' && signal.candidate) {
