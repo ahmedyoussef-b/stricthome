@@ -156,7 +156,7 @@ async function main() {
           const student = await prisma.user.create({
               data: {
                   name: name,
-                  email: `${'name.toLowerCase()'}@example.com`,
+                  email: `${name.toLowerCase()}@example.com`,
                   role: 'ELEVE',
                   ambition: `devenir ${name === 'Fatima' ? 'médecin' : 'ingénieur'}`,
                   points: Math.floor(Math.random() * 250),
@@ -325,5 +325,7 @@ main()
   });
 
 
+
+    
 
     
