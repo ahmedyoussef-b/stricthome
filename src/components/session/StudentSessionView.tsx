@@ -114,7 +114,7 @@ export function StudentSessionView({
                     </CardHeader>
                     <CardContent className='p-3 pt-0'>
                         <TooltipProvider>
-                            <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
+                            <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value: string) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <ToggleGroupItem value="understood" aria-label="J'ai compris" className='data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600'>
