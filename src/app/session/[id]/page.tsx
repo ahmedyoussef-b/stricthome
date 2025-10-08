@@ -396,7 +396,7 @@ export default function SessionPage() {
     const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }, [isTeacher, sessionId]);
     
     // Derived state for rendering
-    const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : remoteStreams.get(spotlightedParticipantId || '');
+    const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : remoteStreams.get(spotlightedParticipantId || '') || null;
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
