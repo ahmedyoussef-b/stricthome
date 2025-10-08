@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Camera, LayoutTemplate, ScreenShare } from "lucide-react";
-import { SessionViewMode } from "@/app/session/[id]/page";
+import { SessionViewMode } from "@/app/session/[id]/SessionClient";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 interface SessionViewControlsProps {
