@@ -1,3 +1,4 @@
+
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -507,13 +508,26 @@ export default function SessionPage() {
 
 
                 // 2. Obtenir le flux média local
-                console.log("🎥 [WebRTC] Demande du flux média local...");
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
-                localStreamRef.current = stream;
-                if (spotlightedParticipantId === userId) {
-                    setSpotlightedStream(stream);
+                try {
+                    console.log("🎥 [WebRTC] Demande du flux média local...");
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
+                    localStreamRef.current = stream;
+                    if (spotlightedParticipantId === userId) {
+                        setSpotlightedStream(stream);
+                    }
+                    console.log("✅ [WebRTC] Flux média local obtenu.");
+                } catch (error: any) {
+                    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                        console.warn("⚠️ [WebRTC] Aucun périphérique média trouvé. Session continue sans vidéo/audio local.");
+                        toast({
+                            variant: 'default',
+                            title: 'Aucune caméra/micro détecté',
+                            description: "Vous pouvez observer la session, mais pas y participer activement.",
+                        });
+                    } else {
+                        throw error; // Re-throw other errors
+                    }
                 }
-                console.log("✅ [WebRTC] Flux média local obtenu.");
 
                 // 3. S'abonner aux canaux Pusher
                 const presenceChannelName = `presence-session-${sessionId}`;
