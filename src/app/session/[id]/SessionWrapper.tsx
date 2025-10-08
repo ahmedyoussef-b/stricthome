@@ -273,10 +273,10 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const broadcastTimerEvent = (event: 'timer-started' | 'timer-paused' | 'timer-reset', time?: number) => {
-        fetch('/api/session/[id]/timer', {
+        fetch(`/api/session/${sessionId}/timer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, event, time }),
+            body: JSON.stringify({ event, time }),
         });
     };
 
