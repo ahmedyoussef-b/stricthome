@@ -77,7 +77,7 @@ export function StudentSessionView({
     );
     
     return (
-        <div className="grid grid-cols-[auto_1fr] gap-4 flex-1 min-h-0 py-6">
+        <div className="grid grid-cols-[auto_1fr] gap-4 flex-1 min-h-0 py-6 h-full">
              <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
                  <Button 
                     onClick={onToggleHandRaise} 
@@ -89,17 +89,17 @@ export function StudentSessionView({
                 </Button>
              </div>
              <div className={cn(
-                "flex-1 grid gap-6 h-full min-h-0",
+                "grid gap-6 h-full min-h-0",
                 sessionView === 'split' ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
              )}>
                 <div className={cn(
-                    "h-full",
+                    "h-full min-h-0",
                     sessionView === 'whiteboard' && "hidden"
                 )}>
                     {renderSpotlight()}
                 </div>
                 <div className={cn(
-                    "h-full w-full min-h-0",
+                    "h-full min-h-0",
                     sessionView === 'camera' && "hidden"
                 )}>
                     {renderWhiteboard()}
