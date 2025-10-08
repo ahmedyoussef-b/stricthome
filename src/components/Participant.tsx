@@ -61,8 +61,9 @@ function ParticipantComponent({
   return (
     <Card className={cn(
         "relative aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center group text-white",
-        isSpotlighted && "ring-2 ring-amber-500 shadow-lg",
-        isHandRaised && "ring-2 ring-blue-500"
+        isSpotlighted && "ring-4 ring-amber-500 shadow-lg",
+        isHandRaised && !isSpotlighted && "ring-2 ring-blue-500", // Hand raise ring only if not spotlighted
+        isWhiteboardController && !isSpotlighted && "ring-2 ring-blue-500" // Whiteboard ring only if not spotlighted
     )}>
         <video ref={videoRef} autoPlay playsInline muted={isLocal} className={cn("w-full h-full object-cover", !hasVideo && "hidden")} />
 
