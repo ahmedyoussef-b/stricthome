@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, broadcastTimerEvent } from '@/lib/actions';
+import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -402,19 +402,19 @@ export default function SessionPage() {
         return () => clearInterval(interval);
     }, [getPendingCount]);
 
-    const handleStartTimer = useCallback(() => {
+    const handleStartTimer = useCallback(async () => {
         if (!isTeacher || isTimerRunning) return;
-        broadcastTimerEvent(sessionId, 'timer-started');
+        await broadcastTimerEvent(sessionId, 'timer-started');
     }, [isTeacher, isTimerRunning, sessionId]);
 
-    const handlePauseTimer = useCallback(() => {
+    const handlePauseTimer = useCallback(async () => {
         if (!isTeacher || !isTimerRunning) return;
-        broadcastTimerEvent(sessionId, 'timer-paused');
+        await broadcastTimerEvent(sessionId, 'timer-paused');
     }, [isTeacher, isTimerRunning, sessionId]);
 
-    const handleResetTimer = useCallback(() => {
+    const handleResetTimer = useCallback(async () => {
         if (!isTeacher) return;
-        broadcastTimerEvent(sessionId, 'timer-reset', { duration });
+        await broadcastTimerEvent(sessionId, 'timer-reset', { duration });
     }, [isTeacher, duration, sessionId]);
 
 
@@ -444,7 +444,7 @@ export default function SessionPage() {
 
 
     const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
-        broadcastTimerEvent(sessionId, 'session-view-changed', { view });
+        await broadcastTimerEvent(sessionId, 'session-view-changed', { view });
     }, [sessionId]);
 
     const handleSetSessionView = useCallback((view: SessionViewMode) => {
@@ -628,11 +628,7 @@ export default function SessionPage() {
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         if (!isTeacher) return;
         try {
-            await fetch(`/api/session/${sessionId}/spotlight`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ participantId }),
-            });
+            await serverSpotlightParticipant(sessionId, participantId);
         } catch (error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
         }
@@ -641,11 +637,7 @@ export default function SessionPage() {
     const handleGiveWhiteboardControl = useCallback(async (participantId: string | null) => {
         if (!isTeacher) return;
         try {
-            await fetch(`/api/session/${sessionId}/whiteboard-control`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ participantId }),
-            });
+            await serverSetWhiteboardController(sessionId, participantId);
         } catch(error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }
