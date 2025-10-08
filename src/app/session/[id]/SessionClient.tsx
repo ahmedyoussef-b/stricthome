@@ -139,6 +139,30 @@ export default function SessionClient({ sessionId, role, userId }: { sessionId: 
         pendingCandidatesRef.current.delete(peerId);
     }, []);
 
+    const createOffer = useCallback(async (peerId: string) => {
+        const pc = peerConnectionsRef.current.get(peerId);
+        if (!pc || isNegotiatingRef.current.has(peerId)) {
+            console.log(`⏳ [WebRTC] Négociation déjà en cours pour ${peerId}, offre différée.`);
+            return;
+        }
+
+        try {
+            console.log(`🔒 [WebRTC] Verrouillage de la négociation pour ${peerId}`);
+            isNegotiatingRef.current.add(peerId);
+            
+            console.log(`📤 [WebRTC] Création de l'offre pour ${peerId}`);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            await broadcastSignal(peerId, pc.localDescription!);
+            console.log(`✅ [WebRTC] Offre envoyée à ${peerId}`);
+        } catch (error) {
+            console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
+            isNegotiatingRef.current.delete(peerId);
+        }
+    }, [broadcastSignal]);
+
+
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
         const pc = peerConnectionsRef.current.get(fromUserId);
         if (!pc) {
@@ -188,29 +212,6 @@ export default function SessionClient({ sessionId, role, userId }: { sessionId: 
         }
     }, [broadcastSignal, processPendingCandidates]);
     
-    const createOffer = useCallback(async (peerId: string) => {
-        const pc = peerConnectionsRef.current.get(peerId);
-        if (!pc || isNegotiatingRef.current.has(peerId)) {
-            console.log(`⏳ [WebRTC] Négociation déjà en cours pour ${peerId}, offre différée.`);
-            return;
-        }
-
-        try {
-            console.log(`🔒 [WebRTC] Verrouillage de la négociation pour ${peerId}`);
-            isNegotiatingRef.current.add(peerId);
-            
-            console.log(`📤 [WebRTC] Création de l'offre pour ${peerId}`);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            await broadcastSignal(peerId, pc.localDescription!);
-            console.log(`✅ [WebRTC] Offre envoyée à ${peerId}`);
-        } catch (error) {
-            console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
-            isNegotiatingRef.current.delete(peerId);
-        }
-    }, [broadcastSignal]);
-
     const createPeerConnection = useCallback((peerId: string) => {
         if (peerConnectionsRef.current.has(peerId)) {
           console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
