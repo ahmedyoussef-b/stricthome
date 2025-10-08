@@ -1,3 +1,4 @@
+
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -446,7 +447,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
     const handleStartTimer = useCallback(async () => { if (isTeacher) { setIsTimerRunning(true); await broadcastTimerEvent(sessionId, 'timer-started'); }}, [isTeacher, sessionId]);
     const handlePauseTimer = useCallback(async () => { if (isTeacher) { setIsTimerRunning(false); await broadcastTimerEvent(sessionId, 'timer-paused'); }}, [isTeacher, sessionId]);
     const handleResetTimer = useCallback(async () => { if (isTeacher) { setTimeLeft(duration); setIsTimerRunning(false); await broadcastTimerEvent(sessionId, 'timer-reset', { duration }); }}, [isTeacher, duration, sessionId]);
-    const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) { onSetSessionView(view); await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }}, [isTeacher, sessionId, onSetSessionView]);
+    const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) { setSessionView(view); await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }}, [isTeacher, sessionId]);
     
     // Derived state for rendering
     const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : (remoteStreams.get(spotlightedParticipantId || '') || null);
@@ -520,3 +521,4 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     </SessionWrapper>
   );
 }
+
