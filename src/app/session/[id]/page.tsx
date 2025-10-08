@@ -1,5 +1,3 @@
-
-
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -8,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
+import { broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -120,7 +118,7 @@ export default function SessionPage() {
             pusherClient.unsubscribe(`presence-session-${sessionId}`);
         }
     }, [sessionId]);
-    
+
     const handleEndSession = useCallback(() => {
         console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
         cleanup();
@@ -349,9 +347,9 @@ export default function SessionPage() {
         };
       
         return pc;
-      }, [userId, broadcastSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
+      }, [broadcastSignal, endNegotiation, handleSignal, spotlightedParticipantId, startNegotiation]);
 
-    const removePeerConnection = (peerId: string) => {
+    const removePeerConnection = useCallback((peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
         const peer = peerConnectionsRef.current.get(peerId);
         if (peer) {
@@ -368,7 +366,7 @@ export default function SessionPage() {
             newSet.delete(peerId);
             return newSet;
         });
-    };
+    }, []);
 
     const checkAndRepairConnections = useCallback(() => {
         peerConnectionsRef.current.forEach((peer, userId) => {
@@ -404,44 +402,22 @@ export default function SessionPage() {
 
     const handleStartTimer = useCallback(async () => {
         if (!isTeacher || isTimerRunning) return;
+        setIsTimerRunning(true);
         await broadcastTimerEvent(sessionId, 'timer-started');
     }, [isTeacher, isTimerRunning, sessionId]);
 
     const handlePauseTimer = useCallback(async () => {
         if (!isTeacher || !isTimerRunning) return;
+        setIsTimerRunning(false);
         await broadcastTimerEvent(sessionId, 'timer-paused');
     }, [isTeacher, isTimerRunning, sessionId]);
 
     const handleResetTimer = useCallback(async () => {
         if (!isTeacher) return;
+        setTimeLeft(duration);
+        setIsTimerRunning(false);
         await broadcastTimerEvent(sessionId, 'timer-reset', { duration });
     }, [isTeacher, duration, sessionId]);
-
-
-    useEffect(() => {
-        if (isTimerRunning) {
-            timerIntervalRef.current = setInterval(() => {
-                setTimeLeft(prevTimeLeft => {
-                    if (prevTimeLeft <= 1) {
-                        clearInterval(timerIntervalRef.current!);
-                        timerIntervalRef.current = null;
-                        setIsTimerRunning(false);
-                        return 0;
-                    }
-                    return prevTimeLeft - 1;
-                });
-            }, 1000);
-        } else if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-        return () => {
-            if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-            }
-        };
-    }, [isTimerRunning]);
-
 
     const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
         await broadcastTimerEvent(sessionId, 'session-view-changed', { view });
@@ -601,7 +577,7 @@ export default function SessionPage() {
             cleanup();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, userId]);
+    }, [sessionId, userId, cleanup, createPeerConnection, handleEndSession, handleSignal, removePeerConnection]);
     
     // Mettre à jour le stream en vedette
     useEffect(() => {
@@ -696,6 +672,30 @@ export default function SessionPage() {
             toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de compréhension.' });
         }
     }, [isTeacher, sessionId, toast, userId]);
+
+    useEffect(() => {
+        if (isTimerRunning) {
+            timerIntervalRef.current = setInterval(() => {
+                setTimeLeft(prevTimeLeft => {
+                    if (prevTimeLeft <= 1) {
+                        clearInterval(timerIntervalRef.current!);
+                        timerIntervalRef.current = null;
+                        setIsTimerRunning(false);
+                        return 0;
+                    }
+                    return prevTimeLeft - 1;
+                });
+            }, 1000);
+        } else if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+        return () => {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+            }
+        };
+    }, [isTimerRunning]);
 
 
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
