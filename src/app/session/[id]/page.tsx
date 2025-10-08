@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession } from '@/lib/actions';
+import { endCoursSession, broadcastTimerEvent } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -402,32 +402,20 @@ export default function SessionPage() {
         return () => clearInterval(interval);
     }, [getPendingCount]);
 
-    const broadcastTimerEvent = useCallback(async (event: string, data?: any) => {
-        await fetch('/api/pusher/timer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, event, data }),
-        });
-    }, [sessionId]);
-
-    const startTimer = useCallback(() => {
+    const handleStartTimer = useCallback(() => {
         if (!isTeacher || isTimerRunning) return;
-        setIsTimerRunning(true);
-        broadcastTimerEvent('timer-started');
-    }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
+        broadcastTimerEvent(sessionId, 'timer-started');
+    }, [isTeacher, isTimerRunning, sessionId]);
 
-    const pauseTimer = useCallback(() => {
+    const handlePauseTimer = useCallback(() => {
         if (!isTeacher || !isTimerRunning) return;
-        setIsTimerRunning(false);
-        broadcastTimerEvent('timer-paused');
-    }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
+        broadcastTimerEvent(sessionId, 'timer-paused');
+    }, [isTeacher, isTimerRunning, sessionId]);
 
-    const resetTimer = useCallback(() => {
+    const handleResetTimer = useCallback(() => {
         if (!isTeacher) return;
-        setTimeLeft(duration);
-        setIsTimerRunning(false);
-        broadcastTimerEvent('timer-reset', { duration });
-    }, [isTeacher, duration, broadcastTimerEvent]);
+        broadcastTimerEvent(sessionId, 'timer-reset', { duration });
+    }, [isTeacher, duration, sessionId]);
 
 
     useEffect(() => {
@@ -456,11 +444,7 @@ export default function SessionPage() {
 
 
     const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
-        await fetch('/api/pusher/timer', { // Reusing timer API for generic session events
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, event: 'session-view-changed', data: { view } }),
-        });
+        broadcastTimerEvent(sessionId, 'session-view-changed', { view });
     }, [sessionId]);
 
     const handleSetSessionView = useCallback((view: SessionViewMode) => {
@@ -745,9 +729,9 @@ export default function SessionPage() {
                 isEndingSession={isEndingSession}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
-                onStartTimer={startTimer}
-                onPauseTimer={pauseTimer}
-                onResetTimer={resetTimer}
+                onStartTimer={handleStartTimer}
+                onPauseTimer={handlePauseTimer}
+                onResetTimer={handleResetTimer}
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
                 <PermissionPrompt />

@@ -220,3 +220,22 @@ export async function serverSetWhiteboardController(sessionId: string, participa
     }
     await setWhiteboardController(sessionId, participantId);
 }
+
+
+export async function broadcastTimerEvent(sessionId: string, event: string, data?: any) {
+  const session = await getAuthSession();
+  if (session?.user.role !== 'PROFESSEUR') {
+    throw new Error('Unauthorized');
+  }
+
+  const coursSession = await prisma.coursSession.findFirst({
+    where: { id: sessionId, professeurId: session.user.id },
+  });
+
+  if (!coursSession) {
+    throw new Error('Session not found or you are not the host.');
+  }
+
+  const channel = `presence-session-${sessionId}`;
+  await pusherServer.trigger(channel, event, data || {});
+}
