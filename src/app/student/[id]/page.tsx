@@ -80,7 +80,7 @@ export default async function StudentPage({
     <CareerThemeWrapper career={career ?? undefined}>
       <div className="flex flex-col min-h-screen">
         <Header user={session.user}>
-            {classeId && !isTeacherView && (
+            {classeId && !isTeacherView && session.user.role && (
                 <ChatSheet classeId={classeId} userId={session.user.id} userRole={session.user.role} />
             )}
         </Header>
