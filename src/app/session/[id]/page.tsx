@@ -1,4 +1,3 @@
-
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -198,7 +197,7 @@ export default function SessionPage() {
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
-                await broadcastSignal(fromUserId, pc.localDescription!);
+                await broadcastSignal(fromUserId, { type: 'answer', sdp: answer.sdp });
                 
             } else if (signal.type === 'answer') {
                 if (pc.signalingState === 'have-local-offer') {
@@ -272,7 +271,7 @@ export default function SessionPage() {
                 if (pc.signalingState === 'stable') {
                     const offer = await pc.createOffer({ iceRestart: true });
                     await pc.setLocalDescription(offer);
-                    await broadcastSignal(peerId, pc.localDescription!);
+                    await broadcastSignal(peerId, { type: 'offer', sdp: offer.sdp });
                 }
             } else if (pc.iceConnectionState === 'connected') {
                 console.log(`✅ [WebRTC] ICE connecté avec ${peerId}`);
@@ -305,7 +304,7 @@ export default function SessionPage() {
             await pc.setLocalDescription(offer);
             
             console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
-            await broadcastSignal(peerId, pc.localDescription!);
+            await broadcastSignal(peerId, { type: 'offer', sdp: offer.sdp });
           } catch (error) {
             console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
           } finally {
@@ -323,7 +322,7 @@ export default function SessionPage() {
             console.log(`🧊 [WebRTC] Envoi candidat ICE à ${peerId}`);
             broadcastSignal(peerId, {
               type: 'ice-candidate',
-              candidate: event.candidate
+              candidate: event.candidate.toJSON()
             });
           } else {
             console.log(`✅ [WebRTC] Génération candidats ICE terminée pour ${peerId}`);
@@ -395,16 +394,20 @@ export default function SessionPage() {
 
     const handleStartTimer = useCallback(async () => {
         if (!isTeacher || isTimerRunning) return;
+        setIsTimerRunning(true);
         await broadcastTimerEvent(sessionId, 'timer-started');
     }, [isTeacher, isTimerRunning, sessionId]);
 
     const handlePauseTimer = useCallback(async () => {
         if (!isTeacher || !isTimerRunning) return;
+        setIsTimerRunning(false);
         await broadcastTimerEvent(sessionId, 'timer-paused');
     }, [isTeacher, isTimerRunning, sessionId]);
 
     const handleResetTimer = useCallback(async () => {
         if (!isTeacher) return;
+        setTimeLeft(duration);
+        setIsTimerRunning(false);
         await broadcastTimerEvent(sessionId, 'timer-reset', { duration });
     }, [isTeacher, duration, sessionId]);
 
