@@ -1,5 +1,3 @@
-
-
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -8,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { serverSpotlightParticipant, serverSetWhiteboardController, broadcastTimerEvent, endCoursSession } from '@/lib/actions';
+import { serverSpotlightParticipant, serverSetWhiteboardController, broadcastTimerEvent, endCoursSession } from '@/lib/actions/session.actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -16,6 +14,8 @@ import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
 import SessionWrapper from './session-wrapper';
+import { useWebRTC } from '@/hooks/useWebRTC';
+
 
 // Configuration WebRTC optimisée
 const ICE_SERVERS = {
@@ -53,7 +53,8 @@ function SessionContent({ sessionId }: { sessionId: string }) {
     const userId = searchParams.get('userId');
     const isTeacher = role === 'teacher';
 
-    const localStreamRef = useRef<MediaStream | null>(null);
+    const { localStream, isReady: isMediaReady } = useWebRTC(sessionId);
+    
     const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
     const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
     const isNegotiatingRef = useRef<Set<string>>(new Set());
@@ -84,9 +85,6 @@ function SessionContent({ sessionId }: { sessionId: string }) {
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
         }
-
-        localStreamRef.current?.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
         
         peerConnectionsRef.current.forEach(pc => pc.close());
         peerConnectionsRef.current.clear();
@@ -255,14 +253,14 @@ function SessionContent({ sessionId }: { sessionId: string }) {
             }
         };
         
-        if (localStreamRef.current) {
-          localStreamRef.current.getTracks().forEach(track => {
-            pc.addTrack(track, localStreamRef.current!);
+        if (localStream) {
+          localStream.getTracks().forEach(track => {
+            pc.addTrack(track, localStream!);
           });
         }
 
         return pc;
-    }, [broadcastSignal, createOffer]);
+    }, [broadcastSignal, createOffer, localStream]);
 
     const removePeerConnection = useCallback((peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
@@ -285,7 +283,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
 
     // Initialisation et nettoyage de la session
     useEffect(() => {
-        if (!sessionId || !userId || initializedRef.current) return;
+        if (!sessionId || !userId || !isMediaReady || initializedRef.current) return;
         initializedRef.current = true;
         console.log('🎬 [Session] Initialisation de la session:', sessionId);
 
@@ -308,15 +306,6 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                 const initialSpotlight = sessionData.spotlightedParticipantSid ?? teacher?.id ?? null;
                 setSpotlightedParticipantId(initialSpotlight);
                 
-                try {
-                    console.log("🎥 [WebRTC] Demande du flux média local...");
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
-                    localStreamRef.current = stream;
-                    console.log("✅ [WebRTC] Flux média local obtenu.");
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: 'Erreur Média', description: "Impossible d'accéder à la caméra/micro." });
-                }
-
                 const presenceChannelName = `presence-session-${sessionId}`;
                 presenceChannel = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
                 
@@ -402,10 +391,9 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                 presenceChannel.unbind_all();
                 pusherClient.unsubscribe(presenceChannel.name);
             }
-            localStreamRef.current?.getTracks().forEach(track => track.stop());
             peerConnectionsRef.current.forEach(pc => pc.close());
         };
-    }, [sessionId, userId, toast, handleEndSession, createPeerConnection, removePeerConnection, handleSignal, isTeacher]);
+    }, [sessionId, userId, toast, handleEndSession, createPeerConnection, removePeerConnection, handleSignal, isTeacher, isMediaReady]);
 
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         if (!isTeacher) return;
@@ -460,11 +448,11 @@ function SessionContent({ sessionId }: { sessionId: string }) {
     const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) { setSessionView(view); await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }}, [isTeacher, sessionId]);
     
     // Derived state for rendering
-    const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : (remoteStreams.get(spotlightedParticipantId || '') || null);
+    const spotlightedStream = spotlightedParticipantId === userId ? localStream : (remoteStreams.get(spotlightedParticipantId || '') || null);
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
-    if (isLoading) {
+    if (isLoading || !isMediaReady) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <div className="text-center">
@@ -492,7 +480,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                  {isTeacher ? (
                     <TeacherSessionView
                         sessionId={sessionId}
-                        localStream={localStreamRef.current}
+                        localStream={localStream}
                         remoteParticipants={remoteParticipantsArray}
                         spotlightedUser={spotlightedUser}
                         allSessionUsers={allSessionUsers}
@@ -507,7 +495,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                 ) : (
                     <StudentSessionView
                         sessionId={sessionId}
-                        localStream={localStreamRef.current}
+                        localStream={localStream}
                         remoteStreams={remoteStreams}
                         spotlightedStream={spotlightedStream}
                         spotlightedUser={spotlightedUser}
@@ -531,5 +519,3 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     </SessionWrapper>
   );
 }
-
-
