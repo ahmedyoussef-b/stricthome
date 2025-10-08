@@ -1,3 +1,4 @@
+
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -13,7 +14,7 @@ import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
-import { useWebRTCNegotiation, WebRTCSignal } from '@/hooks/useWebRTCNegotiation';
+import { useWebRTCNegotiation } from '@/hooks/useWebRTCNegotiation';
 
 // Configuration des serveurs STUN de Google
 const ICE_SERVERS = {
@@ -37,6 +38,14 @@ interface PeerConnection {
   connection: RTCPeerConnection & { _createdAt?: number };
   stream?: MediaStream;
 }
+
+// Définition du type de signal WebRTC
+export type WebRTCSignal = {
+  type: 'offer' | 'answer' | 'ice-candidate';
+  sdp?: string;
+  candidate?: RTCIceCandidateInit;
+};
+
 
 // Fonction utilitaire pour valider les signaux
 const validateSignal = (signal: any): signal is WebRTCSignal => {
@@ -95,7 +104,7 @@ export default function SessionPage() {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [sessionView, setSessionView] = useState<SessionViewMode>('split');
 
-    const { startNegotiation, endNegotiation, addPendingOffer, getPendingCount } = useWebRTCNegotiation();
+    const { startNegotiation, endNegotiation, addPendingSignal, isNegotiating } = useWebRTCNegotiation();
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
@@ -179,18 +188,11 @@ export default function SessionPage() {
             if (signal.type === 'offer') {
                 if (!startNegotiation()) {
                     console.log(`📥 [WebRTC] Offre de ${fromUserId} mise en attente`);
-                    addPendingOffer(fromUserId, { fromUserId, toUserId: userId!, signal });
+                    addPendingSignal('offer', { fromUserId, toUserId: userId, signal });
                     return;
                 }
 
                 console.log(`📥 [WebRTC] Traitement offre de ${fromUserId} (état: ${pc.signalingState})`);
-                
-                if (pc.signalingState === 'closed' || pc.connectionState === 'failed') {
-                    console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId}`);
-                    pc.close();
-                    console.error("Cannot re-create peer connection in this state.");
-                    return;
-                }
                 
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
                 const answer = await pc.createAnswer();
@@ -220,15 +222,14 @@ export default function SessionPage() {
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
         } finally {
-            if (signal.type === 'offer') {
-                const pending = endNegotiation();
-                if (pending) {
-                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
-                    setTimeout(() => handleSignal(pending.fromUserId, pending.signalData.signal), 200);
-                }
+             const pendingSignals = endNegotiation();
+            if (pendingSignals.length > 0) {
+                const signalToProcess = pendingSignals[0];
+                console.log(`🔄 [WebRTC] Traitement signal en attente de ${signalToProcess.data.fromUserId}`);
+                setTimeout(() => handleSignal(signalToProcess.data.fromUserId, signalToProcess.data.signal), 200);
             }
         }
-    }, [userId, startNegotiation, addPendingOffer, broadcastSignal, endNegotiation]);
+    }, [userId, startNegotiation, addPendingSignal, broadcastSignal, endNegotiation]);
 
     const createPeerConnection = useCallback((peerId: string) => {
         console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
@@ -308,12 +309,11 @@ export default function SessionPage() {
           } catch (error) {
             console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
           } finally {
-            const pending = endNegotiation();
-            if (pending) {
-              console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
-              setTimeout(() => {
-                handleSignal(pending.fromUserId, pending.signalData.signal);
-              }, 200);
+            const pendingSignals = endNegotiation();
+            if (pendingSignals.length > 0) {
+              const signalToProcess = pendingSignals[0];
+              console.log(`🔄 [WebRTC] Traitement signal en attente de ${signalToProcess.data.fromUserId}`);
+              setTimeout(() => handleSignal(signalToProcess.data.fromUserId, signalToProcess.data.signal), 200);
             }
           }
         };
@@ -384,14 +384,14 @@ export default function SessionPage() {
     // Monitoring effect
     useEffect(() => {
         const interval = setInterval(() => {
-            const pendingCount = getPendingCount();
-            if (pendingCount > 0) {
-            console.log(`📊 [WebRTC] Monitoring: ${pendingCount} offre(s) en attente`);
-            }
+          // The new hook doesn't have a direct count, but we can monitor isNegotiating state
+          if (isNegotiating) {
+            console.log(`📊 [WebRTC] Monitoring: Négociation en cours...`);
+          }
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [getPendingCount]);
+    }, [isNegotiating]);
 
     const handleStartTimer = useCallback(async () => {
         if (!isTeacher || isTimerRunning) return;
