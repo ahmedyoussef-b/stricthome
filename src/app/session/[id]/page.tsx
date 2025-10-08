@@ -6,13 +6,14 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { serverSpotlightParticipant, serverSetWhiteboardController, broadcastTimerEvent } from '@/lib/actions';
+import { serverSpotlightParticipant, serverSetWhiteboardController, broadcastTimerEvent, endCoursSession } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
+import SessionWrapper from './session-wrapper';
 
 // Configuration WebRTC optimisée
 const ICE_SERVERS = {
@@ -24,7 +25,6 @@ const ICE_SERVERS = {
   bundlePolicy: 'max-bundle' as const,
   rtcpMuxPolicy: 'require' as const
 };
-
 
 async function getSessionData(sessionId: string): Promise<{ session: CoursSessionWithRelations, students: StudentWithCareer[], teacher: any }> {
     const response = await fetch(`/api/session/${sessionId}/details`);
@@ -42,13 +42,11 @@ export type WebRTCSignal =
   | RTCSessionDescriptionInit
   | { type: 'ice-candidate', candidate: RTCIceCandidateInit | null };
 
-export default function SessionPage() {
+function SessionContent({ sessionId }: { sessionId: string }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const params = useParams();
     const { toast } = useToast();
     
-    const sessionId = typeof params.id === 'string' ? params.id : '';
     const role = searchParams.get('role');
     const userId = searchParams.get('userId');
     const isTeacher = role === 'teacher';
@@ -59,9 +57,7 @@ export default function SessionPage() {
     const isNegotiatingRef = useRef<Set<string>>(new Set());
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-
     const [spotlightedParticipantId, setSpotlightedParticipantId] = useState<string | null>(null);
-    
     const [isLoading, setIsLoading] = useState(true);
     
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
@@ -74,8 +70,12 @@ export default function SessionPage() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [sessionView, setSessionView] = useState<SessionViewMode>('split');
+    const initializedRef = useRef(false);
+    const cleanupDoneRef = useRef(false);
 
     const handleEndSession = useCallback(() => {
+        if (cleanupDoneRef.current) return;
+        cleanupDoneRef.current = true;
         console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
         
         if (timerIntervalRef.current) {
@@ -280,16 +280,16 @@ export default function SessionPage() {
     }, []);
 
     // Initialisation et nettoyage de la session
-     useEffect(() => {
-        if (!sessionId || !userId) return;
+    useEffect(() => {
+        if (!sessionId || !userId || initializedRef.current) return;
+        initializedRef.current = true;
+        console.log('🎬 [Session] Initialisation de la session:', sessionId);
 
         let presenceChannel: PresenceChannel;
-        let isComponentMounted = true;
 
         const initialize = async () => {
             try {
                 const { session: sessionData, students, teacher } = await getSessionData(sessionId);
-                if (!isComponentMounted) return;
 
                 if (sessionData.endedAt) {
                     handleEndSession();
@@ -307,7 +307,6 @@ export default function SessionPage() {
                 try {
                     console.log("🎥 [WebRTC] Demande du flux média local...");
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
-                    if (!isComponentMounted) return stream.getTracks().forEach(t => t.stop());
                     localStreamRef.current = stream;
                     console.log("✅ [WebRTC] Flux média local obtenu.");
                 } catch (error: any) {
@@ -321,7 +320,6 @@ export default function SessionPage() {
                     const onlineMemberIds = Object.keys(members.members).filter(id => id !== userId);
                     console.log(`✅ [Pusher] Souscription réussie. ${onlineMemberIds.length} membre(s) en ligne.`);
                     setOnlineUsers(onlineMemberIds);
-                    // L'initiateur est celui avec l'ID "le plus petit" pour une décision déterministe
                     onlineMemberIds.forEach(memberId => {
                         const shouldCreateOffer = userId < memberId;
                         createPeerConnection(memberId, shouldCreateOffer);
@@ -332,7 +330,6 @@ export default function SessionPage() {
                     if (member.id === userId) return;
                     console.log(`👋 [Pusher] Nouveau membre: ${member.id}`);
                     setOnlineUsers(prev => [...prev, member.id]);
-                     // Le nouvel arrivant n'est jamais l'initiateur
                     createPeerConnection(member.id, true);
                 });
                 
@@ -348,7 +345,6 @@ export default function SessionPage() {
                     }
                 });
 
-                // --- Bind other events ---
                 presenceChannel.bind('session-ended', (data: { sessionId: string }) => {
                   if (data.sessionId === sessionId) handleEndSession();
                 });
@@ -376,7 +372,6 @@ export default function SessionPage() {
                 presenceChannel.bind('session-view-changed', (data: { view: SessionViewMode }) => {
                     if (!isTeacher) setSessionView(data.view);
                 });
-                // --- End Bind other events ---
 
                 setIsLoading(false);
 
@@ -389,8 +384,9 @@ export default function SessionPage() {
         initialize();
 
         return () => {
-            isComponentMounted = false;
-            console.log("🧹 [Session] Démontage du composant. Nettoyage en cours.");
+             if (cleanupDoneRef.current) return;
+             cleanupDoneRef.current = true;
+             console.log("🧹 [Session] Nettoyage de la session");
             if (presenceChannel) {
                 presenceChannel.unbind_all();
                 pusherClient.unsubscribe(presenceChannel.name);
@@ -450,7 +446,7 @@ export default function SessionPage() {
     const handleStartTimer = useCallback(async () => { if (isTeacher) { setIsTimerRunning(true); await broadcastTimerEvent(sessionId, 'timer-started'); }}, [isTeacher, sessionId]);
     const handlePauseTimer = useCallback(async () => { if (isTeacher) { setIsTimerRunning(false); await broadcastTimerEvent(sessionId, 'timer-paused'); }}, [isTeacher, sessionId]);
     const handleResetTimer = useCallback(async () => { if (isTeacher) { setTimeLeft(duration); setIsTimerRunning(false); await broadcastTimerEvent(sessionId, 'timer-reset', { duration }); }}, [isTeacher, duration, sessionId]);
-    const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }, [isTeacher, sessionId]);
+    const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) { onSetSessionView(view); await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }}, [isTeacher, sessionId, onSetSessionView]);
     
     // Derived state for rendering
     const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : (remoteStreams.get(spotlightedParticipantId || '') || null);
@@ -460,8 +456,10 @@ export default function SessionPage() {
     if (isLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="animate-spin h-8 w-8 text-primary" />
-                <p className='ml-2'>Chargement de la session...</p>
+                <div className="text-center">
+                    <Loader2 className="animate-spin h-8 w-8 text-primary mx-auto" />
+                    <p className='mt-4 text-xl'>Initialisation de la classe virtuelle...</p>
+                </div>
             </div>
         )
     }
@@ -513,4 +511,12 @@ export default function SessionPage() {
             </main>
         </div>
     );
+}
+
+export default function SessionPage({ params }: { params: { id: string } }) {
+  return (
+    <SessionWrapper sessionId={params.id}>
+      <SessionContent sessionId={params.id} />
+    </SessionWrapper>
+  );
 }
