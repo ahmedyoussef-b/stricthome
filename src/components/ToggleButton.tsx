@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { endAllActiveSessionsForTeacher } from '@/lib/actions';
+import { endAllActiveSessionsForTeacher } from '@/lib/actions/teacher.actions';
 
 export function ToggleButton() {
   const [isActive, setIsActive] = useState(false);
@@ -22,6 +22,11 @@ export function ToggleButton() {
             // If we are activating the card, first end all active sessions.
             if (newIsActive) {
                 await endAllActiveSessionsForTeacher();
+                 toast({
+                  title: "Sessions précédentes terminées",
+                  description: "Toutes les invitations actives ont été annulées.",
+                  variant: "default",
+                });
             }
 
             const response = await fetch('/api/trigger-card', {
@@ -36,7 +41,7 @@ export function ToggleButton() {
 
             toast({
               title: newIsActive ? "Carte spéciale activée" : "Carte spéciale désactivée",
-              description: `La carte est maintenant ${newIsActive ? 'visible' : 'cachée'} pour les élèves. Les invitations de session ont été annulées.`,
+              description: `La carte est maintenant ${newIsActive ? 'visible' : 'cachée'} pour les élèves.`,
             });
 
         } catch (error) {
@@ -69,7 +74,7 @@ export function ToggleButton() {
       ) : (
         <CheckCircle className="mr-2" />
       )}
-      {isActive ? 'Activé' : 'Désactivé'}
+      {isActive ? 'Carte Activée' : 'Carte Désactivée'}
     </Button>
   );
 }
