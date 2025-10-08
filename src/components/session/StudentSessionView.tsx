@@ -60,9 +60,9 @@ export function StudentSessionView({
         }
         return (
             <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
-                <div className="text-center">
+                <div className="text-center text-muted-foreground">
                     <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                    <p className="mt-2 text-muted-foreground">En attente de la connexion...</p>
+                    <p className="mt-2">En attente de la connexion...</p>
                 </div>
             </Card>
         );
@@ -78,7 +78,7 @@ export function StudentSessionView({
     
     return (
         <div className="flex gap-4 flex-1 min-h-0 py-6">
-             <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4">
+             <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
                  <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
@@ -99,7 +99,7 @@ export function StudentSessionView({
                     {renderSpotlight()}
                 </div>
                 <div className={cn(
-                    "h-full",
+                    "h-full min-h-0",
                     sessionView === 'camera' && "hidden"
                 )}>
                     {renderWhiteboard()}
