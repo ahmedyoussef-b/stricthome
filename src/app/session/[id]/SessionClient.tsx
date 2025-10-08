@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { pusherClient } from '@/lib/pusher/client';
@@ -19,22 +19,34 @@ export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
 
-export default function SessionClient({ sessionId, role, userId }: { sessionId: string, role: string, userId: string }) {
+export default function SessionClient({ sessionId }: { sessionId: string }) {
     const { localStream, isReady, error } = useWebRTCStable(sessionId);
     const router = useRouter();
     const mountCountRef = useRef(0);
+    const { data: authSession, status } = useSession();
+    const searchParams = useSearchParams();
+
+    const role = searchParams.get('role');
+    const userId = searchParams.get('userId');
 
     useEffect(() => {
         mountCountRef.current += 1;
         console.log(`🏁 [SessionClient] Mount #${mountCountRef.current}`);
         
         return () => {
-        console.log(`🏁 [SessionClient] Unmount #${mountCountRef.current}`);
+            console.log(`🏁 [SessionClient] Unmount #${mountCountRef.current}`);
         };
     }, []);
 
+    // Redirection si les données sont invalides
+    useEffect(() => {
+        if (status === 'loading') return;
+        if (status === 'unauthenticated' || !role || !userId) {
+            router.replace('/login');
+        }
+    }, [status, role, userId, router]);
 
-    if (!isReady) {
+    if (status === 'loading' || !isReady) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
                 <div className="text-center">
@@ -71,6 +83,8 @@ export default function SessionClient({ sessionId, role, userId }: { sessionId: 
         );
     }
     
+    // Si on arrive ici, localStream peut être null (si erreur) ou un MediaStream
+    // La logique de négociation WebRTC peut maintenant commencer en toute sécurité
     const isTeacher = role === 'teacher';
 
     return (
