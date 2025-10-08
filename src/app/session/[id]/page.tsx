@@ -1,3 +1,4 @@
+
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -193,7 +194,7 @@ export default function SessionPage() {
 
                 console.log(`📥 [WebRTC] Traitement offre de ${fromUserId} (état: ${pc.signalingState})`);
                 
-                await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                await pc.setRemoteDescription(new RTCSessionDescription({type: signal.type, sdp: signal.sdp}));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
@@ -202,7 +203,7 @@ export default function SessionPage() {
             } else if (signal.type === 'answer') {
                 if (pc.signalingState === 'have-local-offer') {
                     console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état: ${pc.signalingState})`);
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                    await pc.setRemoteDescription(new RTCSessionDescription({type: signal.type, sdp: signal.sdp}));
                     console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
                 } else {
                     console.log(`⏭️ [WebRTC] Réponse ignorée de ${fromUserId} - état incompatible: ${pc.signalingState}, attendu: have-local-offer`);
@@ -755,3 +756,6 @@ export default function SessionPage() {
         </div>
     );
 }
+
+
+    
