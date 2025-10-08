@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
+import { serverSpotlightParticipant, serverSetWhiteboardController, broadcastTimerEvent } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
