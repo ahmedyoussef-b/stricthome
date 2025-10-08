@@ -19,7 +19,7 @@ interface ParticipantProps {
   participantUserId: string;
   isWhiteboardController?: boolean;
   isHandRaised?: boolean;
-  onGiveWhiteboardControl: (userId: string) => void;
+  onGiveWhiteboardControl: (userId: string | null) => void;
   onSpotlightParticipant?: (participantId: string) => void;
 }
 
