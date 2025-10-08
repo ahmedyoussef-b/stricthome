@@ -145,7 +145,7 @@ function ThicknessPicker({ current, onChange }: { current: number, onChange: (va
         >
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-muted border flex items-center justify-center">
-              <div className="rounded-full bg-foreground" style={{width: `${'value'}px`, height: `${'value'}px`}} />
+              <div className="rounded-full bg-foreground" style={{width: `${value}px`, height: `${value}px`}} />
             </div>
             <span className="text-xs">{label}</span>
           </div>
