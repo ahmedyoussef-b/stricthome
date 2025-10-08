@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { endAllActiveSessionsForTeacher } from '@/lib/actions/teacher.actions';
+import { endAllActiveSessionsForTeacher } from '@/lib/actions';
 
 export function ToggleButton() {
   const [isActive, setIsActive] = useState(false);
@@ -17,18 +17,21 @@ export function ToggleButton() {
     const newIsActive = !isActive;
     
     startTransition(async () => {
-        setIsActive(newIsActive); // Optimistic update
         try {
-            // If we are activating the card, first end all active sessions.
-            if (newIsActive) {
-                await endAllActiveSessionsForTeacher();
+            // First, end any active sessions regardless of the new state
+            await endAllActiveSessionsForTeacher();
+            
+            // Only show a toast for ending sessions if we are deactivating the card
+            // or if we are activating it (to confirm cleanup)
+            if (isActive) { // About to become inactive
                  toast({
-                  title: "Sessions précédentes terminées",
-                  description: "Toutes les invitations actives ont été annulées.",
+                  title: "Sessions terminées",
+                  description: "Toutes les invitations de session actives ont été annulées.",
                   variant: "default",
                 });
             }
 
+            // Then, trigger the card visibility
             const response = await fetch('/api/trigger-card', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -38,19 +41,21 @@ export function ToggleButton() {
             if (!response.ok) {
                 throw new Error('Server responded with an error');
             }
-
+            
+            // Finally, update the button state and show confirmation
+            setIsActive(newIsActive); 
             toast({
               title: newIsActive ? "Carte spéciale activée" : "Carte spéciale désactivée",
               description: `La carte est maintenant ${newIsActive ? 'visible' : 'cachée'} pour les élèves.`,
             });
 
         } catch (error) {
-            // Rollback state on error
-            setIsActive(!newIsActive);
+            // Don't rollback state here, as the button state might be out of sync
+            // with the actual server state. Just show an error.
             toast({
               variant: "destructive",
               title: "Erreur de diffusion",
-              description: "Impossible de mettre à jour l'état pour les élèves.",
+              description: "Impossible de mettre à jour l'état pour les élèves. L'état peut être incohérent.",
             });
         }
     });
