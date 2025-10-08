@@ -19,7 +19,7 @@ export function SessionViewControls({ currentView, onSetView }: SessionViewContr
                 <ToggleGroup
                     type="single"
                     value={currentView}
-                    onValueChange={(value) => {
+                    onValueChange={(value: string) => {
                         if (value) onSetView(value as SessionViewMode);
                     }}
                     aria-label="Contrôles de la vue"
