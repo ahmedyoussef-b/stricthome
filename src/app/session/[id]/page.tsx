@@ -1,4 +1,5 @@
 
+
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -20,7 +21,7 @@ import SessionWrapper from './session-wrapper';
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun1.l.google.com:19302' },
   ],
   iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle' as const,
@@ -56,6 +57,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
     const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
     const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
     const isNegotiatingRef = useRef<Set<string>>(new Set());
+    const initiatingPeersRef = useRef<Set<string>>(new Set());
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
     const [spotlightedParticipantId, setSpotlightedParticipantId] = useState<string | null>(null);
@@ -147,7 +149,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
         try {
             if (signal.type === 'offer') {
                 if (pc.signalingState !== 'stable') {
-                    console.log('⏳ [WebRTC] Offre ignorée - état incompatible:', pc.signalingState);
+                    console.warn(`⏳ [WebRTC] Offre reçue de ${fromUserId} mais état incompatible (${pc.signalingState}). Ignoré.`);
                     return;
                 }
                 console.log('📥 [WebRTC] Traitement offre de', fromUserId);
@@ -161,7 +163,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                 
             } else if (signal.type === 'answer') {
                 if (pc.signalingState !== 'have-local-offer') {
-                    console.log('⏳ [WebRTC] Réponse ignorée - état incompatible:', pc.signalingState);
+                     console.warn(`⏳ [WebRTC] Réponse reçue de ${fromUserId} mais état incompatible (${pc.signalingState}). Ignoré.`);
                     return;
                 }
                 console.log('📥 [WebRTC] Traitement réponse de', fromUserId);
@@ -203,16 +205,17 @@ function SessionContent({ sessionId }: { sessionId: string }) {
             console.log(`✅ [WebRTC] Offre envoyée à ${peerId}`);
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
+            isNegotiatingRef.current.delete(peerId);
         }
     }, [broadcastSignal]);
 
-    const createPeerConnection = useCallback((peerId: string, shouldCreateOffer = false) => {
+    const createPeerConnection = useCallback((peerId: string) => {
         if (peerConnectionsRef.current.has(peerId)) {
           console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
           peerConnectionsRef.current.get(peerId)?.close();
         }
         
-        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}. Initiateur: ${shouldCreateOffer}`);
+        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
         const pc = new RTCPeerConnection(ICE_SERVERS);
         peerConnectionsRef.current.set(peerId, pc);
 
@@ -229,7 +232,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
 
         pc.onnegotiationneeded = async () => {
             console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId}`);
-            if (shouldCreateOffer) {
+            if (initiatingPeersRef.current.has(peerId)) {
                 await createOffer(peerId);
             }
         };
@@ -322,8 +325,12 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                     console.log(`✅ [Pusher] Souscription réussie. ${onlineMemberIds.length} membre(s) en ligne.`);
                     setOnlineUsers(onlineMemberIds);
                     onlineMemberIds.forEach(memberId => {
-                        const shouldCreateOffer = userId < memberId;
-                        createPeerConnection(memberId, shouldCreateOffer);
+                        // L'initiateur est celui avec l'ID "le plus petit" pour éviter les courses
+                        const isInitiator = userId < memberId;
+                        if (isInitiator) {
+                            initiatingPeersRef.current.add(memberId);
+                        }
+                        createPeerConnection(memberId);
                     });
                 });
 
@@ -331,7 +338,10 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                     if (member.id === userId) return;
                     console.log(`👋 [Pusher] Nouveau membre: ${member.id}`);
                     setOnlineUsers(prev => [...prev, member.id]);
-                    createPeerConnection(member.id, true);
+                    
+                    // Le pair déjà présent est l'initiateur
+                    initiatingPeersRef.current.add(member.id);
+                    createPeerConnection(member.id);
                 });
                 
                 presenceChannel.bind('pusher:member_removed', (member: { id: string }) => {
@@ -521,4 +531,5 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     </SessionWrapper>
   );
 }
+
 
