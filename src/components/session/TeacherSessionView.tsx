@@ -67,12 +67,21 @@ export function TeacherSessionView({
         const handleControlChange = (data: { controllerId: string | null }) => {
             setWhiteboardControllerId(data.controllerId);
         };
-
+        
         channel.bind('whiteboard-control-changed', handleControlChange);
+        
+        // Fetch initial state
+        fetch(`/api/session/${sessionId}/details`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.session) {
+                    setWhiteboardControllerId(data.session.whiteboardControllerId);
+                }
+            });
+
 
         return () => {
             channel.unbind('whiteboard-control-changed', handleControlChange);
-            pusherClient.unsubscribe(channelName);
         };
     }, [sessionId]);
 
@@ -90,7 +99,7 @@ export function TeacherSessionView({
 
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6 px-4">
 
             {/* Colonne de gauche: Participants */}
             <div className="lg:col-span-1 flex flex-col gap-4">

@@ -58,9 +58,9 @@ export function StudentSessionView({
         const handleControlChange = (data: { controllerId: string | null }) => {
             setWhiteboardControllerId(data.controllerId);
         };
-
+        
         channel.bind('whiteboard-control-changed', handleControlChange);
-
+        
         // Fetch initial state
         fetch(`/api/session/${sessionId}/details`)
             .then(res => res.json())
@@ -113,9 +113,38 @@ export function StudentSessionView({
     );
     
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 flex-1 min-h-0 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0 p-4">
             
-            {/* Sidebar for student controls */}
+            {/* Main content area */}
+             <div className="lg:col-span-3 grid gap-6 h-full min-h-0 relative" style={{ gridTemplateRows: '1fr auto' }}>
+                 <div className="h-full min-h-0">
+                     {sessionView === 'split' ? (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+                            <div className="h-full min-h-0">{renderSpotlight()}</div>
+                            <div className="h-full min-h-0">{renderWhiteboard()}</div>
+                        </div>
+                    ) : sessionView === 'camera' ? (
+                        renderSpotlight()
+                    ) : (
+                        renderWhiteboard()
+                    )}
+                 </div>
+                 {/* Local camera view */}
+                 <div className="absolute bottom-4 left-4 w-40 h-auto z-10">
+                    {localStream && userId && (
+                        <Participant
+                            stream={localStream}
+                            isLocal={true}
+                            isTeacher={false}
+                            participantUserId={userId}
+                            displayName={session?.user?.name ?? 'Vous'}
+                            onGiveWhiteboardControl={() => {}}
+                        />
+                    )}
+                 </div>
+            </div>
+
+             {/* Sidebar for student controls */}
             <div className="w-full flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
                  <Card>
                     <CardHeader className='p-3'>
@@ -164,35 +193,6 @@ export function StudentSessionView({
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
              </div>
-
-             {/* Main content area */}
-             <div className="grid gap-6 h-full min-h-0 relative" style={{ gridTemplateRows: 'auto 1fr' }}>
-                 <div className="h-full min-h-0">
-                     {sessionView === 'split' ? (
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
-                            <div className="h-full min-h-0">{renderSpotlight()}</div>
-                            <div className="h-full min-h-0">{renderWhiteboard()}</div>
-                        </div>
-                    ) : sessionView === 'camera' ? (
-                        renderSpotlight()
-                    ) : (
-                        renderWhiteboard()
-                    )}
-                 </div>
-                 {/* Local camera view */}
-                 <div className="absolute bottom-4 left-4 w-40 h-auto z-10">
-                    {localStream && userId && (
-                        <Participant
-                            stream={localStream}
-                            isLocal={true}
-                            isTeacher={false}
-                            participantUserId={userId}
-                            displayName={session?.user?.name ?? 'Vous'}
-                            onGiveWhiteboardControl={() => {}}
-                        />
-                    )}
-                 </div>
-            </div>
         </div>
     );
 }
