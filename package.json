@@ -19,7 +19,7 @@
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "clean": "rm -rf .next node_modules package-lock.json"
+    "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.1.0",
