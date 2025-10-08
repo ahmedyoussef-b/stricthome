@@ -1,25 +1,11 @@
-// hooks/useWebRTCNegotiation.ts
-import { useRef, useCallback } from 'react';
-
-// Définir des types plus stricts pour les signaux
-export type WebRTCSignal =
-  | RTCSessionDescriptionInit
-  | { type: 'ice-candidate', candidate: RTCIceCandidateInit | null };
-
-type PendingOffer = {
-    fromUserId: string;
-    signalData: {
-      fromUserId: string;
-      toUserId: string;
-      signal: WebRTCSignal;
-    };
-};
+// hooks/useWebRTCNegotiation.ts - VERSION AMÉLIORÉE
+import { useRef } from 'react';
 
 export function useWebRTCNegotiation() {
   const isNegotiating = useRef(false);
-  const pendingOffers = useRef<PendingOffer[]>([]);
+  const pendingSignals = useRef<Array<{ type: string; data: any }>>([]);
 
-  const startNegotiation = useCallback(() => {
+  const startNegotiation = () => {
     if (isNegotiating.current) {
       console.log('⚠️ [WebRTC] Négociation déjà en cours, attente...');
       return false;
@@ -27,40 +13,31 @@ export function useWebRTCNegotiation() {
     isNegotiating.current = true;
     console.log('🔒 [WebRTC] Début de négociation - verrouillé');
     return true;
-  }, []);
+  };
 
-  const endNegotiation = useCallback((): PendingOffer | null => {
+  const endNegotiation = () => {
     isNegotiating.current = false;
     console.log('🔓 [WebRTC] Fin de négociation - déverrouillé');
     
-    if (pendingOffers.current.length > 0) {
-      const nextOffer = pendingOffers.current.shift();
-      console.log(`🔄 [WebRTC] Offre en attente libérée: ${pendingOffers.current.length} restante(s)`);
-      return nextOffer!;
+    // Traiter les signaux en attente
+    if (pendingSignals.current.length > 0) {
+      console.log('🔄 [WebRTC] Traitement des signaux en attente:', pendingSignals.current.length);
+      const signals = [...pendingSignals.current];
+      pendingSignals.current = [];
+      return signals;
     }
-    return null;
-  }, []);
+    return [];
+  };
 
-  const addPendingOffer = useCallback((fromUserId: string, signalData: PendingOffer['signalData']) => {
-    pendingOffers.current.push({ fromUserId, signalData });
-    console.log(`📥 [WebRTC] Offre mise en attente de ${fromUserId}. File: ${pendingOffers.current.length}`);
-  }, []);
-
-  const clearPendingOffers = useCallback(() => {
-    console.log(`🧹 [WebRTC] Nettoyage de ${pendingOffers.current.length} offre(s) en attente`);
-    pendingOffers.current = [];
-  }, []);
-
-  const getPendingCount = useCallback(() => {
-    return pendingOffers.current.length;
-  }, []);
+  const addPendingSignal = (type: string, data: any) => {
+    console.log('📥 [WebRTC] Signal mis en attente:', type);
+    pendingSignals.current.push({ type, data });
+  };
 
   return {
-    isNegotiatingRef: isNegotiating,
     startNegotiation,
     endNegotiation,
-    addPendingOffer,
-    clearPendingOffers,
-    getPendingCount,
+    addPendingSignal,
+    isNegotiating: isNegotiating.current
   };
 }
