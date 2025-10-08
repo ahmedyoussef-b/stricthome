@@ -15,7 +15,7 @@ import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
 
-// Configuration des serveurs STUN de Google
+// Configuration WebRTC optimisée
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -25,6 +25,7 @@ const ICE_SERVERS = {
   bundlePolicy: 'max-bundle' as const,
   rtcpMuxPolicy: 'require' as const
 };
+
 
 async function getSessionData(sessionId: string): Promise<{ session: CoursSessionWithRelations, students: StudentWithCareer[], teacher: any }> {
     const response = await fetch(`/api/session/${sessionId}/details`);
@@ -56,6 +57,7 @@ export default function SessionPage() {
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
     const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    const isNegotiatingRef = useRef<Set<string>>(new Set());
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
@@ -108,6 +110,7 @@ export default function SessionPage() {
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
+        console.log(`📤 [WebRTC] Envoi du signal ${signal.type} à ${toUserId}`);
         await fetch('/api/webrtc/signal', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -115,11 +118,27 @@ export default function SessionPage() {
         });
     }, [sessionId, userId]);
 
+    const processPendingCandidates = useCallback(async (peerId: string) => {
+        const pc = peerConnectionsRef.current.get(peerId);
+        const candidates = pendingCandidatesRef.current.get(peerId);
+        if (!pc || !candidates || candidates.length === 0) return;
+        
+        console.log(`🔄 [WebRTC] Traitement de ${candidates.length} candidat(s) en attente pour ${peerId}`);
+        for (const candidate of candidates) {
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                console.log(`✅ [WebRTC] Candidat ICE en attente ajouté pour ${peerId}`);
+            } catch (error) {
+                console.error(`❌ [WebRTC] Erreur ajout candidat en attente pour ${peerId}:`, error);
+            }
+        }
+        pendingCandidatesRef.current.delete(peerId);
+    }, []);
+
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
         const pc = peerConnectionsRef.current.get(fromUserId);
         if (!pc) {
-            console.warn(`⚠️ [WebRTC] Connexion non trouvée pour ${fromUserId}, création...`);
-            // Connexion sera créée par le flux normal 'member_added'
+            console.warn(`⚠️ [WebRTC] Connexion non trouvée pour ${fromUserId}, signal ignoré.`);
             return;
         }
 
@@ -131,7 +150,10 @@ export default function SessionPage() {
                     console.log('⏳ [WebRTC] Offre ignorée - état incompatible:', pc.signalingState);
                     return;
                 }
+                console.log('📥 [WebRTC] Traitement offre de', fromUserId);
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                await processPendingCandidates(fromUserId);
+                
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
@@ -142,12 +164,15 @@ export default function SessionPage() {
                     console.log('⏳ [WebRTC] Réponse ignorée - état incompatible:', pc.signalingState);
                     return;
                 }
+                console.log('📥 [WebRTC] Traitement réponse de', fromUserId);
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                await processPendingCandidates(fromUserId);
                 
             } else if (signal.type === 'ice-candidate' && signal.candidate) {
                 if (pc.remoteDescription) {
                     await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
                 } else {
+                    console.log(`⏳ [WebRTC] Candidat ICE mis en attente pour ${fromUserId}`);
                     if (!pendingCandidatesRef.current.has(fromUserId)) {
                         pendingCandidatesRef.current.set(fromUserId, []);
                     }
@@ -157,15 +182,37 @@ export default function SessionPage() {
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
         }
-    }, [broadcastSignal]);
+    }, [broadcastSignal, processPendingCandidates]);
     
-    const createPeerConnection = useCallback((peerId: string) => {
+    const createOffer = useCallback(async (peerId: string) => {
+        const pc = peerConnectionsRef.current.get(peerId);
+        if (!pc || isNegotiatingRef.current.has(peerId)) {
+            console.log(`⏳ [WebRTC] Négociation déjà en cours pour ${peerId}, offre différée.`);
+            return;
+        }
+
+        try {
+            console.log(`🔒 [WebRTC] Verrouillage de la négociation pour ${peerId}`);
+            isNegotiatingRef.current.add(peerId);
+            
+            console.log(`📤 [WebRTC] Création de l'offre pour ${peerId}`);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            await broadcastSignal(peerId, pc.localDescription!);
+            console.log(`✅ [WebRTC] Offre envoyée à ${peerId}`);
+        } catch (error) {
+            console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
+        }
+    }, [broadcastSignal]);
+
+    const createPeerConnection = useCallback((peerId: string, shouldCreateOffer = false) => {
         if (peerConnectionsRef.current.has(peerId)) {
           console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
           peerConnectionsRef.current.get(peerId)?.close();
         }
         
-        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
+        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}. Initiateur: ${shouldCreateOffer}`);
         const pc = new RTCPeerConnection(ICE_SERVERS);
         peerConnectionsRef.current.set(peerId, pc);
 
@@ -179,22 +226,19 @@ export default function SessionPage() {
           console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
           setRemoteStreams(prev => new Map(prev).set(peerId, event.streams[0]));
         };
-        
-        if (localStreamRef.current) {
-          localStreamRef.current.getTracks().forEach(track => {
-            pc.addTrack(track, localStreamRef.current!);
-          });
-        }
-        
+
         pc.onnegotiationneeded = async () => {
-            try {
-                if (pc.signalingState !== 'stable') return;
-                console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId}`);
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                await broadcastSignal(peerId, pc.localDescription!);
-            } catch (err) {
-                console.error(`❌ [WebRTC] Erreur de négociation pour ${peerId}`, err);
+            console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId}`);
+            if (shouldCreateOffer) {
+                await createOffer(peerId);
+            }
+        };
+        
+        pc.onsignalingstatechange = () => {
+            console.log(`🚦 [WebRTC] ${peerId} - État signalisation: ${pc.signalingState}`);
+            if (pc.signalingState === 'stable') {
+                isNegotiatingRef.current.delete(peerId);
+                console.log(`🔓 [WebRTC] Négociation déverrouillée pour ${peerId}`);
             }
         };
 
@@ -202,13 +246,20 @@ export default function SessionPage() {
             console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}`);
             if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
                 console.log(`🔄 [WebRTC] Reconnexion pour ${peerId}`);
-                // Simple restart
                 pc.restartIce();
+            } else if (pc.connectionState === 'connected') {
+                console.log(`🎉 [WebRTC] CONNEXION ÉTABLIE avec ${peerId}`);
             }
         };
+        
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => {
+            pc.addTrack(track, localStreamRef.current!);
+          });
+        }
 
         return pc;
-    }, [broadcastSignal]);
+    }, [broadcastSignal, createOffer]);
 
     const removePeerConnection = useCallback((peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
@@ -268,20 +319,26 @@ export default function SessionPage() {
                 presenceChannel = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
                 
                 presenceChannel.bind('pusher:subscription_succeeded', (members: any) => {
-                    const userIds = Object.keys(members.members).filter(id => id !== userId);
-                    setOnlineUsers(userIds);
-                    userIds.forEach(memberId => {
-                       createPeerConnection(memberId);
+                    const onlineMemberIds = Object.keys(members.members).filter(id => id !== userId);
+                    console.log(`✅ [Pusher] Souscription réussie. ${onlineMemberIds.length} membre(s) en ligne.`);
+                    setOnlineUsers(onlineMemberIds);
+                    // L'initiateur est celui avec l'ID "le plus petit" pour une décision déterministe
+                    onlineMemberIds.forEach(memberId => {
+                        const shouldCreateOffer = userId < memberId;
+                        createPeerConnection(memberId, shouldCreateOffer);
                     });
                 });
 
                 presenceChannel.bind('pusher:member_added', (member: { id: string }) => {
                     if (member.id === userId) return;
+                    console.log(`👋 [Pusher] Nouveau membre: ${member.id}`);
                     setOnlineUsers(prev => [...prev, member.id]);
-                    createPeerConnection(member.id);
+                     // Le nouvel arrivant n'est jamais l'initiateur
+                    createPeerConnection(member.id, true);
                 });
                 
                 presenceChannel.bind('pusher:member_removed', (member: { id: string }) => {
+                    console.log(`🚪 [Pusher] Membre parti: ${member.id}`);
                     setOnlineUsers(prev => prev.filter(id => id !== member.id));
                     removePeerConnection(member.id);
                 });
@@ -397,7 +454,7 @@ export default function SessionPage() {
     const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }, [isTeacher, sessionId]);
     
     // Derived state for rendering
-    const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : remoteStreams.get(spotlightedParticipantId || '') || null;
+    const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : (remoteStreams.get(spotlightedParticipantId || '') || null);
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
