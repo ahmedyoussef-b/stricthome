@@ -1,4 +1,5 @@
 
+
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -120,10 +121,6 @@ export default function SessionPage() {
         }
     }, [sessionId]);
     
-    const handleLeaveSession = useCallback(() => {
-        handleEndSession();
-    }, [handleEndSession]);
-
     const handleEndSession = useCallback(() => {
         console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
         cleanup();
@@ -141,6 +138,10 @@ export default function SessionPage() {
             router.push('/');
         }
     }, [cleanup, isTeacher, router, toast, userId]);
+
+    const handleLeaveSession = useCallback(() => {
+        handleEndSession();
+    }, [handleEndSession]);
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
@@ -413,22 +414,24 @@ export default function SessionPage() {
     }, [sessionId]);
 
     const startTimer = useCallback(() => {
-        if (isTimerRunning) return;
-        if (isTeacher) broadcastTimerEvent('timer-started');
+        if (!isTeacher || isTimerRunning) return;
+        broadcastTimerEvent('timer-started');
         setIsTimerRunning(true);
-    }, [isTimerRunning, isTeacher, broadcastTimerEvent]);
-    
+    }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
+
     const pauseTimer = useCallback(() => {
-        if (!isTimerRunning) return;
-        if (isTeacher) broadcastTimerEvent('timer-paused');
+        if (!isTeacher || !isTimerRunning) return;
+        broadcastTimerEvent('timer-paused');
         setIsTimerRunning(false);
-    }, [isTimerRunning, isTeacher, broadcastTimerEvent]);
+    }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
     const resetTimer = useCallback(() => {
-        if (isTeacher) broadcastTimerEvent('timer-reset', { duration });
+        if (!isTeacher) return;
+        broadcastTimerEvent('timer-reset', { duration });
         setIsTimerRunning(false);
         setTimeLeft(duration);
     }, [isTeacher, duration, broadcastTimerEvent]);
+
 
     useEffect(() => {
         if (isTimerRunning) {
