@@ -49,6 +49,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
         }
+        // Redirect after cleanup
         router.push(isTeacher ? '/teacher' : `/student/${userId}`);
     }, [localStream, router, isTeacher, userId]);
 
@@ -57,19 +58,24 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         if (authStatus === 'loading') return;
         if (authStatus === 'unauthenticated' || !role || !userId) {
             router.replace('/login');
+            return;
         }
 
         const sessionChannelName = `presence-session-${sessionId}`;
         const channel = pusherClient.subscribe(sessionChannelName);
-        channel.bind('session-ended', () => {
+        
+        const onSessionEnded = () => {
             toast({
                 title: "Session Terminée",
                 description: "Le professeur a mis fin à la session.",
             });
             handleLeaveSession();
-        });
+        };
+
+        channel.bind('session-ended', onSessionEnded);
 
         return () => {
+            channel.unbind('session-ended', onSessionEnded);
             pusherClient.unsubscribe(sessionChannelName);
         };
 
@@ -152,10 +158,10 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
                     setWhiteboardControllerId(data.session.whiteboardControllerId);
                 } else {
                     toast({ variant: 'destructive', title: 'Erreur', description: 'Session non trouvée' });
-                    router.push('/teacher');
+                    router.push(isTeacher ? '/teacher' : '/');
                 }
             });
-    }, [sessionId, router, toast]);
+    }, [sessionId, router, toast, isTeacher]);
 
     // Pusher and WebRTC Initialization
     useEffect(() => {
@@ -205,7 +211,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         channel.bind('webrtc-signal', async (data: any) => {
             if (data.toUserId !== userId) return;
 
-            console.log(`📡 [WebRTC] Signal reçu de ${data.fromUserId}:`, data.signal.type);
+            console.log(`📡 [WebRTC] Signal reçu de ${data.fromUserId}:`, data.signal?.type);
             let pc = peerConnections.current.get(data.fromUserId);
             if (!pc) {
                  console.warn(`❓ [WebRTC] PeerConnection non trouvée pour ${data.fromUserId}, création...`);
@@ -257,7 +263,6 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         return () => {
             console.log("🧹 [Pusher] Nettoyage des abonnements");
             channel.unbind_all();
-            pusherClient.unsubscribe(channelName);
             peerConnections.current.forEach(pc => pc.close());
             peerConnections.current.clear();
             setIsPusherInitialized(false);
@@ -275,12 +280,12 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         fetch(`/api/session/${sessionId}/timer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ event, time }),
+            body: JSON.stringify({ event, time: time ?? timeLeft }),
         });
     };
 
-    const handleStartTimer = () => { setIsTimerRunning(true); broadcastTimerEvent('timer-started', timeLeft); };
-    const handlePauseTimer = () => { setIsTimerRunning(false); broadcastTimerEvent('timer-paused', timeLeft); };
+    const handleStartTimer = () => { setIsTimerRunning(true); broadcastTimerEvent('timer-started'); };
+    const handlePauseTimer = () => { setIsTimerRunning(false); broadcastTimerEvent('timer-paused'); };
     const handleResetTimer = () => {
         const newTime = 15 * 60;
         setTimeLeft(newTime); 
@@ -301,24 +306,24 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         const channelName = `presence-session-${sessionId}`;
         const channel = pusherClient.subscribe(channelName);
         channel.bind('timer-started', (data: { time: number }) => { 
-            setTimeLeft(data.time); 
+            if(data.time) setTimeLeft(data.time); 
             setIsTimerRunning(true); 
         });
         channel.bind('timer-paused', (data: { time: number }) => { 
-            setTimeLeft(data.time); 
+             if(data.time) setTimeLeft(data.time); 
             setIsTimerRunning(false); 
         });
         channel.bind('timer-reset', (data: { time: number }) => { 
-            setTimeLeft(data.time); 
+             if(data.time) setTimeLeft(data.time); 
             setIsTimerRunning(false); 
         });
         return () => {
              channel.unbind_all();
-             pusherClient.unsubscribe(channelName);
         };
     }, [sessionId]);
 
     const onToggleHandRaise = useCallback(async () => {
+        if (!userId) return;
         const newIsRaised = !isHandRaised;
         setIsHandRaised(newIsRaised);
         await fetch(`/api/session/${sessionId}/raise-hand`, {
@@ -329,6 +334,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     }, [isHandRaised, sessionId, userId]);
 
     const onUnderstandingChange = useCallback(async (status: UnderstandingStatus) => {
+        if (!userId) return;
         setCurrentUnderstanding(status);
          await fetch(`/api/session/${sessionId}/understanding`, {
           method: 'POST',
@@ -338,6 +344,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     }, [sessionId, userId]);
 
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedUserId);
+    const spotlightedStream = spotlightedUser?.id === userId ? localStream : remoteParticipants.find(p => p.id === spotlightedUserId)?.stream;
     
     if (authStatus === 'loading' || !sessionData) {
         return (
@@ -379,7 +386,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
                     sessionId={sessionId}
                     localStream={localStream}
                     remoteStreams={new Map(remoteParticipants.map(p => [p.id, p.stream]))}
-                    spotlightedStream={remoteParticipants.find(p => p.id === spotlightedUserId)?.stream ?? (spotlightedUserId === userId ? localStream : null)}
+                    spotlightedStream={spotlightedStream ?? null}
                     spotlightedUser={spotlightedUser}
                     isHandRaised={isHandRaised}
                     onToggleHandRaise={onToggleHandRaise}

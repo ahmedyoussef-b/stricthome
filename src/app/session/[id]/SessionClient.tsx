@@ -5,11 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useWebRTCStable } from '@/hooks/useWebRTCStable';
 import { SessionWrapper } from './SessionWrapper';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function SessionClient({ sessionId }: { sessionId: string }) {
   const { localStream, isReady, error } = useWebRTCStable(sessionId);
   const mountCountRef = useRef(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     mountCountRef.current += 1;
@@ -21,6 +23,18 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (error) {
+       toast({
+        variant: 'destructive',
+        title: "Erreur d'accès Média",
+        description: error,
+        duration: Infinity, // Keep it visible
+      });
+    }
+  }, [error, toast]);
+
+
   if (!isReady) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -31,7 +45,7 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
                 <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">Accès à la caméra et au microphone...</p>
                 <Loader2 className="animate-spin h-16 w-16 text-primary mx-auto" />
                     <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                    Tentative de connexion... (Mount #{mountCountRef.current})
+                    Veuillez patienter... (Mount #{mountCountRef.current})
                 </p>
             </div>
         </div>
@@ -58,5 +72,6 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     );
   }
 
+  // On a un flux valide, on peut rendre le reste de la session.
   return <SessionWrapper sessionId={sessionId} localStream={localStream} />;
 }

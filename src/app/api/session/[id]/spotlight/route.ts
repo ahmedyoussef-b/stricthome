@@ -9,7 +9,7 @@ export async function POST(
   const sessionId = params.id;
   try {
     const { participantId } = await request.json();
-    if (!sessionId || !participantId) {
+    if (!sessionId || participantId === undefined) { // participantId can be null
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
     await serverSpotlightParticipant(sessionId, participantId);
