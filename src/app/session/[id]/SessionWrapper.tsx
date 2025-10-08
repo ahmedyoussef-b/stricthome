@@ -206,10 +206,11 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
             if (data.toUserId !== userId) return;
 
             console.log(`📡 [WebRTC] Signal reçu de ${data.fromUserId}:`, data.signal.type);
-            const pc = peerConnections.current.get(data.fromUserId);
+            let pc = peerConnections.current.get(data.fromUserId);
             if (!pc) {
-                 console.warn(`❓ [WebRTC] PeerConnection non trouvée pour ${data.fromUserId}`);
-                 return;
+                 console.warn(`❓ [WebRTC] PeerConnection non trouvée pour ${data.fromUserId}, création...`);
+                 pc = createPeerConnection(data.fromUserId);
+                 peerConnections.current.set(data.fromUserId, pc);
             }
 
             if (data.signal.type === 'offer') {
@@ -271,7 +272,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const broadcastTimerEvent = (event: 'timer-started' | 'timer-paused' | 'timer-reset', time?: number) => {
-        fetch('/api/session/timer', {
+        fetch('/api/session/[id]/timer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId, event, time }),
