@@ -6,21 +6,23 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
+import { broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController, endCoursSession } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
-import { endCoursSession } from '@/lib/actions';
 
 // Configuration des serveurs STUN de Google
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun1.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
   ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle' as const,
+  rtcpMuxPolicy: 'require' as const
 };
 
 async function getSessionData(sessionId: string): Promise<{ session: CoursSessionWithRelations, students: StudentWithCareer[], teacher: any }> {
@@ -32,32 +34,6 @@ async function getSessionData(sessionId: string): Promise<{ session: CoursSessio
 }
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
-
-interface PeerConnection {
-  connection: RTCPeerConnection & { _createdAt?: number };
-  stream?: MediaStream;
-}
-
-// Fonction utilitaire pour valider les signaux
-const validateSignal = (signal: any): signal is WebRTCSignal => {
-  if (!signal || typeof signal !== 'object') {
-    console.error('❌ [WebRTC] Signal non objet:', signal);
-    return false;
-  }
-  
-  if (!signal.type) {
-    console.error('❌ [WebRTC] Signal sans type:', signal);
-    return false;
-  }
-  
-  const validTypes = ['offer', 'answer', 'ice-candidate'];
-  if (!validTypes.includes(signal.type)) {
-    console.error('❌- [WebRTC] Type de signal invalide:', signal.type);
-    return false;
-  }
-  
-  return true;
-};
 
 export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
@@ -77,15 +53,14 @@ export default function SessionPage() {
     const isTeacher = role === 'teacher';
 
     const localStreamRef = useRef<MediaStream | null>(null);
-    const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+    const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+    const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
     const [spotlightedParticipantId, setSpotlightedParticipantId] = useState<string | null>(null);
-    const [spotlightedStream, setSpotlightedStream] = useState<MediaStream | null>(null);
     
     const [isLoading, setIsLoading] = useState(true);
-    const [isEndingSession, setIsEndingSession] = useState(false);
     
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
@@ -98,31 +73,23 @@ export default function SessionPage() {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [sessionView, setSessionView] = useState<SessionViewMode>('split');
 
-    const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
-
-    const cleanup = useCallback(() => {
-        console.log("🧹 [Session] Nettoyage des connexions et des abonnements.");
+    const handleEndSession = useCallback(() => {
+        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
         
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
         }
 
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
         
-        peerConnectionsRef.current.forEach(pc => pc.connection.close());
+        peerConnectionsRef.current.forEach(pc => pc.close());
         peerConnectionsRef.current.clear();
         setRemoteStreams(new Map());
 
         if (sessionId) {
             pusherClient.unsubscribe(`presence-session-${sessionId}`);
         }
-    }, [sessionId]);
-
-    const handleEndSession = useCallback(() => {
-        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
-        cleanup();
     
         toast({
             title: "Session terminée",
@@ -136,11 +103,7 @@ export default function SessionPage() {
         } else {
             router.push('/');
         }
-    }, [cleanup, isTeacher, router, toast, userId]);
-
-    const handleLeaveSession = useCallback(() => {
-        handleEndSession();
-    }, [handleEndSession]);
+    }, [isTeacher, router, sessionId, toast, userId]);
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
@@ -152,41 +115,21 @@ export default function SessionPage() {
     }, [sessionId, userId]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
-        if (!validateSignal(signal)) {
-            console.log(`❌ [WebRTC] Signal de ${fromUserId} rejeté - validation échouée`);
+        const pc = peerConnectionsRef.current.get(fromUserId);
+        if (!pc) {
+            console.warn(`⚠️ [WebRTC] Connexion non trouvée pour ${fromUserId}, création...`);
+            // Connexion sera créée par le flux normal 'member_added'
             return;
         }
 
-        if (fromUserId === userId) return;
-
-        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal.type);
-
-        let peer = peerConnectionsRef.current.get(fromUserId);
-        if (!peer) {
-            console.log(`🔗 [WebRTC] Création automatique de connexion vers ${fromUserId}`);
-            const pc = new RTCPeerConnection({
-              iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:global.stun.twilio.com:3478' }
-              ],
-              iceTransportPolicy: 'all'
-            });
-            peer = { connection: pc };
-            peerConnectionsRef.current.set(fromUserId, peer);
-        }
-        const pc = peer.connection;
+        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal.type, '- État signalisation:', pc.signalingState);
 
         try {
             if (signal.type === 'offer') {
-                console.log(`📥 [WebRTC] Traitement offre de ${fromUserId} (état: ${pc.signalingState})`);
-                
-                if (pc.signalingState === 'closed' || pc.connectionState === 'failed') {
-                    console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId}`);
-                    pc.close();
-                    console.error("Cannot re-create peer connection in this state.");
+                if (pc.signalingState !== 'stable') {
+                    console.log('⏳ [WebRTC] Offre ignorée - état incompatible:', pc.signalingState);
                     return;
                 }
-                
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
@@ -194,140 +137,83 @@ export default function SessionPage() {
                 await broadcastSignal(fromUserId, pc.localDescription!);
                 
             } else if (signal.type === 'answer') {
-                 console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état: ${pc.signalingState})`);
-  
-                if (['have-local-offer', 'stable'].includes(pc.signalingState)) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                    console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
-                } else {
-                    console.warn(`⚠️ [WebRTC] État inattendu pour réponse: ${pc.signalingState}, tentative quand même...`);
-                    try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                        console.log(`✅ [WebRTC] Réponse forcée acceptée de ${fromUserId}`);
-                    } catch (error) {
-                        console.error(`❌ [WebRTC] Échec traitement réponse:`, error);
-                    }
+                if (pc.signalingState !== 'have-local-offer') {
+                    console.log('⏳ [WebRTC] Réponse ignorée - état incompatible:', pc.signalingState);
+                    return;
                 }
+                await pc.setRemoteDescription(new RTCSessionDescription(signal));
                 
             } else if (signal.type === 'ice-candidate' && signal.candidate) {
-                console.log(`🧊 [WebRTC] Candidat ICE reçu de ${fromUserId}`);
-                
                 if (pc.remoteDescription) {
                     await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                    console.log(`✅ [WebRTC] Candidat ICE ajouté de ${fromUserId}`);
                 } else {
-                    console.log(`⏳ [WebRTC] Candidat ICE en attente pour ${fromUserId}`);
+                    if (!pendingCandidatesRef.current.has(fromUserId)) {
+                        pendingCandidatesRef.current.set(fromUserId, []);
+                    }
+                    pendingCandidatesRef.current.get(fromUserId)?.push(signal.candidate);
                 }
             }
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
         }
-    }, [userId, broadcastSignal]);
-
+    }, [broadcastSignal]);
+    
     const createPeerConnection = useCallback((peerId: string) => {
-        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
-      
         if (peerConnectionsRef.current.has(peerId)) {
           console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
-          peerConnectionsRef.current.get(peerId)?.connection.close();
+          peerConnectionsRef.current.get(peerId)?.close();
         }
-      
-        const pc = new RTCPeerConnection({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
-          ],
-          iceTransportPolicy: 'all'
-        }) as RTCPeerConnection & { _createdAt?: number };
+        
+        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
+        const pc = new RTCPeerConnection(ICE_SERVERS);
+        peerConnectionsRef.current.set(peerId, pc);
 
-        pc._createdAt = Date.now();
-      
-        const peer = { connection: pc };
-        peerConnectionsRef.current.set(peerId, peer);
-      
-        pc.onconnectionstatechange = () => {
-          console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}, ICE: ${pc.iceConnectionState}, Signal: ${pc.signalingState}`);
-          
-          if (pc.connectionState === 'connected') {
-            console.log(`🎉 [WebRTC] CONNEXION ÉTABLIE avec ${peerId}`);
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            broadcastSignal(peerId, { type: 'ice-candidate', candidate: event.candidate });
           }
         };
-      
-        pc.onsignalingstatechange = () => {
-          console.log(`🔄 [WebRTC] ${peerId} - État signalisation: ${pc.signalingState}`);
+
+        pc.ontrack = (event) => {
+          console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
+          setRemoteStreams(prev => new Map(prev).set(peerId, event.streams[0]));
         };
-      
-        pc.oniceconnectionstatechange = async () => {
-            console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
-            
-            if (pc.iceConnectionState === 'failed') {
-                console.log(`🔄 [WebRTC] Redémarrage ICE pour ${peerId}`);
-                if (pc.signalingState === 'stable') {
-                    const offer = await pc.createOffer({ iceRestart: true });
-                    await pc.setLocalDescription(offer);
-                    await broadcastSignal(peerId, pc.localDescription!);
-                }
-            } else if (pc.iceConnectionState === 'connected') {
-                console.log(`✅ [WebRTC] ICE connecté avec ${peerId}`);
-            }
-        };
-      
+        
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => {
             pc.addTrack(track, localStreamRef.current!);
           });
-          console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
         }
-      
+        
         pc.onnegotiationneeded = async () => {
-          console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId} (état: ${pc.signalingState})`);
-      
-          try {
-            if (pc.signalingState !== 'stable') {
-              console.log(`⏳ [WebRTC] Attente état stable pour ${peerId} (actuel: ${pc.signalingState})`);
-              return;
+            try {
+                if (pc.signalingState !== 'stable') return;
+                console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId}`);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await broadcastSignal(peerId, pc.localDescription!);
+            } catch (err) {
+                console.error(`❌ [WebRTC] Erreur de négociation pour ${peerId}`, err);
             }
-      
-            console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
-            await broadcastSignal(peerId, pc.localDescription!);
-          } catch (error) {
-            console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
-          }
         };
-      
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log(`🧊 [WebRTC] Envoi candidat ICE à ${peerId}`);
-            broadcastSignal(peerId, {
-              type: 'ice-candidate',
-              candidate: event.candidate
-            });
-          } else {
-            console.log(`✅ [WebRTC] Génération candidats ICE terminée pour ${peerId}`);
-          }
+
+        pc.onconnectionstatechange = () => {
+            console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}`);
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                console.log(`🔄 [WebRTC] Reconnexion pour ${peerId}`);
+                // Simple restart
+                pc.restartIce();
+            }
         };
-      
-        pc.ontrack = (event) => {
-            console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
-            const stream = event.streams[0];
-            const peerData = peerConnectionsRef.current.get(peerId);
-            if (peerData) peerData.stream = stream;
-            setRemoteStreams(prev => new Map(prev).set(peerId, stream));
-            if (spotlightedParticipantId === peerId) setSpotlightedStream(stream);
-        };
-      
+
         return pc;
-      }, [broadcastSignal, spotlightedParticipantId]);
+    }, [broadcastSignal]);
 
     const removePeerConnection = useCallback((peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
         const peer = peerConnectionsRef.current.get(peerId);
         if (peer) {
-            peer.connection.close();
+            peer.close();
             peerConnectionsRef.current.delete(peerId);
         }
         setRemoteStreams(prev => {
@@ -342,65 +228,18 @@ export default function SessionPage() {
         });
     }, []);
 
-    const checkAndRepairConnections = useCallback(() => {
-        peerConnectionsRef.current.forEach((peer, userId) => {
-            const pc = peer.connection;
-            if (pc.connectionState === 'connecting' || pc.iceConnectionState === 'checking') {
-                const connectionTime = Date.now() - (pc._createdAt || 0);
-                if (connectionTime > 10000) { // 10 secondes
-                    console.log(`🔄 [WebRTC] Connexion ${userId} bloquée, reconnexion...`);
-                    createPeerConnection(userId);
-                }
-            }
-        });
-    }, [createPeerConnection]);
-
-    // Monitoring and repair effect
-    useEffect(() => {
-      const interval = setInterval(checkAndRepairConnections, 5000);
-      return () => clearInterval(interval);
-    }, [checkAndRepairConnections]);
-
-    const handleStartTimer = useCallback(async () => {
-        if (!isTeacher || isTimerRunning) return;
-        setIsTimerRunning(true);
-        await broadcastTimerEvent(sessionId, 'timer-started');
-    }, [isTeacher, isTimerRunning, sessionId]);
-
-    const handlePauseTimer = useCallback(async () => {
-        if (!isTeacher || !isTimerRunning) return;
-        setIsTimerRunning(false);
-        await broadcastTimerEvent(sessionId, 'timer-paused');
-    }, [isTeacher, isTimerRunning, sessionId]);
-
-    const handleResetTimer = useCallback(async () => {
-        if (!isTeacher) return;
-        setTimeLeft(duration);
-        setIsTimerRunning(false);
-        await broadcastTimerEvent(sessionId, 'timer-reset', { duration });
-    }, [isTeacher, duration, sessionId]);
-
-    const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
-        await broadcastTimerEvent(sessionId, 'session-view-changed', { view });
-    }, [sessionId]);
-
-    const handleSetStudentView = useCallback((view: SessionViewMode) => {
-        if (isTeacher) {
-            broadcastViewChange(view);
-        }
-    }, [isTeacher, broadcastViewChange]);
-
-
     // Initialisation et nettoyage de la session
      useEffect(() => {
         if (!sessionId || !userId) return;
 
         let presenceChannel: PresenceChannel;
+        let isComponentMounted = true;
 
         const initialize = async () => {
             try {
-                // 1. Charger les données de la session
                 const { session: sessionData, students, teacher } = await getSessionData(sessionId);
+                if (!isComponentMounted) return;
+
                 if (sessionData.endedAt) {
                     handleEndSession();
                     return;
@@ -411,74 +250,48 @@ export default function SessionPage() {
                 ].filter((u): u is SessionParticipant => u !== null && u !== undefined);
                 setAllSessionUsers(allUsers);
                 
-                if (sessionData.spotlightedParticipantSid) {
-                  setSpotlightedParticipantId(sessionData.spotlightedParticipantSid)
-                } else if(teacher) {
-                  setSpotlightedParticipantId(teacher.id)
-                }
-
-
-                // 2. Obtenir le flux média local
+                const initialSpotlight = sessionData.spotlightedParticipantSid ?? teacher?.id ?? null;
+                setSpotlightedParticipantId(initialSpotlight);
+                
                 try {
                     console.log("🎥 [WebRTC] Demande du flux média local...");
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
+                    if (!isComponentMounted) return stream.getTracks().forEach(t => t.stop());
                     localStreamRef.current = stream;
-                    if (spotlightedParticipantId === userId) {
-                        setSpotlightedStream(stream);
-                    }
                     console.log("✅ [WebRTC] Flux média local obtenu.");
                 } catch (error: any) {
-                    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                        console.warn("⚠️ [WebRTC] Aucun périphérique média trouvé. Session continue sans vidéo/audio local.");
-                        toast({
-                            variant: 'default',
-                            title: 'Aucune caméra/micro détecté',
-                            description: "Vous pouvez observer la session, mais pas y participer activement.",
-                        });
-                    } else {
-                        console.error("❌ [Session] Erreur d'initialisation:", error);
-                        toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
-                        cleanup();
-                        return; // Stop initialization
-                    }
+                    toast({ variant: 'destructive', title: 'Erreur Média', description: "Impossible d'accéder à la caméra/micro." });
                 }
 
-                // 3. S'abonner aux canaux Pusher
                 const presenceChannelName = `presence-session-${sessionId}`;
                 presenceChannel = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
                 
-                // 4. Gérer les membres de la présence
                 presenceChannel.bind('pusher:subscription_succeeded', (members: any) => {
-                     console.log(`👥 [Pusher] ${members.count} membre(s) dans la session`);
-                    const userIds = Object.values(members.members).map((m: any) => m.user_id).filter(id => id !== userId);
+                    const userIds = Object.keys(members.members).filter(id => id !== userId);
                     setOnlineUsers(userIds);
                     userIds.forEach(memberId => {
-                       console.log(`🔗 [WebRTC] Création connexion avec ${memberId}`);
-                       createPeerConnection(memberId)
+                       createPeerConnection(memberId);
                     });
                 });
 
-                presenceChannel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
-                    if (member.info.user_id === userId) return;
-                    const newMemberId = member.info.user_id;
-                    console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
-                    setOnlineUsers(prev => [...prev, newMemberId]);
-                    createPeerConnection(newMemberId);
+                presenceChannel.bind('pusher:member_added', (member: { id: string }) => {
+                    if (member.id === userId) return;
+                    setOnlineUsers(prev => [...prev, member.id]);
+                    createPeerConnection(member.id);
                 });
                 
-                presenceChannel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
-                    setOnlineUsers(prev => prev.filter(id => id !== member.info.user_id));
-                    removePeerConnection(member.info.user_id);
+                presenceChannel.bind('pusher:member_removed', (member: { id: string }) => {
+                    setOnlineUsers(prev => prev.filter(id => id !== member.id));
+                    removePeerConnection(member.id);
                 });
 
-                // 5. Gérer les signaux WebRTC
                 presenceChannel.bind('webrtc-signal', (data: { fromUserId: string, toUserId: string, signal: WebRTCSignal }) => {
                     if (data.toUserId === userId) {
                         handleSignal(data.fromUserId, data.signal);
                     }
                 });
 
-                // 6. Gérer les autres événements de la session
+                // --- Bind other events ---
                 presenceChannel.bind('session-ended', (data: { sessionId: string }) => {
                   if (data.sessionId === sessionId) handleEndSession();
                 });
@@ -488,22 +301,11 @@ export default function SessionPage() {
                 presenceChannel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
                     setRaisedHands(prev => {
                         const newSet = new Set(prev);
-                        const user = allSessionUsers.find(u => u.id === data.userId);
-                        if (data.isRaised) {
-                            newSet.add(data.userId);
-                            if (isTeacher) {
-                                toast({
-                                    title: "Main levée",
-                                    description: `${user?.name ?? 'Un élève'} a levé la main.`,
-                                });
-                            }
-                        } else {
-                            newSet.delete(data.userId);
-                        }
+                        data.isRaised ? newSet.add(data.userId) : newSet.delete(data.userId);
                         return newSet;
                     });
                 });
-                presenceChannel.bind('understanding-status-updated', (data: { userId: string, status: UnderstandingStatus }) => {
+                 presenceChannel.bind('understanding-status-updated', (data: { userId: string, status: UnderstandingStatus }) => {
                     setUnderstandingStatus(prev => new Map(prev).set(data.userId, data.status));
                 });
                 presenceChannel.bind('timer-started', () => setIsTimerRunning(true));
@@ -515,145 +317,87 @@ export default function SessionPage() {
                     setTimeLeft(data.duration);
                 });
                 presenceChannel.bind('session-view-changed', (data: { view: SessionViewMode }) => {
-                    if (!isTeacher) {
-                        setSessionView(data.view);
-                    }
+                    if (!isTeacher) setSessionView(data.view);
                 });
+                // --- End Bind other events ---
 
                 setIsLoading(false);
 
             } catch (error) {
                 console.error("❌ [Session] Erreur d'initialisation:", error);
                 toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
-                cleanup();
             }
         };
 
         initialize();
+
         return () => {
+            isComponentMounted = false;
+            console.log("🧹 [Session] Démontage du composant. Nettoyage en cours.");
             if (presenceChannel) {
                 presenceChannel.unbind_all();
+                pusherClient.unsubscribe(presenceChannel.name);
             }
-            cleanup();
+            localStreamRef.current?.getTracks().forEach(track => track.stop());
+            peerConnectionsRef.current.forEach(pc => pc.close());
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, userId]);
-    
-    // Mettre à jour le stream en vedette
-    useEffect(() => {
-        if (!spotlightedParticipantId) return;
+    }, [sessionId, userId, toast, handleEndSession, createPeerConnection, removePeerConnection, handleSignal, isTeacher]);
 
-        if (spotlightedParticipantId === userId) {
-            setSpotlightedStream(localStreamRef.current);
-        } else {
-            const peer = peerConnectionsRef.current.get(spotlightedParticipantId);
-            if (peer && peer.stream) {
-                setSpotlightedStream(peer.stream);
-            } else {
-                 setSpotlightedStream(remoteStreams.get(spotlightedParticipantId) || null);
-            }
-        }
-    }, [spotlightedParticipantId, remoteStreams, userId]);
-    
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         if (!isTeacher) return;
-        try {
-            await serverSpotlightParticipant(sessionId, participantId);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
-        }
-    }, [isTeacher, sessionId, toast]);
+        await serverSpotlightParticipant(sessionId, participantId);
+    }, [isTeacher, sessionId]);
 
     const handleGiveWhiteboardControl = useCallback(async (participantId: string | null) => {
         if (!isTeacher) return;
-        try {
-            await serverSetWhiteboardController(sessionId, participantId);
-        } catch(error) {
-            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
-        }
-    }, [isTeacher, sessionId, toast]);
+        await serverSetWhiteboardController(sessionId, participantId);
+    }, [isTeacher, sessionId]);
 
     const handleToggleHandRaise = useCallback(async () => {
         if (isTeacher || !userId) return;
         const isRaised = !raisedHands.has(userId);
-        
-        // Optimistic update
         setRaisedHands(prev => {
             const newSet = new Set(prev);
-            if (isRaised) {
-                newSet.add(userId);
-            } else {
-                newSet.delete(userId);
-            }
+            isRaised ? newSet.add(userId) : newSet.delete(userId);
             return newSet;
         });
-
-        try {
-            await fetch(`/api/session/${sessionId}/raise-hand`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, isRaised }),
-            });
-        } catch (error) {
-            // Revert optimistic update on error
-            setRaisedHands(prev => {
-                const newSet = new Set(prev);
-                if (isRaised) {
-                    newSet.delete(userId);
-                } else {
-                    newSet.add(userId);
-                }
-                return newSet;
-            });
-            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de la main levée.' });
-        }
-    }, [isTeacher, raisedHands, sessionId, toast, userId]);
+        await fetch(`/api/session/${sessionId}/raise-hand`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, isRaised }),
+        });
+    }, [isTeacher, raisedHands, sessionId, userId]);
 
     const handleUnderstandingChange = useCallback(async (status: UnderstandingStatus) => {
         if (isTeacher || !userId) return;
-
-        // Optimistic update
         setUnderstandingStatus(prev => new Map(prev).set(userId, status));
+        await fetch(`/api/session/${sessionId}/understanding`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, status }),
+        });
+    }, [isTeacher, sessionId, userId]);
 
-        try {
-            await fetch(`/api/session/${sessionId}/understanding`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, status }),
-            });
-        } catch (error) {
-            // Revert not straightforward, maybe just toast error
-            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de compréhension.' });
-        }
-    }, [isTeacher, sessionId, toast, userId]);
-
+    // Timer logic
     useEffect(() => {
         if (isTimerRunning) {
-            timerIntervalRef.current = setInterval(() => {
-                setTimeLeft(prevTimeLeft => {
-                    if (prevTimeLeft <= 1) {
-                        clearInterval(timerIntervalRef.current!);
-                        timerIntervalRef.current = null;
-                        setIsTimerRunning(false);
-                        return 0;
-                    }
-                    return prevTimeLeft - 1;
-                });
-            }, 1000);
+            timerIntervalRef.current = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
         } else if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
         }
         return () => {
-            if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-            }
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         };
     }, [isTimerRunning]);
 
-
+    const handleStartTimer = useCallback(async () => { if (isTeacher) { setIsTimerRunning(true); await broadcastTimerEvent(sessionId, 'timer-started'); }}, [isTeacher, sessionId]);
+    const handlePauseTimer = useCallback(async () => { if (isTeacher) { setIsTimerRunning(false); await broadcastTimerEvent(sessionId, 'timer-paused'); }}, [isTeacher, sessionId]);
+    const handleResetTimer = useCallback(async () => { if (isTeacher) { setTimeLeft(duration); setIsTimerRunning(false); await broadcastTimerEvent(sessionId, 'timer-reset', { duration }); }}, [isTeacher, duration, sessionId]);
+    const handleSetStudentView = useCallback(async (view: SessionViewMode) => { if (isTeacher) await broadcastTimerEvent(sessionId, 'session-view-changed', { view }); }, [isTeacher, sessionId]);
+    
+    // Derived state for rendering
+    const spotlightedStream = spotlightedParticipantId === userId ? localStreamRef.current : remoteStreams.get(spotlightedParticipantId || '');
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
-
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
     if (isLoading) {
@@ -670,8 +414,7 @@ export default function SessionPage() {
             <SessionHeader 
                 sessionId={sessionId}
                 isTeacher={isTeacher}
-                onLeaveSession={handleLeaveSession}
-                isEndingSession={isEndingSession}
+                onLeaveSession={handleEndSession} // Students leaving also triggers end for now
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
                 onStartTimer={handleStartTimer}
