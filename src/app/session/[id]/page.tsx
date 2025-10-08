@@ -120,6 +120,10 @@ export default function SessionPage() {
         }
     }, [sessionId]);
     
+    const handleLeaveSession = useCallback(() => {
+        handleEndSession();
+    }, [handleEndSession]);
+
     const handleEndSession = useCallback(() => {
         console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
         cleanup();
@@ -137,10 +141,6 @@ export default function SessionPage() {
             router.push('/');
         }
     }, [cleanup, isTeacher, router, toast, userId]);
-
-    const handleLeaveSession = useCallback(() => {
-        handleEndSession();
-    }, [handleEndSession]);
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
@@ -414,20 +414,20 @@ export default function SessionPage() {
 
     const startTimer = useCallback(() => {
         if (isTimerRunning) return;
-        setIsTimerRunning(true);
         if (isTeacher) broadcastTimerEvent('timer-started');
+        setIsTimerRunning(true);
     }, [isTimerRunning, isTeacher, broadcastTimerEvent]);
     
     const pauseTimer = useCallback(() => {
         if (!isTimerRunning) return;
-        setIsTimerRunning(false);
         if (isTeacher) broadcastTimerEvent('timer-paused');
+        setIsTimerRunning(false);
     }, [isTimerRunning, isTeacher, broadcastTimerEvent]);
 
     const resetTimer = useCallback(() => {
+        if (isTeacher) broadcastTimerEvent('timer-reset', { duration });
         setIsTimerRunning(false);
         setTimeLeft(duration);
-        if (isTeacher) broadcastTimerEvent('timer-reset', { duration });
     }, [isTeacher, duration, broadcastTimerEvent]);
 
     useEffect(() => {
@@ -583,7 +583,6 @@ export default function SessionPage() {
                         return newSet;
                     });
                 });
-                // Timer events
                 presenceChannel.bind('timer-started', startTimer);
                 presenceChannel.bind('timer-paused', pauseTimer);
                 presenceChannel.bind('timer-reset', (data: { duration: number }) => {
@@ -750,7 +749,7 @@ export default function SessionPage() {
                         initialWhiteboardControllerId={initialWhiteboardControllerId}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
-                        onGiveWhiteboardControl={onGiveWhiteboardControl}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         sessionView={sessionView}
                     />
                 )}
