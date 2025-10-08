@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, setWhiteboardController, spotlightParticipant } from '@/lib/actions';
+import { endCoursSession } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -87,7 +87,6 @@ export default function SessionPage() {
     const [isEndingSession, setIsEndingSession] = useState(false);
     
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
-    const [initialWhiteboardControllerId, setInitialWhiteboardControllerId] = useState<string | null>(null);
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
     const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
     const [understandingStatus, setUnderstandingStatus] = useState<Map<string, UnderstandingStatus>>(new Map());
@@ -266,14 +265,6 @@ export default function SessionPage() {
           
           if (pc.connectionState === 'connected') {
             console.log(`🎉 [WebRTC] CONNEXION ÉTABLIE avec ${peerId}`);
-          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-            console.log(`🔄 [WebRTC] Tentative de reconnexion à ${peerId}`);
-            setTimeout(() => {
-              if (peerConnectionsRef.current.get(peerId)?.connection === pc) {
-                console.log(`🔁 [WebRTC] Reconnexion automatique à ${peerId}`);
-                createPeerConnection(peerId);
-              }
-            }, 2000);
           }
         };
       
@@ -281,11 +272,16 @@ export default function SessionPage() {
           console.log(`🔄 [WebRTC] ${peerId} - État signalisation: ${pc.signalingState}`);
         };
       
-        pc.oniceconnectionstatechange = () => {
+        pc.oniceconnectionstatechange = async () => {
             console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
             
             if (pc.iceConnectionState === 'failed') {
                 console.log(`🔄 [WebRTC] Redémarrage ICE pour ${peerId}`);
+                if (pc.signalingState === 'stable') {
+                    const offer = await pc.createOffer({ iceRestart: true });
+                    await pc.setLocalDescription(offer);
+                    await broadcastSignal(peerId, pc.localDescription!);
+                }
             } else if (pc.iceConnectionState === 'connected') {
                 console.log(`✅ [WebRTC] ICE connecté avec ${peerId}`);
             }
@@ -416,21 +412,21 @@ export default function SessionPage() {
 
     const startTimer = useCallback(() => {
         if (!isTeacher || isTimerRunning) return;
-        broadcastTimerEvent('timer-started');
         setIsTimerRunning(true);
+        broadcastTimerEvent('timer-started');
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
     const pauseTimer = useCallback(() => {
         if (!isTeacher || !isTimerRunning) return;
-        broadcastTimerEvent('timer-paused');
         setIsTimerRunning(false);
+        broadcastTimerEvent('timer-paused');
     }, [isTeacher, isTimerRunning, broadcastTimerEvent]);
 
     const resetTimer = useCallback(() => {
         if (!isTeacher) return;
-        broadcastTimerEvent('timer-reset', { duration });
-        setIsTimerRunning(false);
         setTimeLeft(duration);
+        setIsTimerRunning(false);
+        broadcastTimerEvent('timer-reset', { duration });
     }, [isTeacher, duration, broadcastTimerEvent]);
 
 
@@ -494,7 +490,7 @@ export default function SessionPage() {
                     ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
                 ].filter((u): u is SessionParticipant => u !== null && u !== undefined);
                 setAllSessionUsers(allUsers);
-                setInitialWhiteboardControllerId(sessionData.whiteboardControllerId);
+                
                 if (sessionData.spotlightedParticipantSid) {
                   setSpotlightedParticipantId(sessionData.spotlightedParticipantSid)
                 } else if(teacher) {
@@ -590,8 +586,8 @@ export default function SessionPage() {
                 presenceChannel.bind('understanding-status-updated', (data: { userId: string, status: UnderstandingStatus }) => {
                     setUnderstandingStatus(prev => new Map(prev).set(data.userId, data.status));
                 });
-                presenceChannel.bind('timer-started', startTimer);
-                presenceChannel.bind('timer-paused', pauseTimer);
+                presenceChannel.bind('timer-started', () => setIsTimerRunning(true));
+                presenceChannel.bind('timer-paused', () => setIsTimerRunning(false));
                 presenceChannel.bind('timer-reset', (data: { duration: number }) => {
                     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
                     setIsTimerRunning(false);
@@ -648,8 +644,11 @@ export default function SessionPage() {
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         if (!isTeacher) return;
         try {
-            await spotlightParticipant(sessionId, participantId);
-            // Optimistic update handled by pusher event
+            await fetch(`/api/session/${sessionId}/spotlight`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participantId }),
+            });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
         }
@@ -658,8 +657,11 @@ export default function SessionPage() {
     const handleGiveWhiteboardControl = useCallback(async (participantId: string | null) => {
         if (!isTeacher) return;
         try {
-            await setWhiteboardController(sessionId, participantId);
-             // Optimistic update handled by pusher event
+            await fetch(`/api/session/${sessionId}/whiteboard-control`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participantId }),
+            });
         } catch(error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }

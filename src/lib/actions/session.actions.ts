@@ -199,3 +199,24 @@ export async function endCoursSession(sessionId: string) {
 
   return updatedSession;
 }
+
+
+// These actions were being called from the client, but should be server actions
+// for security and consistency. I am moving the fetch calls inside the main
+// session page to server actions.
+
+export async function serverSpotlightParticipant(sessionId: string, participantId: string) {
+    const session = await getAuthSession();
+    if (session?.user.role !== 'PROFESSEUR') {
+        throw new Error("Unauthorized");
+    }
+    await spotlightParticipant(sessionId, participantId);
+}
+
+export async function serverSetWhiteboardController(sessionId: string, participantId: string | null) {
+     const session = await getAuthSession();
+    if (session?.user.role !== 'PROFESSEUR') {
+        throw new Error("Unauthorized");
+    }
+    await setWhiteboardController(sessionId, participantId);
+}
