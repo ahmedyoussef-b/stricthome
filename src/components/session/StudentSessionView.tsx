@@ -60,9 +60,18 @@ export function StudentSessionView({
 
         channel.bind('whiteboard-control-changed', handleControlChange);
 
+        // Fetch initial state
+        fetch(`/api/session/${sessionId}/details`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.session) {
+                    setWhiteboardControllerId(data.session.whiteboardControllerId);
+                }
+            });
+
+
         return () => {
             channel.unbind('whiteboard-control-changed', handleControlChange);
-            pusherClient.unsubscribe(channelName);
         };
     }, [sessionId]);
     
@@ -70,7 +79,7 @@ export function StudentSessionView({
     const controllerUser = spotlightedUser?.id === whiteboardControllerId ? spotlightedUser : undefined;
 
     const renderSpotlight = () => {
-        if (spotlightedStream) {
+        if (spotlightedStream && spotlightedUser) {
             return (
                 <Participant 
                     stream={spotlightedStream}
@@ -88,7 +97,7 @@ export function StudentSessionView({
             <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
                 <div className="text-center text-muted-foreground">
                     <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                    <p className="mt-2">En attente de la connexion...</p>
+                    <p className="mt-2">En attente du professeur...</p>
                 </div>
             </Card>
         );
@@ -103,12 +112,28 @@ export function StudentSessionView({
     );
     
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 flex-1 min-h-0 py-6">
-             <div className="w-full flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 flex-1 min-h-0 py-6 px-4">
+            
+             {/* Main content area */}
+             <div className="h-full min-h-0">
+                 {sessionView === 'split' ? (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+                        <div className="h-full min-h-0">{renderSpotlight()}</div>
+                        <div className="h-full min-h-0">{renderWhiteboard()}</div>
+                    </div>
+                ) : sessionView === 'camera' ? (
+                    renderSpotlight()
+                ) : (
+                    renderWhiteboard()
+                )}
+            </div>
+
+            {/* Sidebar for student controls */}
+            <div className="w-full flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
                  <Card>
                     <CardHeader className='p-3'>
                         <CardTitle className='text-sm flex items-center gap-2'>
-                           Niveau de compréhension
+                           Mon statut
                         </CardTitle>
                     </CardHeader>
                     <CardContent className='p-3 pt-0'>
@@ -116,7 +141,7 @@ export function StudentSessionView({
                             <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value: string) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="understood" aria-label="J'ai compris" className='data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600'>
+                                        <ToggleGroupItem value="understood" aria-label="J'ai compris" className='data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 flex-1'>
                                             <Smile className="h-5 w-5" />
                                         </ToggleGroupItem>
                                     </TooltipTrigger>
@@ -124,19 +149,19 @@ export function StudentSessionView({
                                 </Tooltip>
                                  <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="confused" aria-label="Je suis un peu perdu" className='data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-600'>
+                                        <ToggleGroupItem value="confused" aria-label="Je suis un peu perdu" className='data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-600 flex-1'>
                                             <Meh className="h-5 w-5" />
                                         </ToggleGroupItem>
                                     </TooltipTrigger>
-                                    <TooltipContent><p>Je suis un peu perdu</p></TooltipContent>
+                                    <TooltipContent><p>Je suis confus(e)</p></TooltipContent>
                                 </Tooltip>
                                  <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="lost" aria-label="Je n'ai pas compris" className='data-[state=on]:bg-red-500/20 data-[state=on]:text-red-600'>
+                                        <ToggleGroupItem value="lost" aria-label="Je n'ai pas compris" className='data-[state=on]:bg-red-500/20 data-[state=on]:text-red-600 flex-1'>
                                             <Frown className="h-5 w-5" />
                                         </ToggleGroupItem>
                                     </TooltipTrigger>
-                                    <TooltipContent><p>Je n'ai pas compris</p></TooltipContent>
+                                    <TooltipContent><p>Je suis perdu(e)</p></TooltipContent>
                                 </Tooltip>
                             </ToggleGroup>
                         </TooltipProvider>
@@ -145,26 +170,13 @@ export function StudentSessionView({
                  <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
+                    variant={isHandRaised ? 'default': 'outline'}
                     className={cn("w-full mt-auto", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
                 >
                    <Hand className="mr-2 h-5 w-5" />
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
              </div>
-             <div className="grid gap-6 h-full min-h-0 lg:grid-cols-1" style={{ gridTemplateRows: 'auto 1fr' }}>
-                <div className="h-full min-h-0">
-                     {sessionView === 'split' ? (
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
-                            <div className="h-full min-h-0">{renderSpotlight()}</div>
-                            <div className="h-full min-h-0">{renderWhiteboard()}</div>
-                        </div>
-                    ) : sessionView === 'camera' ? (
-                        renderSpotlight()
-                    ) : (
-                        renderWhiteboard()
-                    )}
-                </div>
-            </div>
         </div>
     );
 }
