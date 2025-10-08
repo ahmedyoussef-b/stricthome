@@ -6,14 +6,14 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController, endCoursSession } from '@/lib/actions';
+import { broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
-import { useWebRTCNegotiation, WebRTCSignal } from '@/hooks/useWebRTCNegotiation';
+import { endCoursSession } from '@/lib/actions';
 
 // Configuration des serveurs STUN de Google
 const ICE_SERVERS = {
@@ -61,6 +61,9 @@ const validateSignal = (signal: any): signal is WebRTCSignal => {
 
 export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
+export type WebRTCSignal =
+  | RTCSessionDescriptionInit
+  | { type: 'ice-candidate', candidate: RTCIceCandidateInit | null };
 
 export default function SessionPage() {
     const router = useRouter();
@@ -94,8 +97,6 @@ export default function SessionPage() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [sessionView, setSessionView] = useState<SessionViewMode>('split');
-
-    const { startNegotiation, endNegotiation, addPendingOffer, getPendingCount } = useWebRTCNegotiation();
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
@@ -177,12 +178,6 @@ export default function SessionPage() {
 
         try {
             if (signal.type === 'offer') {
-                if (!startNegotiation()) {
-                    console.log(`📥 [WebRTC] Offre de ${fromUserId} mise en attente`);
-                    addPendingOffer(fromUserId, { fromUserId, toUserId: userId!, signal });
-                    return;
-                }
-
                 console.log(`📥 [WebRTC] Traitement offre de ${fromUserId} (état: ${pc.signalingState})`);
                 
                 if (pc.signalingState === 'closed' || pc.connectionState === 'failed') {
@@ -226,16 +221,8 @@ export default function SessionPage() {
             }
         } catch (error) {
             console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
-        } finally {
-            if (signal.type === 'offer') {
-                const pending = endNegotiation();
-                if (pending) {
-                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
-                    setTimeout(() => handleSignal(pending.fromUserId, pending.signalData.signal), 200);
-                }
-            }
         }
-    }, [userId, startNegotiation, addPendingOffer, broadcastSignal, endNegotiation]);
+    }, [userId, broadcastSignal]);
 
     const createPeerConnection = useCallback((peerId: string) => {
         console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
@@ -294,11 +281,6 @@ export default function SessionPage() {
       
         pc.onnegotiationneeded = async () => {
           console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId} (état: ${pc.signalingState})`);
-          
-          if (!startNegotiation()) {
-            console.log(`⏳ [WebRTC] Négociation différée pour ${peerId}`);
-            return;
-          }
       
           try {
             if (pc.signalingState !== 'stable') {
@@ -314,14 +296,6 @@ export default function SessionPage() {
             await broadcastSignal(peerId, pc.localDescription!);
           } catch (error) {
             console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
-          } finally {
-            const pending = endNegotiation();
-            if (pending) {
-              console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
-              setTimeout(() => {
-                handleSignal(pending.fromUserId, pending.signalData.signal);
-              }, 200);
-            }
           }
         };
       
@@ -347,7 +321,7 @@ export default function SessionPage() {
         };
       
         return pc;
-      }, [broadcastSignal, endNegotiation, handleSignal, spotlightedParticipantId, startNegotiation]);
+      }, [broadcastSignal, spotlightedParticipantId]);
 
     const removePeerConnection = useCallback((peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
@@ -387,19 +361,6 @@ export default function SessionPage() {
       return () => clearInterval(interval);
     }, [checkAndRepairConnections]);
 
-
-    // Monitoring effect
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const pendingCount = getPendingCount();
-            if (pendingCount > 0) {
-            console.log(`📊 [WebRTC] Monitoring: ${pendingCount} offre(s) en attente`);
-            }
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [getPendingCount]);
-
     const handleStartTimer = useCallback(async () => {
         if (!isTeacher || isTimerRunning) return;
         setIsTimerRunning(true);
@@ -423,9 +384,8 @@ export default function SessionPage() {
         await broadcastTimerEvent(sessionId, 'session-view-changed', { view });
     }, [sessionId]);
 
-    const handleSetSessionView = useCallback((view: SessionViewMode) => {
+    const handleSetStudentView = useCallback((view: SessionViewMode) => {
         if (isTeacher) {
-            setSessionView(view);
             broadcastViewChange(view);
         }
     }, [isTeacher, broadcastViewChange]);
@@ -577,7 +537,7 @@ export default function SessionPage() {
             cleanup();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, userId, cleanup, createPeerConnection, handleEndSession, handleSignal, removePeerConnection]);
+    }, [sessionId, userId]);
     
     // Mettre à jour le stream en vedette
     useEffect(() => {
@@ -594,12 +554,6 @@ export default function SessionPage() {
             }
         }
     }, [spotlightedParticipantId, remoteStreams, userId]);
-    
-    const handleEndSessionForEveryone = useCallback(() => {
-        if (!isTeacher || isEndingSession) return;
-        setIsEndingSession(true);
-        endCoursSession(sessionId).finally(() => setIsEndingSession(false));
-    }, [isTeacher, isEndingSession, sessionId]);
     
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         if (!isTeacher) return;
@@ -716,7 +670,6 @@ export default function SessionPage() {
             <SessionHeader 
                 sessionId={sessionId}
                 isTeacher={isTeacher}
-                onEndSession={handleEndSessionForEveryone}
                 onLeaveSession={handleLeaveSession}
                 isEndingSession={isEndingSession}
                 timeLeft={timeLeft}
@@ -740,7 +693,7 @@ export default function SessionPage() {
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
                         sessionView={sessionView}
-                        onSetSessionView={handleSetSessionView}
+                        onSetSessionView={handleSetStudentView}
                     />
                 ) : (
                     <StudentSessionView
