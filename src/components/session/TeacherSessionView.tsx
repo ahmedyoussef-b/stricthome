@@ -1,6 +1,8 @@
+
 // src/components/session/TeacherSessionView.tsx
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { Whiteboard } from '@/components/Whiteboard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
@@ -19,6 +21,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { AttentionTracker } from '../AttentionTracker';
 import { SessionViewControls } from './SessionViewControls';
 import { SessionViewMode } from '@/app/session/[id]/page';
+import { pusherClient } from '@/lib/pusher/client';
+import { useSession } from 'next-auth/react';
+
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -31,9 +36,7 @@ export function TeacherSessionView({
     allSessionUsers,
     onlineUserIds,
     onSpotlightParticipant,
-    whiteboardControllerId,
-    isControlledByCurrentUser,
-    controllerUser,
+    initialWhiteboardControllerId,
     onGiveWhiteboardControl,
     raisedHands,
     sessionView,
@@ -46,17 +49,39 @@ export function TeacherSessionView({
     allSessionUsers: SessionParticipant[];
     onlineUserIds: string[];
     onSpotlightParticipant: (participantId: string) => void;
-    whiteboardControllerId: string | null;
-    isControlledByCurrentUser: boolean;
-    controllerUser: SessionParticipant | null | undefined;
-    onGiveWhiteboardControl: (userId: string) => void;
+    initialWhiteboardControllerId: string | null;
+    onGiveWhiteboardControl: (userId: string | null) => void;
     raisedHands: Set<string>;
     sessionView: SessionViewMode;
     onSetSessionView: (view: SessionViewMode) => void;
 }) {
+    const { data: session } = useSession();
+    const localUserId = session?.user.id;
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState(initialWhiteboardControllerId);
 
-    const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
-    const localUserId = teacher?.id;
+    useEffect(() => {
+        setWhiteboardControllerId(initialWhiteboardControllerId);
+    }, [initialWhiteboardControllerId]);
+
+    useEffect(() => {
+        if (!sessionId) return;
+        const channelName = `presence-session-${sessionId}`;
+        const channel = pusherClient.subscribe(channelName);
+
+        const handleControlChange = (data: { controllerId: string | null }) => {
+            setWhiteboardControllerId(data.controllerId);
+        };
+
+        channel.bind('whiteboard-control-changed', handleControlChange);
+
+        return () => {
+            channel.unbind('whiteboard-control-changed', handleControlChange);
+            pusherClient.unsubscribe(channelName);
+        };
+    }, [sessionId]);
+
+    const isControlledByCurrentUser = whiteboardControllerId === localUserId;
+    const controllerUser = allSessionUsers.find(u => u.id === whiteboardControllerId);
 
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
@@ -218,3 +243,5 @@ export function TeacherSessionView({
         </div>
     );
 }
+
+    

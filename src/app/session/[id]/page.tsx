@@ -86,7 +86,7 @@ export default function SessionPage() {
     const [isEndingSession, setIsEndingSession] = useState(false);
     
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
+    const [initialWhiteboardControllerId, setInitialWhiteboardControllerId] = useState<string | null>(null);
     const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
     const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
 
@@ -499,7 +499,7 @@ export default function SessionPage() {
                     ...(students || []).map(s => ({ ...s, role: Role.ELEVE }))
                 ].filter((u): u is SessionParticipant => u !== null && u !== undefined);
                 setAllSessionUsers(allUsers);
-                setWhiteboardControllerId(sessionData.whiteboardControllerId);
+                setInitialWhiteboardControllerId(sessionData.whiteboardControllerId);
                 if (sessionData.spotlightedParticipantSid) {
                   setSpotlightedParticipantId(sessionData.spotlightedParticipantSid)
                 } else if(teacher) {
@@ -570,9 +570,6 @@ export default function SessionPage() {
                 });
                 presenceChannel.bind('participant-spotlighted', (data: { participantId: string }) => {
                   setSpotlightedParticipantId(data.participantId);
-                });
-                presenceChannel.bind('whiteboard-control-changed', (data: { controllerId: string | null }) => {
-                    setWhiteboardControllerId(data.controllerId);
                 });
                 presenceChannel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
                     setRaisedHands(prev => {
@@ -661,7 +658,6 @@ export default function SessionPage() {
         if (!isTeacher) return;
         try {
             await setWhiteboardController(sessionId, participantId);
-            setWhiteboardControllerId(participantId);
         } catch(error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }
@@ -704,9 +700,6 @@ export default function SessionPage() {
     }, [isTeacher, raisedHands, sessionId, toast, userId]);
 
 
-    const controllerUser = allSessionUsers.find(u => u && u.id === whiteboardControllerId);
-    const isControlledByCurrentUser = whiteboardControllerId === userId;
-
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
 
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
@@ -745,9 +738,7 @@ export default function SessionPage() {
                         allSessionUsers={allSessionUsers}
                         onlineUserIds={onlineUsers}
                         onSpotlightParticipant={handleSpotlightParticipant}
-                        whiteboardControllerId={whiteboardControllerId}
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerUser={controllerUser}
+                        initialWhiteboardControllerId={initialWhiteboardControllerId}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
                         sessionView={sessionView}
@@ -760,12 +751,10 @@ export default function SessionPage() {
                         remoteStreams={remoteStreams}
                         spotlightedStream={spotlightedStream}
                         spotlightedUser={spotlightedUser}
-                        whiteboardControllerId={whiteboardControllerId}
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerUser={controllerUser}
-                        onGiveWhiteboardControl={() => {}} // Les élèves ne peuvent pas donner le contrôle
+                        initialWhiteboardControllerId={initialWhiteboardControllerId}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
+                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         sessionView={sessionView}
                     />
                 )}
@@ -773,3 +762,5 @@ export default function SessionPage() {
         </div>
     );
 }
+
+    

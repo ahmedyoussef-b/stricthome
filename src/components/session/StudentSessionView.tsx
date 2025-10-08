@@ -1,6 +1,8 @@
+
 // src/components/session/StudentSessionView.tsx
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { Hand } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { Whiteboard } from '@/components/Whiteboard';
@@ -11,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { SessionViewMode } from '@/app/session/[id]/page';
 import { Card } from '../ui/card';
 import { Loader2 } from 'lucide-react';
+import { pusherClient } from '@/lib/pusher/client';
+import { useSession } from 'next-auth/react';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -20,12 +24,10 @@ interface StudentSessionViewProps {
     remoteStreams: Map<string, MediaStream>;
     spotlightedStream: MediaStream | null;
     spotlightedUser: SessionParticipant | null | undefined;
-    whiteboardControllerId: string | null;
-    isControlledByCurrentUser: boolean;
-    controllerUser: SessionParticipant | null | undefined;
+    initialWhiteboardControllerId: string | null;
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
-    onGiveWhiteboardControl: (userId: string) => void;
+    onGiveWhiteboardControl: (userId: string | null) => void;
     sessionView: SessionViewMode;
 }
 
@@ -34,14 +36,39 @@ export function StudentSessionView({
     localStream,
     spotlightedStream,
     spotlightedUser,
-    whiteboardControllerId,
-    isControlledByCurrentUser,
-    controllerUser,
+    initialWhiteboardControllerId,
     isHandRaised,
     onToggleHandRaise,
     onGiveWhiteboardControl,
     sessionView,
 }: StudentSessionViewProps) {
+    const { data: session } = useSession();
+    const userId = session?.user.id;
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState(initialWhiteboardControllerId);
+
+    useEffect(() => {
+        setWhiteboardControllerId(initialWhiteboardControllerId);
+    }, [initialWhiteboardControllerId]);
+
+    useEffect(() => {
+        if (!sessionId) return;
+        const channelName = `presence-session-${sessionId}`;
+        const channel = pusherClient.subscribe(channelName);
+
+        const handleControlChange = (data: { controllerId: string | null }) => {
+            setWhiteboardControllerId(data.controllerId);
+        };
+
+        channel.bind('whiteboard-control-changed', handleControlChange);
+
+        return () => {
+            channel.unbind('whiteboard-control-changed', handleControlChange);
+            pusherClient.unsubscribe(channelName);
+        };
+    }, [sessionId]);
+    
+    const isControlledByCurrentUser = whiteboardControllerId === userId;
+    const controllerUser = spotlightedUser?.id === whiteboardControllerId ? spotlightedUser : undefined;
 
     const renderSpotlight = () => {
         if (spotlightedStream) {
@@ -53,7 +80,7 @@ export function StudentSessionView({
                     isTeacher={false}
                     participantUserId={spotlightedUser?.id ?? ''}
                     displayName={spotlightedUser?.name ?? undefined}
-                    onGiveWhiteboardControl={onGiveWhiteboardControl}
+                    onGiveWhiteboardControl={() => {}} // Students can't give control
                     isWhiteboardController={spotlightedUser?.id === whiteboardControllerId}
                 />
             );
@@ -77,8 +104,8 @@ export function StudentSessionView({
     );
     
     return (
-        <div className="grid grid-cols-[auto_1fr] gap-4 flex-1 min-h-0 py-6 h-full">
-             <div className="w-64 flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 flex-1 min-h-0 py-6">
+             <div className="w-full flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
                  <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
@@ -108,3 +135,5 @@ export function StudentSessionView({
         </div>
     );
 }
+
+    
