@@ -10,9 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
-import type { UserWithClasse, StudentWithCareer } from '@/lib/types';
+import type { StudentWithCareer } from '@/lib/types';
 import { Role, CoursSession } from '@prisma/client';
-import { useWebRTCStable } from '@/hooks/useWebRTCStable';
 
 export type SessionViewMode = 'split' | 'camera' | 'whiteboard';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
@@ -28,7 +27,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     const [sessionData, setSessionData] = useState<{ session: CoursSession, students: StudentWithCareer[], teacher: any } | null>(null);
     const [allSessionUsers, setAllSessionUsers] = useState<SessionParticipant[]>([]);
     const [remoteParticipants, setRemoteParticipants] = useState<{ id: string, stream: MediaStream }[]>([]);
-    const [peerConnections, setPeerConnections] = useState<Map<string, RTCPeerConnection>>(new Map());
+    const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
     const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
     const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
     const [understandingStatus, setUnderstandingStatus] = useState<Map<string, UnderstandingStatus>>(new Map());
@@ -46,13 +45,13 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     const isTeacher = role === 'teacher';
 
     const handleLeaveSession = useCallback(() => {
-        peerConnections.forEach(pc => pc.close());
-        setPeerConnections(new Map());
+        peerConnections.current.forEach(pc => pc.close());
+        peerConnections.current.clear();
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
         }
         router.push(isTeacher ? '/teacher' : `/student/${userId}`);
-    }, [peerConnections, localStream, router, isTeacher, userId]);
+    }, [localStream, router, isTeacher, userId]);
 
     // Redirection et gestion de fin de session
     useEffect(() => {
@@ -79,12 +78,14 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
 
 
     const createPeerConnection = useCallback((remoteUserId: string) => {
+        console.log(`⚡️ [WebRTC] Création de la connexion peer avec ${remoteUserId}`);
         const pc = new RTCPeerConnection({
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         });
 
         pc.onicecandidate = event => {
-            if (event.candidate) {
+            if (event.candidate && userId) {
+                console.log(`🧊 [WebRTC] Envoi du ICE candidate à ${remoteUserId}`);
                 fetch('/api/webrtc/signal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -99,13 +100,16 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         };
 
         pc.ontrack = event => {
+            console.log(`🛰️ [WebRTC] Track reçu de ${remoteUserId}`);
             setRemoteParticipants(prev => {
                 if (prev.some(p => p.id === remoteUserId)) return prev;
+                console.log(`✅ [WebRTC] Ajout du remote stream pour ${remoteUserId}`);
                 return [...prev, { id: remoteUserId, stream: event.streams[0] }];
             });
         };
 
         if (localStream) {
+            console.log(`📤 [WebRTC] Ajout des tracks locaux à la connexion pour ${remoteUserId}`);
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
 
@@ -113,18 +117,25 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     }, [localStream, sessionId, userId]);
 
     const createOffer = useCallback(async (pc: RTCPeerConnection, remoteUserId: string) => {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await fetch('/api/webrtc/signal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sessionId,
-                toUserId: remoteUserId,
-                fromUserId: userId,
-                signal: { type: 'offer', sdp: offer.sdp },
-            }),
-        });
+        if (!userId) return;
+        try {
+            console.log(`📤 [WebRTC] Création de l'offre pour ${remoteUserId}`);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await fetch('/api/webrtc/signal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId,
+                    toUserId: remoteUserId,
+                    fromUserId: userId,
+                    signal: { type: 'offer', sdp: offer.sdp },
+                }),
+            });
+            console.log(`✅ [WebRTC] Offre envoyée à ${remoteUserId}`);
+        } catch (error) {
+            console.error(`❌ [WebRTC] Erreur lors de la création de l'offre pour ${remoteUserId}:`, error);
+        }
     }, [sessionId, userId]);
 
 
@@ -151,55 +162,55 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     useEffect(() => {
         if (!userId || !localStream || !sessionData || isPusherInitialized) return;
 
+        console.log("🚀 [Pusher] Initialisation des connexions WebRTC et Pusher");
         const channelName = `presence-session-${sessionId}`;
         const channel = pusherClient.subscribe(channelName);
 
         const initializeConnections = (members: any) => {
             const otherUserIds = Object.keys(members).filter(id => id !== userId);
-            const newPeerConnections = new Map<string, RTCPeerConnection>();
             
             otherUserIds.forEach(remoteUserId => {
                 const pc = createPeerConnection(remoteUserId);
-                newPeerConnections.set(remoteUserId, pc);
-                if (isTeacher) { // Teacher initiates offers
+                peerConnections.current.set(remoteUserId, pc);
+                if (isTeacher) { 
                     createOffer(pc, remoteUserId);
                 }
             });
-            setPeerConnections(newPeerConnections);
         };
         
         channel.bind('pusher:subscription_succeeded', (members: any) => {
+            console.log("✅ [Pusher] Souscription réussie. Membres:", Object.keys(members.members));
             setOnlineUserIds(Object.keys(members.members));
-            if (!isTeacher) { // Students wait for offers, teacher initiates
-                initializeConnections(members.members);
-            }
+            initializeConnections(members.members);
         });
         
         channel.bind('pusher:member_added', (member: any) => {
+             console.log(`➕ [Pusher] Membre ajouté: ${member.id}`);
              setOnlineUserIds(prev => [...prev, member.id]);
              if (isTeacher) {
                 const pc = createPeerConnection(member.id);
-                setPeerConnections(prev => new Map(prev).set(member.id, pc));
+                peerConnections.current.set(member.id, pc);
                 createOffer(pc, member.id);
              }
         });
 
         channel.bind('pusher:member_removed', (member: any) => {
+             console.log(`➖ [Pusher] Membre parti: ${member.id}`);
              setOnlineUserIds(prev => prev.filter(id => id !== member.id));
-             setPeerConnections(prev => {
-                const newPcs = new Map(prev);
-                newPcs.get(member.id)?.close();
-                newPcs.delete(member.id);
-                return newPcs;
-             });
+             peerConnections.current.get(member.id)?.close();
+             peerConnections.current.delete(member.id);
              setRemoteParticipants(prev => prev.filter(p => p.id !== member.id));
         });
 
         channel.bind('webrtc-signal', async (data: any) => {
             if (data.toUserId !== userId) return;
 
-            const pc = peerConnections.get(data.fromUserId);
-            if (!pc) return;
+            console.log(`📡 [WebRTC] Signal reçu de ${data.fromUserId}:`, data.signal.type);
+            const pc = peerConnections.current.get(data.fromUserId);
+            if (!pc) {
+                 console.warn(`❓ [WebRTC] PeerConnection non trouvée pour ${data.fromUserId}`);
+                 return;
+            }
 
             if (data.signal.type === 'offer') {
                 await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
@@ -218,12 +229,16 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
             } else if (data.signal.type === 'answer') {
                 await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
             } else if (data.signal.type === 'candidate') {
-                await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+                try {
+                   await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+                } catch(e) {
+                   console.error("Erreur d'ajout de ICE candidate", e);
+                }
             }
         });
         
         channel.bind('participant-spotlighted', (data: { participantId: string }) => setSpotlightedUserId(data.participantId));
-        channel.bind('whiteboard-control-changed', (data: { controllerId: string | null }) => setWhiteboardControllerId(data.controllerId));
+        channel.bind('whiteboard-control-changed', (data: { controllerId:string | null }) => setWhiteboardControllerId(data.controllerId));
         channel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
             setRaisedHands(prev => {
                 const newSet = new Set(prev);
@@ -239,12 +254,15 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         setIsPusherInitialized(true);
 
         return () => {
+            console.log("🧹 [Pusher] Nettoyage des abonnements");
             channel.unbind_all();
             pusherClient.unsubscribe(channelName);
-            peerConnections.forEach(pc => pc.close());
+            peerConnections.current.forEach(pc => pc.close());
+            peerConnections.current.clear();
             setIsPusherInitialized(false);
         };
-    }, [userId, localStream, sessionData, isPusherInitialized, sessionId, createPeerConnection, isTeacher, peerConnections, createOffer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId, localStream, sessionData, createPeerConnection, isTeacher, createOffer]);
 
 
     // Timer Logic
