@@ -170,6 +170,9 @@ export function TeacherSessionView({
                                                 student={user as StudentWithCareer}
                                                 isOnline={onlineUserIds.includes(user.id)}
                                                 isHandRaised={raisedHands.has(user.id)}
+                                                onSpotlightParticipant={onSpotlightParticipant}
+                                                onGiveWhiteboardControl={onGiveWhiteboardControl}
+                                                isWhiteboardController={user.id === whiteboardControllerId}
                                             />
                                         );
                                     }
