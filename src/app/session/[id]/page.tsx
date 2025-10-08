@@ -404,59 +404,56 @@ export default function SessionPage() {
         return () => clearInterval(interval);
     }, [getPendingCount]);
 
-    const broadcastTimerEvent = async (event: string, data?: any) => {
+    const broadcastTimerEvent = useCallback(async (event: string, data?: any) => {
         await fetch('/api/pusher/timer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId, event, data }),
         });
-    };
+    }, [sessionId]);
 
     const startTimer = useCallback(() => {
         if (isTimerRunning) return;
-        
-        if (isTeacher) {
-            broadcastTimerEvent('timer-started');
-        }
         setIsTimerRunning(true);
-        timerIntervalRef.current = setInterval(() => {
-            setTimeLeft(prevTimeLeft => {
-                if (prevTimeLeft <= 1) {
-                    clearInterval(timerIntervalRef.current!);
-                    timerIntervalRef.current = null;
-                    setIsTimerRunning(false);
-                    if (isTeacher) {
-                        broadcastTimerEvent('timer-paused');
-                    }
-                    return 0;
-                }
-                return prevTimeLeft - 1;
-            });
-        }, 1000);
-    }, [isTimerRunning, isTeacher, sessionId]);
-
+        if (isTeacher) broadcastTimerEvent('timer-started');
+    }, [isTimerRunning, isTeacher, broadcastTimerEvent]);
+    
     const pauseTimer = useCallback(() => {
         if (!isTimerRunning) return;
-        
-        if (isTeacher) {
-            broadcastTimerEvent('timer-paused');
-        }
         setIsTimerRunning(false);
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-        }
-    }, [isTimerRunning, isTeacher, sessionId]);
+        if (isTeacher) broadcastTimerEvent('timer-paused');
+    }, [isTimerRunning, isTeacher, broadcastTimerEvent]);
 
     const resetTimer = useCallback(() => {
-        if (isTeacher) {
-            broadcastTimerEvent('timer-reset', { duration });
-        }
         setIsTimerRunning(false);
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-        }
         setTimeLeft(duration);
-    }, [isTeacher, duration, sessionId]);
+        if (isTeacher) broadcastTimerEvent('timer-reset', { duration });
+    }, [isTeacher, duration, broadcastTimerEvent]);
+
+    useEffect(() => {
+        if (isTimerRunning) {
+            timerIntervalRef.current = setInterval(() => {
+                setTimeLeft(prevTimeLeft => {
+                    if (prevTimeLeft <= 1) {
+                        clearInterval(timerIntervalRef.current!);
+                        timerIntervalRef.current = null;
+                        setIsTimerRunning(false);
+                        return 0;
+                    }
+                    return prevTimeLeft - 1;
+                });
+            }, 1000);
+        } else if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+        return () => {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+            }
+        };
+    }, [isTimerRunning]);
+
 
     const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
         await fetch('/api/pusher/timer', { // Reusing timer API for generic session events
