@@ -1,6 +1,15 @@
 // src/app/session/[id]/SessionClient.tsx - CLIENT COMPONENT
 'use client';
 
+// DÉSACTIVER FAST REFRESH pour ce composant critique
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    // @ts-ignore
+    if (typeof module !== 'undefined' && module.hot) {
+        // @ts-ignore
+        module.hot.decline();
+    }
+}
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -14,14 +23,8 @@ import { SessionHeader } from '@/components/session/SessionHeader';
 import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
-import { useWebRTC } from '@/hooks/useWebRTC';
-
-// DÉSACTIVER FAST REFRESH pour ce composant critique
-// @ts-ignore
-if (typeof module !== 'undefined' && module.hot) {
-  // @ts-ignore
-  module.hot.decline();
-}
+import { useWebRTCStable } from '@/hooks/useWebRTCStable';
+import { Button } from '@/components/ui/button';
 
 
 // Configuration WebRTC optimisée
@@ -57,7 +60,7 @@ export default function SessionClient({ sessionId, role, userId }: { sessionId: 
     
     const isTeacher = role === 'teacher';
 
-    const { localStream, isReady: isMediaReady } = useWebRTC(sessionId);
+    const { localStream, isReady: isMediaReady, error: mediaError } = useWebRTCStable(sessionId);
     
     const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
     const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
@@ -455,7 +458,37 @@ export default function SessionClient({ sessionId, role, userId }: { sessionId: 
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
-    if (isLoading || !isMediaReady) {
+    if (!isMediaReady) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-gray-100">
+                <div className="text-center">
+                    <Loader2 className="animate-spin h-16 w-16 text-green-600 mx-auto" />
+                    <h2 className="text-2xl font-bold mt-4">Configuration WebRTC</h2>
+                    <p className="text-lg text-gray-600 mt-2">Accès à la caméra et au microphone...</p>
+                    <p className="text-sm text-gray-500 mt-4">Autorisez l'accès si votre navigateur vous le demande.</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (mediaError) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-100">
+                <div className="text-center max-w-md p-4">
+                    <h2 className="text-2xl font-bold text-red-600 mb-4">Erreur d'accès Média</h2>
+                    <p className="text-lg text-gray-700 mb-4">{mediaError}</p>
+                    <p className="text-sm text-gray-500 mb-4">
+                        Veuillez vérifier les permissions de votre navigateur pour ce site (caméra et microphone) et réessayez.
+                    </p>
+                    <Button onClick={() => window.location.reload()}>
+                        Réessayer
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+    
+    if (isLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <div className="text-center">
