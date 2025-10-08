@@ -1,4 +1,4 @@
-// src/app/session/[id]/session-wrapper.tsx
+// src/app/session/[id]/useWebRTCNegotiation.ts
 'use client';
 
 import { useEffect, useState } from 'react';
