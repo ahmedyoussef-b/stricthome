@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { pusherClient } from '@/lib/pusher/client';
@@ -21,7 +21,6 @@ type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role:
 export function SessionWrapper({ sessionId, localStream }: { sessionId: string; localStream: MediaStream | null }) {
     const router = useRouter();
     const { data: authSession, status: authStatus } = useSession();
-    const searchParams = useSearchParams();
     const { toast } = useToast();
 
     const [sessionData, setSessionData] = useState<{ session: CoursSession, students: StudentWithCareer[], teacher: any } | null>(null);
@@ -40,9 +39,9 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
 
     const [isEnding, startEndingTransition] = useTransition();
 
-    const role = searchParams.get('role');
+    const role = authSession?.user.role;
     const userId = authSession?.user.id;
-    const isTeacher = role === 'teacher';
+    const isTeacher = role === 'PROFESSEUR';
 
     const handleLeaveSession = useCallback(() => {
         peerConnections.current.forEach(pc => pc.close());
@@ -282,7 +281,12 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
 
     const handleStartTimer = () => { setIsTimerRunning(true); broadcastTimerEvent('timer-started', timeLeft); };
     const handlePauseTimer = () => { setIsTimerRunning(false); broadcastTimerEvent('timer-paused', timeLeft); };
-    const handleResetTimer = () => { setTimeLeft(15 * 60); setIsTimerRunning(false); broadcastTimerEvent('timer-reset', 15 * 60); };
+    const handleResetTimer = () => {
+        const newTime = 15 * 60;
+        setTimeLeft(newTime); 
+        setIsTimerRunning(false); 
+        broadcastTimerEvent('timer-reset', newTime); 
+    };
 
     useEffect(() => {
         if (isTimerRunning && timeLeft > 0) {
@@ -296,10 +300,22 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
     useEffect(() => {
         const channelName = `presence-session-${sessionId}`;
         const channel = pusherClient.subscribe(channelName);
-        channel.bind('timer-started', (data: { time: number }) => { setTimeLeft(data.time); setIsTimerRunning(true); });
-        channel.bind('timer-paused', (data: { time: number }) => { setTimeLeft(data.time); setIsTimerRunning(false); });
-        channel.bind('timer-reset', (data: { time: number }) => { setTimeLeft(data.time); setIsTimerRunning(false); });
-        return () => pusherClient.unsubscribe(channelName);
+        channel.bind('timer-started', (data: { time: number }) => { 
+            setTimeLeft(data.time); 
+            setIsTimerRunning(true); 
+        });
+        channel.bind('timer-paused', (data: { time: number }) => { 
+            setTimeLeft(data.time); 
+            setIsTimerRunning(false); 
+        });
+        channel.bind('timer-reset', (data: { time: number }) => { 
+            setTimeLeft(data.time); 
+            setIsTimerRunning(false); 
+        });
+        return () => {
+             channel.unbind_all();
+             pusherClient.unsubscribe(channelName);
+        };
     }, [sessionId]);
 
     const onToggleHandRaise = useCallback(async () => {
