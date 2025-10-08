@@ -93,7 +93,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
                         sessionId,
                         toUserId: remoteUserId,
                         fromUserId: userId,
-                        signal: { type: 'candidate', candidate: event.candidate },
+                        signal: event.candidate.toJSON(),
                     }),
                 });
             }
@@ -129,7 +129,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
                     sessionId,
                     toUserId: remoteUserId,
                     fromUserId: userId,
-                    signal: { type: 'offer', sdp: offer.sdp },
+                    signal: offer,
                 }),
             });
             console.log(`✅ [WebRTC] Offre envoyée à ${remoteUserId}`);
@@ -170,6 +170,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
             const otherUserIds = Object.keys(members).filter(id => id !== userId);
             
             otherUserIds.forEach(remoteUserId => {
+                if (peerConnections.current.has(remoteUserId)) return;
                 const pc = createPeerConnection(remoteUserId);
                 peerConnections.current.set(remoteUserId, pc);
                 if (isTeacher) { 
@@ -187,7 +188,7 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
         channel.bind('pusher:member_added', (member: any) => {
              console.log(`➕ [Pusher] Membre ajouté: ${member.id}`);
              setOnlineUserIds(prev => [...prev, member.id]);
-             if (isTeacher) {
+             if (isTeacher && !peerConnections.current.has(member.id)) {
                 const pc = createPeerConnection(member.id);
                 peerConnections.current.set(member.id, pc);
                 createOffer(pc, member.id);
@@ -213,28 +214,28 @@ export function SessionWrapper({ sessionId, localStream }: { sessionId: string; 
                  peerConnections.current.set(data.fromUserId, pc);
             }
 
-            if (data.signal.type === 'offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                await fetch('/api/webrtc/signal', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        sessionId,
-                        toUserId: data.fromUserId,
-                        fromUserId: userId,
-                        signal: { type: 'answer', sdp: answer.sdp },
-                    }),
-                    headers: { 'Content-Type': 'application/json' },
-                });
-            } else if (data.signal.type === 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
-            } else if (data.signal.type === 'candidate') {
-                try {
-                   await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
-                } catch(e) {
-                   console.error("Erreur d'ajout de ICE candidate", e);
+            try {
+                if (data.signal.type === 'offer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    await fetch('/api/webrtc/signal', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            sessionId,
+                            toUserId: data.fromUserId,
+                            fromUserId: userId,
+                            signal: answer,
+                        }),
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                } else if (data.signal.type === 'answer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
+                } else if (data.signal.candidate) {
+                   await pc.addIceCandidate(new RTCIceCandidate(data.signal));
                 }
+            } catch(e) {
+                console.error("Erreur de traitement du signal WebRTC", e);
             }
         });
         
