@@ -20,7 +20,7 @@ import { HandRaiseController } from '../HandRaiseController';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AttentionTracker } from '../AttentionTracker';
 import { SessionViewControls } from './SessionViewControls';
-import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
+import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/SessionClient';
 import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
@@ -246,5 +246,3 @@ export function TeacherSessionView({
         </div>
     );
 }
-
-    
