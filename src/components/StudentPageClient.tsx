@@ -1,8 +1,8 @@
-
 // src/components/StudentPageClient.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileUp, Sparkles, Trophy, Gift, Video, Target } from 'lucide-react';
 import { StudentWithStateAndCareer, AnnouncementWithAuthor } from '@/lib/types';
@@ -37,6 +37,7 @@ export default function StudentPageClient({
   allCareers,
   isTeacherView,
 }: StudentPageClientProps) {
+  const router = useRouter();
   const [showCard, setShowCard] = useState(false);
   const [activeSession, setActiveSession] = useState<CoursSession | null>(
     student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null
@@ -52,13 +53,11 @@ export default function StudentPageClient({
       const channel = pusherClient.subscribe(channelName);
 
       channel.bind('card-trigger', (data: { isActive: boolean }) => {
-        // Correction: la carte ne doit s'afficher/se cacher que si le statut change
         setShowCard(data.isActive);
       });
 
       channel.bind('session-started', (data: { sessionId: string, invitedStudentIds: string[] }) => {
         if (data.invitedStudentIds.includes(student.id)) {
-            console.log(`🔔 [Pusher] Événement 'session-started' reçu. Session ID: ${data.sessionId}. Mise à jour de l'interface...`);
             const newSession: CoursSession = {
               id: data.sessionId,
               professeurId: '',
@@ -75,10 +74,16 @@ export default function StudentPageClient({
       channel.bind('session-ended', (data: { sessionId: string }) => {
         setActiveSession(currentSession => {
             if (currentSession && currentSession.id === data.sessionId) {
-                return null; // Fait disparaître la carte
+                return null;
             }
             return currentSession;
         });
+      });
+
+      channel.bind('student-updated', (data: { studentId: string }) => {
+        if (data.studentId === student.id) {
+          router.refresh();
+        }
       });
 
 
@@ -89,7 +94,7 @@ export default function StudentPageClient({
     } catch (error) {
       console.error("Pusher subscription failed:", error);
     }
-  }, [student.id, student.classeId, isTeacherView]);
+  }, [student.id, student.classeId, isTeacherView, router]);
 
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">

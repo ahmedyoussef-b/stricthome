@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "dev": "npm run clean && prisma generate && next dev",
+    "build": "prisma generate && prisma db push && next build",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit --strict",
@@ -16,7 +16,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:push": "prisma db push --accept-data-loss",
+    "db:push": "prisma db push",
     "db:seed": "prisma generate && ts-node prisma/seed.ts",
     "clean": "rm -rf .next"
   },

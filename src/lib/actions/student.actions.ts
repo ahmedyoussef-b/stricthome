@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { pusherServer } from '../pusher/server';
 
 export async function setStudentCareer(studentId: string, careerId: string | null) {
     
@@ -24,6 +25,17 @@ export async function setStudentCareer(studentId: string, careerId: string | nul
             metierId: careerId,
         },
     });
+
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { classeId: true }
+    });
+
+    if (student?.classeId) {
+        await pusherServer.trigger(`presence-classe-${student.classeId}`, 'student-updated', {
+            studentId,
+        });
+    }
     
     // Revalidate the student's page to show the changes
     revalidatePath(`/student/${studentId}`);
