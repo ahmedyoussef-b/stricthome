@@ -1,4 +1,3 @@
-
 // src/components/session/StudentSessionView.tsx
 'use client';
 
@@ -10,7 +9,7 @@ import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
+import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/SessionClient';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
