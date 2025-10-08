@@ -1,4 +1,3 @@
-
 // src/components/UnderstandingTracker.tsx
 'use client';
 
@@ -7,7 +6,7 @@ import { Smile, Meh, Frown, HelpCircle, LucideProps } from 'lucide-react';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { StudentWithCareer } from '@/lib/types';
-import { UnderstandingStatus } from '@/app/session/[id]/SessionClient';
+import { UnderstandingStatus } from '@/app/session/[id]/SessionWrapper';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { ForwardRefExoticComponent, RefAttributes } from 'react';
