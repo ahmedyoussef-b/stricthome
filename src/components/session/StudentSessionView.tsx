@@ -115,7 +115,7 @@ export function StudentSessionView({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 flex-1 min-h-0 py-6 px-4">
             
              {/* Main content area */}
-             <div className="h-full min-h-0">
+             <div className="h-full min-h-0 relative">
                  {sessionView === 'split' ? (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
                         <div className="h-full min-h-0">{renderSpotlight()}</div>
@@ -126,6 +126,20 @@ export function StudentSessionView({
                 ) : (
                     renderWhiteboard()
                 )}
+
+                 {/* Local camera view */}
+                 <div className="absolute bottom-4 left-4 w-40 h-auto z-10">
+                    {localStream && userId && (
+                        <Participant
+                            stream={localStream}
+                            isLocal={true}
+                            isTeacher={false}
+                            participantUserId={userId}
+                            displayName={session?.user?.name ?? 'Vous'}
+                            onGiveWhiteboardControl={() => {}}
+                        />
+                    )}
+                 </div>
             </div>
 
             {/* Sidebar for student controls */}
