@@ -71,6 +71,9 @@ const validateSignal = (signal: any): signal is WebRTCSignal => {
 export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
 
+// ♻️ Cache global pour le flux média
+const streamCache = new Map<string, MediaStream>();
+
 export default function SessionPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -110,15 +113,12 @@ export default function SessionPage() {
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
     const cleanup = useCallback(() => {
-        console.log("🧹 [Session] Nettoyage des connexions et des abonnements.");
+        console.log("🧹 [Session] Nettoyage des connexions et des abonnements (le stream local est conservé dans le cache).");
         
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
         }
-
-        localStreamRef.current?.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
         
         peerConnectionsRef.current.forEach(pc => pc.connection.close());
         peerConnectionsRef.current.clear();
@@ -130,7 +130,12 @@ export default function SessionPage() {
     }, [sessionId]);
     
     const handleEndSession = useCallback(() => {
-        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
+        console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage complet et redirection...");
+        if (sessionId && streamCache.has(sessionId)) {
+            streamCache.get(sessionId)?.getTracks().forEach(track => track.stop());
+            streamCache.delete(sessionId);
+            console.log("♻️ [Cache] Stream local retiré du cache et arrêté.");
+        }
         cleanup();
     
         toast({
@@ -145,7 +150,7 @@ export default function SessionPage() {
         } else {
             router.push('/');
         }
-    }, [cleanup, isTeacher, router, toast, userId]);
+    }, [cleanup, isTeacher, router, toast, userId, sessionId]);
 
     const handleLeaveSession = useCallback(() => {
         handleEndSession();
@@ -487,28 +492,37 @@ export default function SessionPage() {
 
 
                 console.log("🎥 [Session] Étape 2: Demande du flux média local...");
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
-                    localStreamRef.current = stream;
-                    if (spotlightedParticipantId === userId) {
-                        setSpotlightedStream(stream);
-                    }
-                    console.log("✅ [Session] Étape 2 terminée: Flux média local obtenu.");
-                } catch (error: any) {
-                    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                        console.warn("⚠️ [WebRTC] Aucun périphérique média trouvé. Session continue sans vidéo/audio local.");
-                        toast({
-                            variant: 'default',
-                            title: 'Aucune caméra/micro détecté',
-                            description: "Vous pouvez observer la session, mais pas y participer activement.",
-                        });
-                    } else {
-                        console.error("❌ [Session] Erreur d'initialisation média:", error);
-                        toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'accéder à la caméra/micro." });
-                        cleanup();
-                        return; // Stop initialization
+                if (streamCache.has(sessionId)) {
+                    console.log("♻️ [Cache] Stream local trouvé dans le cache.");
+                    localStreamRef.current = streamCache.get(sessionId)!;
+                } else {
+                    console.log("🌟 [Cache] Aucun stream dans le cache, demande d'un nouveau.");
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
+                        localStreamRef.current = stream;
+                        streamCache.set(sessionId, stream); // Sauvegarder dans le cache
+                        console.log("✅ [Cache] Nouveau stream sauvegardé dans le cache.");
+                    } catch (error: any) {
+                        if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                            console.warn("⚠️ [WebRTC] Aucun périphérique média trouvé. Session continue sans vidéo/audio local.");
+                            toast({
+                                variant: 'default',
+                                title: 'Aucune caméra/micro détecté',
+                                description: "Vous pouvez observer la session, mais pas y participer activement.",
+                            });
+                        } else {
+                            console.error("❌ [Session] Erreur d'initialisation média:", error);
+                            toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'accéder à la caméra/micro." });
+                            cleanup();
+                            return; // Stop initialization
+                        }
                     }
                 }
+                if (spotlightedParticipantId === userId) {
+                    setSpotlightedStream(localStreamRef.current);
+                }
+                console.log("✅ [Session] Étape 2 terminée: Flux média local obtenu.");
+
 
                 console.log("📡 [Session] Étape 3: Connexion à Pusher...");
                 const presenceChannelName = `presence-session-${sessionId}`;
@@ -598,6 +612,7 @@ export default function SessionPage() {
 
         initialize();
         return () => {
+            console.log("🔄 [Session] Démontage du composant, le nettoyage sera effectué.");
             if (presenceChannel) {
                 presenceChannel.unbind_all();
             }
@@ -768,6 +783,8 @@ export default function SessionPage() {
     );
 }
 
+
+    
 
     
 
