@@ -105,6 +105,7 @@ export default function SessionPage() {
     const [sessionView, setSessionView] = useState<SessionViewMode>('split');
 
     const { startNegotiation, endNegotiation, addPendingSignal, isNegotiating } = useWebRTCNegotiation();
+    const initializationStarted = useRef(false);
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
@@ -454,11 +455,18 @@ export default function SessionPage() {
      useEffect(() => {
         if (!sessionId || !userId) return;
 
+        if (initializationStarted.current) {
+            console.log("🚪 [Session] Initialisation déjà en cours ou terminée. Action ignorée.");
+            return;
+        }
+        initializationStarted.current = true;
+        console.log("🚀 [Session] Lancement de l'initialisation unique.");
+
         let presenceChannel: PresenceChannel;
 
         const initialize = async () => {
             try {
-                // 1. Charger les données de la session
+                console.log("🔍 [Session] Étape 1: Chargement des données de la session...");
                 const { session: sessionData, students, teacher } = await getSessionData(sessionId);
                 if (sessionData.endedAt) {
                     handleEndSession();
@@ -475,17 +483,17 @@ export default function SessionPage() {
                 } else if(teacher) {
                   setSpotlightedParticipantId(teacher.id)
                 }
+                console.log("✅ [Session] Étape 1 terminée: Données chargées.");
 
 
-                // 2. Obtenir le flux média local
+                console.log("🎥 [Session] Étape 2: Demande du flux média local...");
                 try {
-                    console.log("🎥 [WebRTC] Demande du flux média local...");
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
                     localStreamRef.current = stream;
                     if (spotlightedParticipantId === userId) {
                         setSpotlightedStream(stream);
                     }
-                    console.log("✅ [WebRTC] Flux média local obtenu.");
+                    console.log("✅ [Session] Étape 2 terminée: Flux média local obtenu.");
                 } catch (error: any) {
                     if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
                         console.warn("⚠️ [WebRTC] Aucun périphérique média trouvé. Session continue sans vidéo/audio local.");
@@ -495,24 +503,23 @@ export default function SessionPage() {
                             description: "Vous pouvez observer la session, mais pas y participer activement.",
                         });
                     } else {
-                        console.error("❌ [Session] Erreur d'initialisation:", error);
-                        toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
+                        console.error("❌ [Session] Erreur d'initialisation média:", error);
+                        toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'accéder à la caméra/micro." });
                         cleanup();
                         return; // Stop initialization
                     }
                 }
 
-                // 3. S'abonner aux canaux Pusher
+                console.log("📡 [Session] Étape 3: Connexion à Pusher...");
                 const presenceChannelName = `presence-session-${sessionId}`;
                 presenceChannel = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
                 
-                // 4. Gérer les membres de la présence
                 presenceChannel.bind('pusher:subscription_succeeded', (members: any) => {
-                     console.log(`👥 [Pusher] ${members.count} membre(s) dans la session`);
+                     console.log(`✅ [Pusher] Souscription réussie: ${members.count} membre(s) dans la session.`);
                     const userIds = Object.values(members.members).map((m: any) => m.user_id).filter(id => id !== userId);
                     setOnlineUsers(userIds);
                     userIds.forEach(memberId => {
-                       console.log(`🔗 [WebRTC] Création connexion avec ${memberId}`);
+                       console.log(`🔗 [WebRTC] Création connexion avec membre initial: ${memberId}`);
                        createPeerConnection(memberId)
                     });
                 });
@@ -520,24 +527,24 @@ export default function SessionPage() {
                 presenceChannel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
                     if (member.info.user_id === userId) return;
                     const newMemberId = member.info.user_id;
-                    console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
+                    console.log(`➕ [Pusher] Nouveau membre: ${newMemberId}, création connexion WebRTC.`);
                     setOnlineUsers(prev => [...prev, newMemberId]);
                     createPeerConnection(newMemberId);
                 });
                 
                 presenceChannel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
+                    console.log(`➖ [Pusher] Membre parti: ${member.info.user_id}.`);
                     setOnlineUsers(prev => prev.filter(id => id !== member.info.user_id));
                     removePeerConnection(member.info.user_id);
                 });
 
-                // 5. Gérer les signaux WebRTC
+                console.log("👂 [Pusher] Écoute des événements de session...");
                 presenceChannel.bind('webrtc-signal', (data: { fromUserId: string, toUserId: string, signal: WebRTCSignal }) => {
                     if (data.toUserId === userId) {
                         handleSignal(data.fromUserId, data.signal);
                     }
                 });
 
-                // 6. Gérer les autres événements de la session
                 presenceChannel.bind('session-ended', (data: { sessionId: string }) => {
                   if (data.sessionId === sessionId) handleEndSession();
                 });
@@ -580,6 +587,7 @@ export default function SessionPage() {
                 });
 
                 setIsLoading(false);
+                console.log("🎉 [Session] Initialisation terminée avec succès !");
 
             } catch (error) {
                 console.error("❌ [Session] Erreur d'initialisation:", error);
@@ -654,11 +662,14 @@ export default function SessionPage() {
         });
 
         try {
-            await fetch(`/api/session/${sessionId}/raise-hand`, {
+            const response = await fetch(`/api/session/${sessionId}/raise-hand`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, isRaised }),
             });
+             if (!response.ok) {
+                throw new Error('Server responded with an error');
+            }
         } catch (error) {
             // Revert optimistic update on error
             setRaisedHands(prev => {
@@ -757,5 +768,7 @@ export default function SessionPage() {
     );
 }
 
+
+    
 
     
