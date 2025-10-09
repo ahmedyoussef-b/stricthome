@@ -1,4 +1,5 @@
 
+
 // src/components/session/TeacherSessionView.tsx
 'use client';
 
@@ -19,7 +20,6 @@ import { NeuroFeedback } from '../NeuroFeedback';
 import { HandRaiseController } from '../HandRaiseController';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AttentionTracker } from '../AttentionTracker';
-import { SessionViewControls } from './SessionViewControls';
 import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
 import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
@@ -40,8 +40,6 @@ export function TeacherSessionView({
     onGiveWhiteboardControl,
     raisedHands,
     understandingStatus,
-    sessionView,
-    onSetSessionView,
 }: {
     sessionId: string;
     localStream: MediaStream | null;
@@ -53,8 +51,6 @@ export function TeacherSessionView({
     onGiveWhiteboardControl: (userId: string | null) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
-    sessionView: SessionViewMode;
-    onSetSessionView: (view: SessionViewMode) => void;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
@@ -77,9 +73,6 @@ export function TeacherSessionView({
         };
     }, [sessionId]);
 
-    const isControlledByCurrentUser = whiteboardControllerId === localUserId;
-    const controllerUser = allSessionUsers.find(u => u.id === whiteboardControllerId);
-
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
     const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
@@ -94,7 +87,7 @@ export function TeacherSessionView({
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
 
             {/* Colonne de gauche: Participants */}
-            <div className="lg:col-span-1 flex flex-col gap-4">
+            <div className="lg:col-span-3 flex flex-col gap-4">
                  <Card className="flex-1 flex flex-col min-h-0 bg-background/80">
                      <CardHeader className="p-4">
                         <CardTitle className="flex items-center gap-2 text-base">
@@ -104,7 +97,7 @@ export function TeacherSessionView({
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
-                           <div className="space-y-3 pr-2">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pr-2">
                                 {spotlightedUser && (
                                     <div className="border-2 border-primary rounded-lg">
                                         <Participant
@@ -182,24 +175,9 @@ export function TeacherSessionView({
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Colonne centrale: Tableau blanc */}
-            <div className="lg:col-span-3 h-full flex flex-col gap-4 min-h-0">
-                 <SessionViewControls
-                    currentView={sessionView}
-                    onSetView={onSetSessionView}
-                />
-                <div className="flex-1 min-h-0">
-                    <Whiteboard
-                        sessionId={sessionId}
-                        isControlledByCurrentUser={isControlledByCurrentUser}
-                        controllerName={controllerUser?.name}
-                    />
-                </div>
-            </div>
             
             {/* Colonne de droite: Outils IA */}
-            <div className="lg:col-span-2 flex flex-col gap-6 min-h-0">
+            <div className="lg:col-span-3 flex flex-col gap-6 min-h-0">
                  <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
                 <Tabs defaultValue="emotion" className="flex flex-col flex-1 min-h-0">
                     <TabsList className="grid w-full grid-cols-3">

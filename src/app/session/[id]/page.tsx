@@ -96,7 +96,6 @@ export default function SessionPage() {
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const [sessionView, setSessionView] = useState<SessionViewMode>('split');
 
     const { startNegotiation, endNegotiation, addPendingOffer, getPendingCount } = useWebRTCNegotiation();
 
@@ -135,7 +134,6 @@ export default function SessionPage() {
         setUnderstandingStatus(new Map());
         setTimeLeft(duration);
         setIsTimerRunning(false);
-        setSessionView('split');
 
     }, [duration]);
     
@@ -460,19 +458,6 @@ export default function SessionPage() {
         };
     }, [isTimerRunning]);
 
-
-    const broadcastViewChange = useCallback(async (view: SessionViewMode) => {
-        await broadcastTimerEvent(sessionId, 'session-view-changed', { view });
-    }, [sessionId]);
-
-    const handleSetSessionView = useCallback((view: SessionViewMode) => {
-        if (isTeacher) {
-            setSessionView(view);
-            broadcastViewChange(view);
-        }
-    }, [isTeacher, broadcastViewChange]);
-
-
     // Initialisation et nettoyage de la session
      useEffect(() => {
         if (!sessionId || !userId) return;
@@ -600,11 +585,7 @@ export default function SessionPage() {
                     setDuration(data.duration);
                     setTimeLeft(data.duration);
                 });
-                channel.bind('session-view-changed', (data: { view: SessionViewMode }) => {
-                    if (!isTeacher) {
-                        setSessionView(data.view);
-                    }
-                });
+                
 
                 setIsLoading(false);
 
@@ -759,8 +740,6 @@ export default function SessionPage() {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
-                        sessionView={sessionView}
-                        onSetSessionView={handleSetSessionView}
                     />
                 ) : (
                     <StudentSessionView
@@ -772,7 +751,6 @@ export default function SessionPage() {
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                        sessionView={sessionView}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
                     />

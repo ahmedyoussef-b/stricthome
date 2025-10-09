@@ -1,4 +1,5 @@
 
+
 // src/components/session/StudentSessionView.tsx
 'use client';
 
@@ -29,7 +30,6 @@ interface StudentSessionViewProps {
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
     onGiveWhiteboardControl: (userId: string | null) => void;
-    sessionView: SessionViewMode;
     onUnderstandingChange: (status: UnderstandingStatus) => void;
     currentUnderstanding: UnderstandingStatus;
 }
@@ -42,7 +42,6 @@ export function StudentSessionView({
     isHandRaised,
     onToggleHandRaise,
     onGiveWhiteboardControl,
-    sessionView,
     onUnderstandingChange,
     currentUnderstanding,
 }: StudentSessionViewProps) {
@@ -67,9 +66,6 @@ export function StudentSessionView({
         };
     }, [sessionId]);
     
-    const isControlledByCurrentUser = whiteboardControllerId === userId;
-    const controllerUser = spotlightedUser?.id === whiteboardControllerId ? spotlightedUser : undefined;
-
     const renderSpotlight = () => {
         if (spotlightedStream) {
             return (
@@ -94,14 +90,6 @@ export function StudentSessionView({
             </Card>
         );
     };
-
-    const renderWhiteboard = () => (
-         <Whiteboard 
-            sessionId={sessionId} 
-            isControlledByCurrentUser={isControlledByCurrentUser}
-            controllerName={controllerUser?.name}
-        />
-    );
     
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 flex-1 min-h-0 py-6">
@@ -152,19 +140,8 @@ export function StudentSessionView({
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
              </div>
-             <div className="grid gap-6 h-full min-h-0 lg:grid-cols-1" style={{ gridTemplateRows: 'auto 1fr' }}>
-                <div className="h-full min-h-0">
-                     {sessionView === 'split' ? (
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
-                            <div className="h-full min-h-0">{renderSpotlight()}</div>
-                            <div className="h-full min-h-0">{renderWhiteboard()}</div>
-                        </div>
-                    ) : sessionView === 'camera' ? (
-                        renderSpotlight()
-                    ) : (
-                        renderWhiteboard()
-                    )}
-                </div>
+             <div className="h-full min-h-0">
+                {renderSpotlight()}
             </div>
         </div>
     );
