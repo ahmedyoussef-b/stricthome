@@ -77,6 +77,7 @@ export default function SessionPage() {
 
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+    const presenceChannelRef = useRef<PresenceChannel | null>(null);
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
@@ -102,7 +103,7 @@ export default function SessionPage() {
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
     const cleanup = useCallback(() => {
-        console.log("🧹 [Session] Nettoyage des connexions et des abonnements.");
+        console.log("🧹 [Session] Nettoyage complet des connexions et des états.");
         
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
@@ -114,12 +115,29 @@ export default function SessionPage() {
         
         peerConnectionsRef.current.forEach(pc => pc.connection.close());
         peerConnectionsRef.current.clear();
-        setRemoteStreams(new Map());
-
-        if (sessionId) {
-            pusherClient.unsubscribe(`presence-session-${sessionId}`);
+        
+        // Nettoyage complet de Pusher
+        if (presenceChannelRef.current) {
+            presenceChannelRef.current.unbind_all();
+            pusherClient.unsubscribe(presenceChannelRef.current.name);
+            presenceChannelRef.current = null;
         }
-    }, [sessionId]);
+
+        // Réinitialisation de tous les états
+        setRemoteStreams(new Map());
+        setSpotlightedParticipantId(null);
+        setSpotlightedStream(null);
+        setIsLoading(true);
+        setIsEndingSession(false);
+        setAllSessionUsers([]);
+        setOnlineUsers([]);
+        setRaisedHands(new Set());
+        setUnderstandingStatus(new Map());
+        setTimeLeft(duration);
+        setIsTimerRunning(false);
+        setSessionView('split');
+
+    }, [duration]);
     
     const handleEndSession = useCallback(() => {
         console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
@@ -459,8 +477,6 @@ export default function SessionPage() {
      useEffect(() => {
         if (!sessionId || !userId) return;
 
-        let presenceChannel: PresenceChannel;
-
         const initialize = async () => {
             try {
                 // 1. Charger les données de la session
@@ -508,11 +524,17 @@ export default function SessionPage() {
                 }
 
                 // 3. S'abonner aux canaux Pusher
+                if (presenceChannelRef.current) {
+                    presenceChannelRef.current.unbind_all();
+                    pusherClient.unsubscribe(presenceChannelRef.current.name);
+                }
+                
                 const presenceChannelName = `presence-session-${sessionId}`;
-                presenceChannel = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
+                presenceChannelRef.current = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
+                const channel = presenceChannelRef.current;
                 
                 // 4. Gérer les membres de la présence
-                presenceChannel.bind('pusher:subscription_succeeded', (members: any) => {
+                channel.bind('pusher:subscription_succeeded', (members: any) => {
                      console.log(`👥 [Pusher] ${members.count} membre(s) dans la session`);
                     const userIds = Object.values(members.members).map((m: any) => m.user_id).filter(id => id !== userId);
                     setOnlineUsers(userIds);
@@ -522,7 +544,7 @@ export default function SessionPage() {
                     });
                 });
 
-                presenceChannel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
+                channel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
                     if (member.info.user_id === userId) return;
                     const newMemberId = member.info.user_id;
                     console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
@@ -530,26 +552,26 @@ export default function SessionPage() {
                     createPeerConnection(newMemberId);
                 });
                 
-                presenceChannel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
+                channel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
                     setOnlineUsers(prev => prev.filter(id => id !== member.info.user_id));
                     removePeerConnection(member.info.user_id);
                 });
 
                 // 5. Gérer les signaux WebRTC
-                presenceChannel.bind('webrtc-signal', (data: { fromUserId: string, toUserId: string, signal: WebRTCSignal }) => {
+                channel.bind('webrtc-signal', (data: { fromUserId: string, toUserId: string, signal: WebRTCSignal }) => {
                     if (data.toUserId === userId) {
                         handleSignal(data.fromUserId, data.signal);
                     }
                 });
 
                 // 6. Gérer les autres événements de la session
-                presenceChannel.bind('session-ended', (data: { sessionId: string }) => {
+                channel.bind('session-ended', (data: { sessionId: string }) => {
                   if (data.sessionId === sessionId) handleEndSession();
                 });
-                presenceChannel.bind('participant-spotlighted', (data: { participantId: string }) => {
+                channel.bind('participant-spotlighted', (data: { participantId: string }) => {
                   setSpotlightedParticipantId(data.participantId);
                 });
-                presenceChannel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
+                channel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
                     setRaisedHands(prev => {
                         const newSet = new Set(prev);
                         const user = allSessionUsers.find(u => u.id === data.userId);
@@ -567,18 +589,18 @@ export default function SessionPage() {
                         return newSet;
                     });
                 });
-                presenceChannel.bind('understanding-status-updated', (data: { userId: string, status: UnderstandingStatus }) => {
+                channel.bind('understanding-status-updated', (data: { userId: string, status: UnderstandingStatus }) => {
                     setUnderstandingStatus(prev => new Map(prev).set(data.userId, data.status));
                 });
-                presenceChannel.bind('timer-started', () => setIsTimerRunning(true));
-                presenceChannel.bind('timer-paused', () => setIsTimerRunning(false));
-                presenceChannel.bind('timer-reset', (data: { duration: number }) => {
+                channel.bind('timer-started', () => setIsTimerRunning(true));
+                channel.bind('timer-paused', () => setIsTimerRunning(false));
+                channel.bind('timer-reset', (data: { duration: number }) => {
                     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
                     setIsTimerRunning(false);
                     setDuration(data.duration);
                     setTimeLeft(data.duration);
                 });
-                presenceChannel.bind('session-view-changed', (data: { view: SessionViewMode }) => {
+                channel.bind('session-view-changed', (data: { view: SessionViewMode }) => {
                     if (!isTeacher) {
                         setSessionView(data.view);
                     }
@@ -594,10 +616,8 @@ export default function SessionPage() {
         };
 
         initialize();
+
         return () => {
-            if (presenceChannel) {
-                presenceChannel.unbind_all();
-            }
             cleanup();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
