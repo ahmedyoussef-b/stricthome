@@ -95,7 +95,9 @@ export default function SessionPage() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const { startNegotiation, endNegotiation, addPendingOffer, getPendingCount } = useWebRTCNegotiation();
+    const { beginNegotiation, endNegotiation, queueSignal } = useWebRTCNegotiation(
+      (signal) => handleSignal(signal.fromUserId, signal.signalData.signal)
+    );
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
@@ -167,91 +169,59 @@ export default function SessionPage() {
     }, [sessionId, userId]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
-        if (!validateSignal(signal)) {
-            console.log(`❌ [WebRTC] Signal de ${fromUserId} rejeté - validation échouée`);
-            return;
-        }
-
-        if (fromUserId === userId) return;
-
-        console.log(`📡 [WebRTC] Signal reçu de ${fromUserId}`, signal.type);
-
-        let peer = peerConnectionsRef.current.get(fromUserId);
-        if (!peer) {
-            console.log(`🔗 [WebRTC] Création automatique de connexion vers ${fromUserId}`);
-            const pc = new RTCPeerConnection({
-              iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:global.stun.twilio.com:3478' }
-              ],
-              iceTransportPolicy: 'all'
-            });
-            peer = { connection: pc };
-            peerConnectionsRef.current.set(fromUserId, peer);
-        }
-        const pc = peer.connection;
-
-        try {
-            if (signal.type === 'offer') {
-                if (!startNegotiation()) {
-                    console.log(`📥 [WebRTC] Offre de ${fromUserId} mise en attente`);
-                    addPendingOffer(fromUserId, { fromUserId, toUserId: userId!, signal });
-                    return;
-                }
-
-                console.log(`📥 [WebRTC] Traitement offre de ${fromUserId} (état: ${pc.signalingState})`);
-                
-                if (pc.signalingState === 'closed' || pc.connectionState === 'failed') {
-                    console.log(`🔄 [WebRTC] Réinitialisation connexion ${fromUserId}`);
-                    pc.close();
-                    console.error("Cannot re-create peer connection in this state.");
-                    return;
-                }
-                
-                await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                console.log(`📤 [WebRTC] Envoi réponse à ${fromUserId}`);
-                await broadcastSignal(fromUserId, pc.localDescription!);
-                
-            } else if (signal.type === 'answer') {
-                 console.log(`📥 [WebRTC] Traitement réponse de ${fromUserId} (état: ${pc.signalingState})`);
+      if (!validateSignal(signal)) {
+          console.log(`❌ [WebRTC] Signal de ${fromUserId} rejeté - validation échouée`);
+          return;
+      }
+      if (fromUserId === userId) return;
   
-                if (['have-local-offer', 'stable'].includes(pc.signalingState)) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                    console.log(`✅ [WebRTC] Réponse acceptée de ${fromUserId}`);
-                } else {
-                    console.warn(`⚠️ [WebRTC] État inattendu pour réponse: ${pc.signalingState}, tentative quand même...`);
-                    try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                        console.log(`✅ [WebRTC] Réponse forcée acceptée de ${fromUserId}`);
-                    } catch (error) {
-                        console.error(`❌ [WebRTC] Échec traitement réponse:`, error);
-                    }
-                }
-                
-            } else if (signal.type === 'ice-candidate' && signal.candidate) {
-                console.log(`🧊 [WebRTC] Candidat ICE reçu de ${fromUserId}`);
-                
-                if (pc.remoteDescription) {
-                    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                    console.log(`✅ [WebRTC] Candidat ICE ajouté de ${fromUserId}`);
-                } else {
-                    console.log(`⏳ [WebRTC] Candidat ICE en attente pour ${fromUserId}`);
-                }
-            }
-        } catch (error) {
-            console.error(`❌ [WebRTC] Erreur traitement signal de ${fromUserId}:`, error);
-        } finally {
-            if (signal.type === 'offer') {
-                const pending = endNegotiation();
-                if (pending) {
-                    console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
-                    setTimeout(() => handleSignal(pending.fromUserId, pending.signalData.signal), 200);
-                }
-            }
-        }
-    }, [userId, startNegotiation, addPendingOffer, broadcastSignal, endNegotiation]);
+      let peer = peerConnectionsRef.current.get(fromUserId);
+      if (!peer) {
+          peer = { connection: createPeerConnection(fromUserId) };
+          peerConnectionsRef.current.set(fromUserId, peer);
+      }
+      const pc = peer.connection;
+  
+      try {
+          const negotiationStarted = await beginNegotiation();
+          if (!negotiationStarted) {
+              console.log(`📥 [WebRTC] Signal ${signal.type} de ${fromUserId} mis en attente`);
+              queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
+              return;
+          }
+  
+          console.log(`📡 [WebRTC] Traitement du signal ${signal.type} de ${fromUserId} (état: ${pc.signalingState})`);
+  
+          if (signal.type === 'offer') {
+              if (pc.signalingState !== 'stable') {
+                  console.warn(`⚠️ [WebRTC] Offer reçu dans un état incorrect: ${pc.signalingState}, mise en file d'attente...`);
+                  queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
+              } else {
+                  await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                  const answer = await pc.createAnswer();
+                  await pc.setLocalDescription(answer);
+                  await broadcastSignal(fromUserId, pc.localDescription!);
+              }
+          } else if (signal.type === 'answer') {
+              if (pc.signalingState !== 'have-local-offer') {
+                  console.warn(`⚠️ [WebRTC] Answer reçu dans un état incorrect: ${pc.signalingState}`);
+                  // On ne retourne pas, on tente quand même de l'appliquer
+                  // car des race conditions peuvent arriver.
+              }
+              await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          } else if (signal.type === 'ice-candidate' && signal.candidate) {
+              if (pc.remoteDescription) {
+                  await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+              } else {
+                  console.log(`⏳ [WebRTC] Candidat ICE en attente pour ${fromUserId} (pas de remote description)`);
+              }
+          }
+      } catch (error) {
+          console.error('❌ [WebRTC] Erreur traitement signal:', error);
+      } finally {
+          endNegotiation();
+      }
+  }, [userId, beginNegotiation, queueSignal, endNegotiation, broadcastSignal, createPeerConnection]);
 
     const createPeerConnection = useCallback((peerId: string) => {
         console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
@@ -311,9 +281,10 @@ export default function SessionPage() {
         pc.onnegotiationneeded = async () => {
           console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId} (état: ${pc.signalingState})`);
           
-          if (!startNegotiation()) {
-            console.log(`⏳ [WebRTC] Négociation différée pour ${peerId}`);
-            return;
+          const negotiationStarted = await beginNegotiation();
+          if (!negotiationStarted) {
+              console.log(`⏳ [WebRTC] Négociation différée pour ${peerId}`);
+              return;
           }
       
           try {
@@ -331,13 +302,7 @@ export default function SessionPage() {
           } catch (error) {
             console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
           } finally {
-            const pending = endNegotiation();
-            if (pending) {
-              console.log(`🔄 [WebRTC] Traitement offre en attente de ${pending.fromUserId}`);
-              setTimeout(() => {
-                handleSignal(pending.fromUserId, pending.signalData.signal);
-              }, 200);
-            }
+            endNegotiation();
           }
         };
       
@@ -363,7 +328,7 @@ export default function SessionPage() {
         };
       
         return pc;
-      }, [userId, broadcastSignal, startNegotiation, endNegotiation, handleSignal, spotlightedParticipantId]);
+      }, [userId, broadcastSignal, beginNegotiation, endNegotiation, spotlightedParticipantId]);
 
     const removePeerConnection = (peerId: string) => {
         console.log(`👋 [WebRTC] Suppression de la connexion avec ${peerId}`);
@@ -403,18 +368,6 @@ export default function SessionPage() {
       return () => clearInterval(interval);
     }, [checkAndRepairConnections]);
 
-
-    // Monitoring effect
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const pendingCount = getPendingCount();
-            if (pendingCount > 0) {
-            console.log(`📊 [WebRTC] Monitoring: ${pendingCount} offre(s) en attente`);
-            }
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [getPendingCount]);
 
     const handleStartTimer = useCallback(async () => {
         if (!isTeacher || isTimerRunning) return;
