@@ -25,6 +25,7 @@ interface StudentSessionViewProps {
     remoteStreams: Map<string, MediaStream>;
     spotlightedStream: MediaStream | null;
     spotlightedUser: SessionParticipant | null | undefined;
+    allSessionUsers: SessionParticipant[];
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
     onGiveWhiteboardControl: (userId: string | null) => void;
@@ -37,6 +38,7 @@ export function StudentSessionView({
     localStream,
     spotlightedStream,
     spotlightedUser,
+    allSessionUsers,
     isHandRaised,
     onToggleHandRaise,
     onGiveWhiteboardControl,

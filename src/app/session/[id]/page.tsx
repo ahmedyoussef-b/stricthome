@@ -746,6 +746,7 @@ export default function SessionPage() {
                         remoteStreams={remoteStreams}
                         spotlightedStream={spotlightedStream}
                         spotlightedUser={spotlightedUser}
+                        allSessionUsers={allSessionUsers}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
