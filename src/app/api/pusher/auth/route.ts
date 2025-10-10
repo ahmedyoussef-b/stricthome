@@ -11,10 +11,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const bodyText = await request.text();
-    const params = new URLSearchParams(bodyText);
-    const socketId = params.get('socket_id');
-    const channelName = params.get('channel_name');
+    const data = await request.formData();
+    const socketId = data.get('socket_id') as string;
+    const channelName = data.get('channel_name') as string;
+
 
     if (!socketId || !channelName) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });

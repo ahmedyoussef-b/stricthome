@@ -1,5 +1,5 @@
 // src/lib/auth-options.ts
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import { NextAuthOptions } from 'next-auth';
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
@@ -108,7 +108,3 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
 };
-
-const handlers = NextAuth(authOptions);
-
-export { handlers };
