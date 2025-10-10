@@ -1,5 +1,3 @@
-
-
 // src/components/session/StudentSessionView.tsx
 'use client';
 
@@ -92,15 +90,17 @@ export function StudentSessionView({
     };
     
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 flex-1 min-h-0 py-6">
-             <div className="w-full flex-shrink-0 flex flex-col gap-4 border rounded-lg p-4 bg-background/80 backdrop-blur-sm">
-                 <Card>
-                    <CardHeader className='p-3'>
-                        <CardTitle className='text-sm flex items-center gap-2'>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 py-6">
+            {/* Colonne de gauche: Vidéo et contrôles */}
+            <div className="lg:col-span-1 flex flex-col gap-4">
+                {renderSpotlight()}
+                <Card>
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
                            Niveau de compréhension
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className='p-3 pt-0'>
+                    <CardContent className="p-3 pt-0">
                         <TooltipProvider>
                             <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value: string) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
                                 <Tooltip>
@@ -131,7 +131,7 @@ export function StudentSessionView({
                         </TooltipProvider>
                     </CardContent>
                 </Card>
-                 <Button 
+                <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
                     className={cn("w-full mt-auto", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
@@ -139,9 +139,14 @@ export function StudentSessionView({
                    <Hand className="mr-2 h-5 w-5" />
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
-             </div>
-             <div className="h-full min-h-0">
-                {renderSpotlight()}
+            </div>
+            {/* Colonne de droite: Tableau blanc */}
+            <div className="lg:col-span-2 min-h-[400px] lg:min-h-0">
+                 <Whiteboard
+                    sessionId={sessionId}
+                    isControlledByCurrentUser={userId === whiteboardControllerId}
+                    controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
+                />
             </div>
         </div>
     );

@@ -1,5 +1,3 @@
-
-
 // src/components/Whiteboard.tsx
 'use client';
 

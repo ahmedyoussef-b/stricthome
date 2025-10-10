@@ -1,5 +1,3 @@
-
-
 // src/components/session/TeacherSessionView.tsx
 'use client';
 
@@ -11,7 +9,7 @@ import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users, Eye, Orbit } from 'lucide-react';
+import { Users, Eye, Orbit, LayoutTemplate, Camera, Pen } from 'lucide-react';
 import { AISkillAssessment } from '../AISkillAssessment';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { EmotionalAITutor } from '../EmotionalAITutor';
@@ -24,10 +22,11 @@ import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
 import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
-
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { cn } from '@/lib/utils';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
-
 
 export function TeacherSessionView({
     sessionId,
@@ -54,7 +53,8 @@ export function TeacherSessionView({
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<SessionViewMode>('split');
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(localUserId || null);
 
     useEffect(() => {
         if (!sessionId) return;
@@ -72,52 +72,69 @@ export function TeacherSessionView({
             pusherClient.unsubscribe(channelName);
         };
     }, [sessionId]);
-
-    const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
-    const spotlightedParticipantStream = spotlightedUser?.id === localUserId 
-        ? localStream 
-        : remoteStreamsMap.get(spotlightedUser?.id ?? '');
+    const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
     const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id));
     const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
+    const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
 
+    const handleClearWhiteboardControl = () => {
+        onGiveWhiteboardControl(teacher?.id ?? null);
+    };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 flex-1 min-h-0 py-6">
-
-            {/* Colonne de gauche: Participants */}
-            <div className="lg:col-span-3 flex flex-col gap-4">
-                 <Card className="flex-1 flex flex-col min-h-0 bg-background/80">
-                     <CardHeader className="p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 py-6">
+            <div className={cn(
+                "flex flex-col gap-4 min-h-0",
+                viewMode === 'split' ? 'lg:col-span-2' : 'lg:col-span-3',
+                viewMode === 'camera' && 'hidden'
+            )}>
+                 <Whiteboard
+                    sessionId={sessionId}
+                    isControlledByCurrentUser={localUserId === whiteboardControllerId}
+                    controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
+                />
+            </div>
+            
+            <div className={cn(
+                "flex flex-col gap-4 min-h-0",
+                viewMode === 'split' ? 'lg:col-span-1' : 'lg:col-span-3',
+                viewMode === 'whiteboard' && 'hidden'
+            )}>
+                <Card className="flex-1 flex flex-col min-h-0 bg-background/80">
+                     <CardHeader className="p-4 flex-row items-center justify-between">
                         <CardTitle className="flex items-center gap-2 text-base">
                             <Users />
                             Participants
                         </CardTitle>
+                        <ToggleGroup type="single" value={viewMode} onValueChange={(v:SessionViewMode) => v && setViewMode(v)}>
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="split"><LayoutTemplate className="h-4 w-4" /></ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Vue partagée</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="camera"><Camera className="h-4 w-4" /></ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Vue caméra</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="whiteboard"><Pen className="h-4 w-4" /></ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Vue tableau blanc</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </ToggleGroup>
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pr-2">
-                                {spotlightedUser && (
-                                    <div className="border-2 border-primary rounded-lg">
-                                        <Participant
-                                            key={spotlightedUser.id}
-                                            stream={spotlightedParticipantStream}
-                                            isLocal={spotlightedUser.id === localUserId}
-                                            isTeacher={true}
-                                            participantUserId={spotlightedUser.id}
-                                            displayName={spotlightedUser.name ?? "Utilisateur"}
-                                            onGiveWhiteboardControl={onGiveWhiteboardControl}
-                                            onSpotlightParticipant={onSpotlightParticipant}
-                                            isWhiteboardController={spotlightedUser.id === whiteboardControllerId}
-                                            isHandRaised={raisedHands.has(spotlightedUser.id)}
-                                            isSpotlighted={true}
-                                        />
-                                    </div>
-                                )}
                                {allSessionUsers.map((user) => {
-                                   if (user.id === spotlightedUser?.id) return null;
-
                                     const remoteStream = remoteStreamsMap.get(user.id);
                                     const isUserLocal = user.id === localUserId;
 
@@ -134,7 +151,7 @@ export function TeacherSessionView({
                                                 onSpotlightParticipant={onSpotlightParticipant}
                                                 isWhiteboardController={user.id === whiteboardControllerId}
                                                 isHandRaised={raisedHands.has(user.id)}
-                                                isSpotlighted={false}
+                                                isSpotlighted={user.id === spotlightedUser?.id}
                                             />
                                         );
                                     }
@@ -152,7 +169,7 @@ export function TeacherSessionView({
                                                 onSpotlightParticipant={onSpotlightParticipant}
                                                 isWhiteboardController={user.id === whiteboardControllerId}
                                                 isHandRaised={raisedHands.has(user.id)}
-                                                isSpotlighted={false}
+                                                isSpotlighted={user.id === spotlightedUser?.id}
                                             />
                                         );
                                     } else if (user.role === 'ELEVE') {
@@ -174,55 +191,9 @@ export function TeacherSessionView({
                         </ScrollArea>
                     </CardContent>
                 </Card>
-            </div>
-            
-            {/* Colonne de droite: Outils IA */}
-            <div className="lg:col-span-3 flex flex-col gap-6 min-h-0">
                  <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
-                <Tabs defaultValue="emotion" className="flex flex-col flex-1 min-h-0">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="emotion">Tuteur Émotionnel</TabsTrigger>
-                        <TabsTrigger value="skills">Analyse Compétences</TabsTrigger>
-                        <TabsTrigger value="neuro">Neuro-Feedback</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="emotion" className="flex-1 overflow-auto mt-2 space-y-4">
-                         <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
-                         <EmotionalAITutor />
-                         <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="attention-tracker">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <Eye className="h-5 w-5" />
-                                        Suivi de l'Attention
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <AttentionTracker />
-                                </AccordionContent>
-                            </AccordionItem>
-                            <AccordionItem value="vr-classroom">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <Orbit className="h-5 w-5" />
-                                        Classe Virtuelle
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <VirtualClassroom />
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    </TabsContent>
-                    <TabsContent value="skills" className="flex-1 overflow-auto mt-2">
-                         <AISkillAssessment />
-                    </TabsContent>
-                    <TabsContent value="neuro" className="flex-1 overflow-auto mt-2">
-                         <NeuroFeedback />
-                    </TabsContent>
-                </Tabs>
+                 <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
             </div>
         </div>
     );
 }
-
-    
