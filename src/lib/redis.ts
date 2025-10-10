@@ -10,32 +10,33 @@ declare global {
 const redisUrl = process.env.REDIS_URL;
 let redisClient: Redis | null = null;
 
-if (global.redis) {
-  redisClient = global.redis;
-} else if (redisUrl) {
-  try {
-    redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: false,
-    });
+if (redisUrl) {
+  if (global.redis) {
+    redisClient = global.redis;
+  } else {
+    try {
+      redisClient = new Redis(redisUrl, {
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: false,
+      });
 
-    redisClient.on('connect', () => {
-      console.log('✅ Connected to Redis');
-    });
+      redisClient.on('connect', () => {
+        console.log('✅ Connected to Redis');
+      });
 
-    redisClient.on('error', (err) => {
-      console.error('❌ Redis connection error:', err);
-      // If connection fails, we might want to nullify the client
-      // to prevent further attempts, but ioredis has its own retry logic.
-      // For now, just logging is fine.
-    });
+      redisClient.on('error', (err) => {
+        console.error('❌ Redis connection error:', err);
+        // Nullify the client on a fatal connection error to stop retries.
+        redisClient = null; 
+      });
 
-    if (process.env.NODE_ENV !== 'production') {
-      global.redis = redisClient;
+      if (process.env.NODE_ENV !== 'production') {
+        global.redis = redisClient;
+      }
+    } catch (error) {
+       console.error('❌ Failed to initialize Redis client:', error);
+       redisClient = null;
     }
-  } catch (error) {
-     console.error('❌ Failed to initialize Redis client:', error);
-     redisClient = null;
   }
 }
 
