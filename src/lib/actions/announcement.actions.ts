@@ -83,7 +83,7 @@ export async function getPublicAnnouncements(limit: number = 3): Promise<Announc
 export async function getStudentAnnouncements(studentId: string): Promise<AnnouncementWithAuthor[]> {
     const student = await prisma.user.findUnique({
         where: { id: studentId },
-        select: { classeId: true }
+        select: { id: true, classeId: true }
     });
     
     if (!student) return [];
