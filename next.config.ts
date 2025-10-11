@@ -25,12 +25,6 @@ const nextConfig = {
   allowedDevOrigins: [
     "https://6000-firebase-studio-1759130826485.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev"
   ],
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
-    return config;
-  },
   experimental: {
   }
 }
