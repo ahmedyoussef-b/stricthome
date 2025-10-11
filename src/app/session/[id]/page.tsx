@@ -19,7 +19,7 @@ import { useWebRTCNegotiation, WebRTCSignal, PendingSignal } from '@/hooks/useWe
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun1.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
   ],
 };
 
@@ -205,6 +205,18 @@ export default function SessionPage() {
         return pc;
       }, [broadcastSignal, spotlightedParticipantId]);
 
+    const restartConnection = useCallback(async (peerId: string) => {
+        const oldConnection = peerConnectionsRef.current.get(peerId);
+        if (oldConnection) {
+            oldConnection.connection.close();
+            peerConnectionsRef.current.delete(peerId);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        createPeerConnection(peerId);
+    }, [createPeerConnection]);
+
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
       if (fromUserId === userId) {
           console.log(`⚠️ [WebRTC] Ignore signal de soi-même: ${signal.type}`);
@@ -218,24 +230,22 @@ export default function SessionPage() {
       }
       const pc = peer.connection;
       
-      const currentState = pc.signalingState;
-      const canProcessSignal = (type: string, state: string): boolean => {
-          const validStates: { [key: string]: string[] } = {
-            'offer': ['stable', 'have-remote-offer'],
-            'answer': ['have-local-offer'],
-            'ice-candidate': ['stable', 'have-local-offer', 'have-remote-offer', 'closed']
-          };
-          const isValid = validStates[type]?.includes(state) ?? true;
-          if (!isValid) {
-            console.warn(`🚫 [WebRTC] Signal ${type} incompatible avec l'état ${state}`);
+      // DÉTECTION D'IMPASSE (GLARE)
+      if (signal.type === 'offer' && pc.signalingState === 'have-local-offer') {
+          console.log('🔄 [WebRTC] IMPASSE DÉTECTÉE: Les deux pairs ont envoyé des offres');
+          
+          // Stratégie: celui avec l'ID le plus "grand" (alphabétiquement) cède
+          const shouldRestart = userId! > fromUserId;
+          
+          if (shouldRestart) {
+              console.log('🔄 [WebRTC] Nous abandonnons notre offre (ID plus élevé) et redémarrons.');
+              await restartConnection(fromUserId);
+              // Après le redémarrage, on peut traiter la nouvelle offre
+          } else {
+              console.log('🔄 [WebRTC] Nous gardons notre offre (ID plus bas), l\'offre distante sera ignorée pour l\'instant.');
+              // On ignore l'offre entrante, l'autre pair devrait recevoir notre offre et y répondre.
+              return; 
           }
-          return isValid;
-      };
-
-      if (!canProcessSignal(signal.type, currentState)) {
-          console.log(`⏳ [WebRTC] Signal ${signal.type} incompatible avec état ${currentState}, mise en attente...`);
-          queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
-          return;
       }
   
       if (!await beginNegotiation()) {
@@ -270,12 +280,12 @@ export default function SessionPage() {
           console.error('❌ [WebRTC] Erreur traitement signal:', error);
           if (error.toString().includes('InvalidStateError') || error.toString().includes('wrong state')) {
             console.log('🔄 [WebRTC] Réinitialisation de la connexion après erreur d\'état');
-            createPeerConnection(fromUserId);
+            await restartConnection(fromUserId);
           }
       } finally {
           endNegotiation();
       }
-    }, [userId, broadcastSignal, createPeerConnection, beginNegotiation, endNegotiation, queueSignal]);
+    }, [userId, broadcastSignal, createPeerConnection, beginNegotiation, endNegotiation, queueSignal, restartConnection]);
     
     useEffect(() => {
         const retryHandler = (event: Event) => {
@@ -475,15 +485,11 @@ export default function SessionPage() {
                     const newMemberId = member.id;
                     if (newMemberId === userId) return;
                     
-                    console.log(`[DEBUG] Nouveau membre reçu:`, {
-                      newMember: newMemberId,
-                      existingUsers: onlineUsers,
-                      existingConnections: Array.from(peerConnectionsRef.current.keys()),
-                      isSelf: newMemberId === userId
-                    });
-
                     setOnlineUsers(prev => {
-                        if (prev.includes(newMemberId)) return prev;
+                        if (prev.includes(newMemberId)) {
+                             console.log(`⚠️ [WebRTC] Membre ${newMemberId} existe déjà, ignore`);
+                            return prev;
+                        }
                         console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
                         createPeerConnection(newMemberId);
                         return [...prev, newMemberId];
