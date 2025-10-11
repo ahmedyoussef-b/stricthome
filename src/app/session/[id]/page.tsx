@@ -108,13 +108,13 @@ export default function SessionPage() {
 
     const { queueSignal, endNegotiation, beginNegotiation } = useWebRTCNegotiation();
 
-    const createPeerConnection = useCallback((peerId: string) => {
-        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
-      
+    const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
         if (peerConnectionsRef.current.has(peerId)) {
-          console.log(`🔄 [WebRTC] Fermeture ancienne connexion avec ${peerId}`);
-          peerConnectionsRef.current.get(peerId)?.connection.close();
+            console.log(`⚠️ [WebRTC] Connexion existe déjà pour ${peerId}, réutilisation`);
+            return peerConnectionsRef.current.get(peerId)!.connection;
         }
+
+        console.log(`🤝 [WebRTC] Création connexion avec ${peerId}.`);
       
         const pc = new RTCPeerConnection({
           iceServers: [
@@ -126,39 +126,68 @@ export default function SessionPage() {
 
         pc._createdAt = Date.now();
       
-        const peer = { connection: pc };
+        const peer: PeerConnection = { connection: pc };
         peerConnectionsRef.current.set(peerId, peer);
-      
-        pc.onconnectionstatechange = () => {
-          console.log(`🔗 [WebRTC] ${peerId} - État: ${pc.connectionState}, ICE: ${pc.iceConnectionState}, Signal: ${pc.signalingState}`);
-          
-          if (pc.connectionState === 'connected') {
-            console.log(`🎉 [WebRTC] CONNEXION ÉTABLIE avec ${peerId}`);
+
+        let isNegotiating = false;
+        pc.onnegotiationneeded = async () => {
+            if (isNegotiating) {
+                console.log(`⏳ [WebRTC] Négociation déjà en cours pour ${peerId}, ignore`);
+                return;
+            }
+            isNegotiating = true;
+            console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId}`);
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                console.log(`📤 [WebRTC] Offre créée pour ${peerId}`);
+                await broadcastSignal(peerId, pc.localDescription!);
+            } catch (e) {
+                console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, e);
+            } finally {
+                isNegotiating = false;
+            }
+        };
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            console.log(`🧊 [WebRTC] Envoi candidat ICE à ${peerId}`);
+            broadcastSignal(peerId, {
+              type: 'ice-candidate',
+              candidate: event.candidate
+            });
+          } else {
+            console.log(`✅ [WebRTC] Génération candidats ICE terminée pour ${peerId}`);
           }
         };
-      
-        pc.onsignalingstatechange = () => {
-          console.log(`🔄 [WebRTC] ${peerId} - État signalisation: ${pc.signalingState}`);
+
+        pc.ontrack = (event) => {
+            console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
+            const stream = event.streams[0];
+            const peerData = peerConnectionsRef.current.get(peerId);
+            if (peerData) peerData.stream = stream;
+            setRemoteStreams(prev => new Map(prev).set(peerId, stream));
+            if (spotlightedParticipantId === peerId) setSpotlightedStream(stream);
         };
       
         pc.oniceconnectionstatechange = async () => {
             console.log(`🧊 [WebRTC] ${peerId} - État ICE: ${pc.iceConnectionState}`);
             
-            if (pc.iceConnectionState === 'failed') {
-                console.log(`🔄 [WebRTC] Redémarrage ICE pour ${peerId}`);
+            if (pc.iceConnectionState === 'connected') {
+                console.log(`🎉 [WebRTC] CONNEXION ÉTABLIE avec ${peerId}`);
+            }
+            
+            if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+                console.log(`🔄 [WebRTC] Reconnexion ICE pour ${peerId}`);
                 if (pc.signalingState === 'stable') {
-                    if (await beginNegotiation()) {
-                      try {
-                        const offer = await pc.createOffer({ iceRestart: true });
-                        await pc.setLocalDescription(offer);
-                        await broadcastSignal(peerId, pc.localDescription!);
-                      } finally {
-                        endNegotiation();
-                      }
+                    try {
+                      const offer = await pc.createOffer({ iceRestart: true });
+                      await pc.setLocalDescription(offer);
+                      await broadcastSignal(peerId, pc.localDescription!);
+                    } catch (e) {
+                        console.error('Error during ICE restart:', e);
                     }
                 }
-            } else if (pc.iceConnectionState === 'connected') {
-                console.log(`✅ [WebRTC] ICE connecté avec ${peerId}`);
             }
         };
       
@@ -172,58 +201,20 @@ export default function SessionPage() {
           });
           console.log(`🎥 [WebRTC] Flux local ajouté à ${peerId}`);
         }
-      
-        pc.onnegotiationneeded = async () => {
-            console.log(`negotiation needed for ${peerId}`);
-            if (await beginNegotiation()) {
-                try {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    await broadcastSignal(peerId, pc.localDescription!);
-                } catch (e) {
-                    console.error('Error during negotiationneeded:', e);
-                } finally {
-                    endNegotiation();
-                }
-            }
-        };
-      
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log(`🧊 [WebRTC] Envoi candidat ICE à ${peerId}`);
-            broadcastSignal(peerId, {
-              type: 'ice-candidate',
-              candidate: event.candidate
-            });
-          } else {
-            console.log(`✅ [WebRTC] Génération candidats ICE terminée pour ${peerId}`);
-          }
-        };
-      
-        pc.ontrack = (event) => {
-            console.log(`➡️ [WebRTC] Piste reçue de ${peerId}`);
-            const stream = event.streams[0];
-            const peerData = peerConnectionsRef.current.get(peerId);
-            if (peerData) peerData.stream = stream;
-            setRemoteStreams(prev => new Map(prev).set(peerId, stream));
-            if (spotlightedParticipantId === peerId) setSpotlightedStream(stream);
-        };
-      
+              
         return pc;
-      }, [broadcastSignal, spotlightedParticipantId, beginNegotiation, endNegotiation]);
+      }, [broadcastSignal, spotlightedParticipantId]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
-      if (fromUserId === userId) return;
-      if (!validateSignal(signal)) {
-          console.log(`❌ [WebRTC] Signal de ${fromUserId} rejeté - validation échouée`);
+      if (fromUserId === userId) {
+          console.log(`⚠️ [WebRTC] Ignore signal de soi-même: ${signal.type}`);
           return;
       }
 
       let peer = peerConnectionsRef.current.get(fromUserId);
       if (!peer) {
-          console.log(`[WebRTC] Pas de peer, création d'une nouvelle connexion pour ${fromUserId}.`);
+          console.warn(`🚫 [WebRTC] Connexion non trouvée pour ${fromUserId}, mais signal reçu. Création...`);
           peer = { connection: createPeerConnection(fromUserId) };
-          peerConnectionsRef.current.set(fromUserId, peer);
       }
       const pc = peer.connection;
       
@@ -257,6 +248,10 @@ export default function SessionPage() {
           console.log(`📡 [WebRTC] Traitement du signal ${signal.type} de ${fromUserId} (état: ${pc.signalingState})`);
   
           if (signal.type === 'offer') {
+              if (pc.signalingState !== 'stable') {
+                console.warn(`⏳ [WebRTC] Offre ignorée - état instable: ${pc.signalingState}`);
+                return;
+              }
               await pc.setRemoteDescription(new RTCSessionDescription(signal));
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
@@ -312,27 +307,15 @@ export default function SessionPage() {
         peerConnectionsRef.current.forEach(pc => pc.connection.close());
         peerConnectionsRef.current.clear();
         
-        // Nettoyage complet de Pusher
         if (presenceChannelRef.current) {
-            presenceChannelRef.current.unbind_all();
             pusherClient.unsubscribe(presenceChannelRef.current.name);
             presenceChannelRef.current = null;
         }
 
-        // Réinitialisation de tous les états
         setRemoteStreams(new Map());
-        setSpotlightedParticipantId(null);
-        setSpotlightedStream(null);
-        setIsLoading(true);
-        setIsEndingSession(false);
-        setAllSessionUsers([]);
         setOnlineUsers([]);
-        setRaisedHands(new Set());
-        setUnderstandingStatus(new Map());
-        setTimeLeft(duration);
-        setIsTimerRunning(false);
-
-    }, [duration]);
+        
+    }, []);
     
     const handleEndSession = useCallback(() => {
         console.log("🏁 [Session] La session a été marquée comme terminée. Nettoyage et redirection...");
@@ -368,21 +351,17 @@ export default function SessionPage() {
             newMap.delete(peerId);
             return newMap;
         });
-        setRaisedHands(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(peerId);
-            return newSet;
-        });
     };
 
     const checkAndRepairConnections = useCallback(() => {
-        peerConnectionsRef.current.forEach((peer, userId) => {
+        peerConnectionsRef.current.forEach((peer, peerId) => {
             const pc = peer.connection;
             if (pc.connectionState === 'connecting' || pc.iceConnectionState === 'checking') {
                 const connectionTime = Date.now() - (pc._createdAt || 0);
                 if (connectionTime > 10000) { // 10 secondes
-                    console.log(`🔄 [WebRTC] Connexion ${userId} bloquée, reconnexion...`);
-                    createPeerConnection(userId);
+                    console.log(`🔄 [WebRTC] Connexion ${peerId} bloquée, reconnexion...`);
+                    removePeerConnection(peerId);
+                    createPeerConnection(peerId);
                 }
             }
         });
@@ -459,35 +438,19 @@ export default function SessionPage() {
                   setSpotlightedParticipantId(teacher.id)
                 }
 
-
                 // 2. Obtenir le flux média local
                 try {
                     console.log("🎥 [WebRTC] Demande du flux média local...");
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: true });
                     localStreamRef.current = stream;
-                    if (spotlightedParticipantId === userId) {
-                        setSpotlightedStream(stream);
-                    }
                     console.log("✅ [WebRTC] Flux média local obtenu.");
                 } catch (error: any) {
-                    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                        console.warn("⚠️ [WebRTC] Aucun périphérique média trouvé. Session continue sans vidéo/audio local.");
-                        toast({
-                            variant: 'default',
-                            title: 'Aucune caméra/micro détecté',
-                            description: "Vous pouvez observer la session, mais pas y participer activement.",
-                        });
-                    } else {
-                        console.error("❌ [Session] Erreur d'initialisation:", error);
-                        toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
-                        cleanup();
-                        return; // Stop initialization
-                    }
+                    console.error("❌ [Session] Erreur Média:", error);
+                    toast({ variant: 'destructive', title: 'Erreur Média', description: "Impossible d'accéder à la caméra ou au micro." });
                 }
 
                 // 3. S'abonner aux canaux Pusher
                 if (presenceChannelRef.current) {
-                    presenceChannelRef.current.unbind_all();
                     pusherClient.unsubscribe(presenceChannelRef.current.name);
                 }
                 
@@ -498,25 +461,38 @@ export default function SessionPage() {
                 // 4. Gérer les membres de la présence
                 channel.bind('pusher:subscription_succeeded', (members: any) => {
                      console.log(`👥 [Pusher] ${members.count} membre(s) dans la session`);
-                    const userIds = Object.values(members.members).map((m: any) => m.user_id).filter(id => id !== userId);
+                    const userIds = Object.keys(members.members).filter(id => id !== userId);
                     setOnlineUsers(userIds);
                     userIds.forEach(memberId => {
-                       console.log(`🔗 [WebRTC] Création connexion avec ${memberId}`);
-                       createPeerConnection(memberId)
+                       if (memberId !== userId) {
+                          console.log(`🔗 [WebRTC] Création connexion avec ${memberId}`);
+                          createPeerConnection(memberId)
+                       }
                     });
                 });
 
-                channel.bind('pusher:member_added', (member: { id: string, info: { user_id: string } }) => {
-                    if (member.info.user_id === userId) return;
-                    const newMemberId = member.info.user_id;
-                    console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
-                    setOnlineUsers(prev => [...prev, newMemberId]);
-                    createPeerConnection(newMemberId);
+                channel.bind('pusher:member_added', (member: { id: string }) => {
+                    const newMemberId = member.id;
+                    if (newMemberId === userId) return;
+                    
+                    console.log(`[DEBUG] Nouveau membre reçu:`, {
+                      newMember: newMemberId,
+                      existingUsers: onlineUsers,
+                      existingConnections: Array.from(peerConnectionsRef.current.keys()),
+                      isSelf: newMemberId === userId
+                    });
+
+                    setOnlineUsers(prev => {
+                        if (prev.includes(newMemberId)) return prev;
+                        console.log(`👋 [WebRTC] Nouveau membre ${newMemberId}, création connexion`);
+                        createPeerConnection(newMemberId);
+                        return [...prev, newMemberId];
+                    });
                 });
                 
-                channel.bind('pusher:member_removed', (member: { id: string, info: { user_id: string } }) => {
-                    setOnlineUsers(prev => prev.filter(id => id !== member.info.user_id));
-                    removePeerConnection(member.info.user_id);
+                channel.bind('pusher:member_removed', (member: { id: string }) => {
+                    setOnlineUsers(prev => prev.filter(id => id !== member.id));
+                    removePeerConnection(member.id);
                 });
 
                 // 5. Gérer les signaux WebRTC
@@ -526,7 +502,7 @@ export default function SessionPage() {
                     }
                 });
 
-                // 6. Gérer les autres événements de la session
+                // 6. Gérer les autres événements
                 channel.bind('session-ended', (data: { sessionId: string }) => {
                   if (data.sessionId === sessionId) handleEndSession();
                 });
@@ -536,18 +512,8 @@ export default function SessionPage() {
                 channel.bind('hand-raise-toggled', (data: { userId: string, isRaised: boolean }) => {
                     setRaisedHands(prev => {
                         const newSet = new Set(prev);
-                        const user = allSessionUsers.find(u => u.id === data.userId);
-                        if (data.isRaised) {
-                            newSet.add(data.userId);
-                            if (isTeacher) {
-                                toast({
-                                    title: "Main levée",
-                                    description: `${user?.name ?? 'Un élève'} a levé la main.`,
-                                });
-                            }
-                        } else {
-                            newSet.delete(data.userId);
-                        }
+                        if (data.isRaised) newSet.add(data.userId);
+                        else newSet.delete(data.userId);
                         return newSet;
                     });
                 });
@@ -625,14 +591,9 @@ export default function SessionPage() {
         if (isTeacher || !userId) return;
         const isRaised = !raisedHands.has(userId);
         
-        // Optimistic update
         setRaisedHands(prev => {
             const newSet = new Set(prev);
-            if (isRaised) {
-                newSet.add(userId);
-            } else {
-                newSet.delete(userId);
-            }
+            isRaised ? newSet.add(userId) : newSet.delete(userId);
             return newSet;
         });
 
@@ -643,24 +604,17 @@ export default function SessionPage() {
                 body: JSON.stringify({ userId, isRaised }),
             });
         } catch (error) {
-            // Revert optimistic update on error
             setRaisedHands(prev => {
                 const newSet = new Set(prev);
-                if (isRaised) {
-                    newSet.delete(userId);
-                } else {
-                    newSet.add(userId);
-                }
+                isRaised ? newSet.delete(userId) : newSet.add(userId);
                 return newSet;
             });
-            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de la main levée.' });
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut.' });
         }
     }, [isTeacher, raisedHands, sessionId, toast, userId]);
 
     const handleUnderstandingChange = useCallback(async (status: UnderstandingStatus) => {
         if (isTeacher || !userId) return;
-
-        // Optimistic update
         setUnderstandingStatus(prev => new Map(prev).set(userId, status));
 
         try {
@@ -670,14 +624,12 @@ export default function SessionPage() {
                 body: JSON.stringify({ userId, status }),
             });
         } catch (error) {
-            // Revert not straightforward, maybe just toast error
-            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut de compréhension.' });
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut.' });
         }
     }, [isTeacher, sessionId, toast, userId]);
 
 
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
-
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
 
     if (isLoading) {
@@ -737,7 +689,3 @@ export default function SessionPage() {
         </div>
     );
 }
-
-    
-
-    
