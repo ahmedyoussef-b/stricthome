@@ -104,10 +104,6 @@ export default function SessionPage() {
         });
     }, [sessionId, userId]);
 
-    const { beginNegotiation, endNegotiation, queueSignal } = useWebRTCNegotiation(
-      (pending) => handleSignal(pending.fromUserId, pending.signalData.signal)
-    );
-
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
     const createPeerConnection = useCallback((peerId: string) => {
@@ -166,31 +162,18 @@ export default function SessionPage() {
         }
       
         pc.onnegotiationneeded = async () => {
-          console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId} (état: ${pc.signalingState})`);
-          
-          const negotiationStarted = await beginNegotiation();
-          if (!negotiationStarted) {
-              console.log(`⏳ [WebRTC] Négociation différée pour ${peerId}`);
-              return;
-          }
-      
-          try {
-            if (pc.signalingState !== 'stable') {
-              console.log(`⏳ [WebRTC] Attente état stable pour ${peerId} (actuel: ${pc.signalingState})`);
-              return;
+            console.log(`negotiation needed for ${peerId}`);
+            try {
+              if (pc.signalingState !== 'stable') {
+                  console.log(`negotiation needed for ${peerId} but state is ${pc.signalingState}, waiting`);
+                  return;
+              }
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              await broadcastSignal(peerId, pc.localDescription!);
+            } catch (e) {
+                console.error(e);
             }
-      
-            console.log(`📤 [WebRTC] Création offre pour ${peerId}`);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            console.log(`📤 [WebRTC] Envoi offre à ${peerId}`);
-            await broadcastSignal(peerId, pc.localDescription!);
-          } catch (error) {
-            console.error(`❌ [WebRTC] Erreur création offre pour ${peerId}:`, error);
-          } finally {
-            endNegotiation();
-          }
         };
       
         pc.onicecandidate = (event) => {
@@ -215,7 +198,7 @@ export default function SessionPage() {
         };
       
         return pc;
-      }, [userId, broadcastSignal, beginNegotiation, endNegotiation, spotlightedParticipantId]);
+      }, [broadcastSignal, spotlightedParticipantId]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
       if (!validateSignal(signal)) {
@@ -230,32 +213,22 @@ export default function SessionPage() {
           peerConnectionsRef.current.set(fromUserId, peer);
       }
       const pc = peer.connection;
+      console.log(`📡 [WebRTC] Traitement du signal ${signal.type} de ${fromUserId} (état: ${pc.signalingState})`);
   
       try {
-          const negotiationStarted = await beginNegotiation();
-          if (!negotiationStarted) {
-              console.log(`📥 [WebRTC] Signal ${signal.type} de ${fromUserId} mis en attente`);
-              queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
-              return;
-          }
-  
-          console.log(`📡 [WebRTC] Traitement du signal ${signal.type} de ${fromUserId} (état: ${pc.signalingState})`);
-  
           if (signal.type === 'offer') {
               if (pc.signalingState !== 'stable') {
                   console.warn(`⚠️ [WebRTC] Offer reçu dans un état incorrect: ${pc.signalingState}, mise en file d'attente...`);
                   queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
-              } else {
-                  await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                  const answer = await pc.createAnswer();
-                  await pc.setLocalDescription(answer);
-                  await broadcastSignal(fromUserId, pc.localDescription!);
+                  return;
               }
+              await pc.setRemoteDescription(new RTCSessionDescription(signal));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              await broadcastSignal(fromUserId, pc.localDescription!);
           } else if (signal.type === 'answer') {
               if (pc.signalingState !== 'have-local-offer') {
                   console.warn(`⚠️ [WebRTC] Answer reçu dans un état incorrect: ${pc.signalingState}`);
-                  // On ne retourne pas, on tente quand même de l'appliquer
-                  // car des race conditions peuvent arriver.
               }
               await pc.setRemoteDescription(new RTCSessionDescription(signal));
           } else if (signal.type === 'ice-candidate' && signal.candidate) {
@@ -263,6 +236,7 @@ export default function SessionPage() {
                   await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
               } else {
                   console.log(`⏳ [WebRTC] Candidat ICE en attente pour ${fromUserId} (pas de remote description)`);
+                  queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
               }
           }
       } catch (error) {
@@ -270,7 +244,25 @@ export default function SessionPage() {
       } finally {
           endNegotiation();
       }
-    }, [userId, beginNegotiation, queueSignal, endNegotiation, broadcastSignal, createPeerConnection]);
+    }, [userId, broadcastSignal, createPeerConnection]);
+    
+    const { queueSignal, endNegotiation } = useWebRTCNegotiation();
+
+    useEffect(() => {
+        const retryHandler = (event: Event) => {
+            const customEvent = event as CustomEvent;
+            const pendingSignal = customEvent.detail;
+            if (pendingSignal) {
+                console.log(`🔁 [WebRTC] Nouvelle tentative pour le signal en attente de ${pendingSignal.fromUserId}`);
+                handleSignal(pendingSignal.fromUserId, pendingSignal.signalData.signal);
+            }
+        };
+
+        window.addEventListener('webrtc-signal-retry', retryHandler);
+        return () => {
+            window.removeEventListener('webrtc-signal-retry', retryHandler);
+        };
+    }, [handleSignal]);
 
     const cleanup = useCallback(() => {
         console.log("🧹 [Session] Nettoyage complet des connexions et des états.");

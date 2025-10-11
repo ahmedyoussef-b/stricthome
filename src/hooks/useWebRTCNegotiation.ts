@@ -6,7 +6,7 @@ export type WebRTCSignal =
   | RTCSessionDescriptionInit
   | { type: 'ice-candidate', candidate: RTCIceCandidateInit | null };
 
-type PendingSignal = {
+export type PendingSignal = {
     fromUserId: string;
     signalData: {
       fromUserId: string;
@@ -15,7 +15,7 @@ type PendingSignal = {
     };
 };
 
-export function useWebRTCNegotiation(processPendingSignal: (signal: PendingSignal) => void) {
+export function useWebRTCNegotiation() {
   const isNegotiating = useRef(false);
   const pendingSignals = useRef<PendingSignal[]>([]);
 
@@ -34,26 +34,40 @@ export function useWebRTCNegotiation(processPendingSignal: (signal: PendingSigna
     isNegotiating.current = false;
     console.log('🔓 [WebRTC] Fin de négociation - déverrouillé');
     
-    // Traiter les signaux en attente
+    // Traiter UN SEUL signal en attente pour éviter la boucle
     if (pendingSignals.current.length > 0) {
       const nextSignal = pendingSignals.current.shift();
       if (nextSignal) {
-        console.log('🔄 [WebRTC] Traitement signal en attente');
-        // Retraiter le signal
-        processPendingSignal(nextSignal);
+        console.log(`🔄 [WebRTC] Signal en attente libéré: ${pendingSignals.current.length} restant(s)`);
+        // Utiliser setTimeout pour briser le cycle synchrone
+        setTimeout(() => {
+          // Émettre un événement personnalisé pour que le composant principal puisse retraiter le signal
+          window.dispatchEvent(new CustomEvent('webrtc-signal-retry', { 
+            detail: nextSignal 
+          }));
+        }, 100);
       }
     }
-  }, [processPendingSignal]);
+  }, []);
 
   const queueSignal = useCallback((signal: PendingSignal) => {
-    pendingSignals.current.push(signal);
-    console.log(`📥 [WebRTC] Signal ${signal.signalData.signal.type} mis en attente. File: ${pendingSignals.current.length}`);
+    const { fromUserId, signalData } = signal;
+    // Éviter les doublons de signaux 'offer' pour le même utilisateur
+    const isDuplicateOffer = pendingSignals.current.some(
+      s => s.fromUserId === fromUserId && s.signalData.signal.type === 'offer' && signalData.signal.type === 'offer'
+    );
+    
+    if (!isDuplicateOffer) {
+      pendingSignals.current.push(signal);
+      console.log(`📥 [WebRTC] Signal ${signalData.signal.type} mis en attente pour ${fromUserId}. File: ${pendingSignals.current.length}`);
+    } else {
+      console.log(`[WebRTC] Offre dupliquée de ${fromUserId} ignorée.`);
+    }
   }, []);
 
   return {
     beginNegotiation,
     endNegotiation,
     queueSignal,
-    isNegotiating: isNegotiating.current
   };
 };
