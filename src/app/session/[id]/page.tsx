@@ -209,6 +209,14 @@ export default function SessionPage() {
 
         pc.onsignalingstatechange = () => {
             console.log(`🚦 [WebRTC] ${peerId} - État de signalisation: ${pc.signalingState}`);
+            if (pc.signalingState === 'have-local-offer') {
+                setTimeout(() => {
+                    if (pc.signalingState === 'have-local-offer') {
+                        console.log(`🔄 [WebRTC] Offre bloquée trop longtemps pour ${peerId}, réinitialisation`);
+                        restartConnection(peerId);
+                    }
+                }, 10000); // 10 secondes
+            }
         };
       
         if (localStreamRef.current) {
@@ -223,7 +231,7 @@ export default function SessionPage() {
         }
               
         return pc;
-      }, [broadcastSignal, spotlightedParticipantId]);
+      }, [broadcastSignal, spotlightedParticipantId, restartConnection]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
       if (fromUserId === userId) {
