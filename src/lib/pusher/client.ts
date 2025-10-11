@@ -1,4 +1,5 @@
 // lib/pusher/client.ts
+'use client';
 import PusherClient from 'pusher-js';
 
 const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
