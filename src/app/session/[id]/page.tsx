@@ -302,6 +302,10 @@ export default function SessionPage() {
                 await pc.setLocalDescription(answer);
                 await broadcastSignal(fromUserId, pc.localDescription!);
             } else if (signal.type === 'answer') {
+                 if (pc.signalingState === 'stable') {
+                    console.log('⏭️ [ANSWER] État déjà stable, réponse ignorée pour éviter une erreur.');
+                    return;
+                }
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
             } else if (signal.type === 'ice-candidate' && signal.candidate) {
                 await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
@@ -323,8 +327,9 @@ export default function SessionPage() {
 
         } catch (error: any) {
             console.error('❌ [TRAITEMENT] Erreur lors du traitement du signal:', error);
-            if (error.toString().includes('InvalidStateError') || error.toString().includes('wrong state')) {
-              console.log('🔄 [TRAITEMENT] Réinitialisation de la connexion après une erreur d\'état critique.');
+            const errorStr = error.toString();
+             if (errorStr.includes('SSL role') || errorStr.includes('InvalidStateError') || errorStr.includes('wrong state')) {
+              console.log('🔄 [TRAITEMENT] Réinitialisation de la connexion après une erreur critique d\'état.');
               await restartConnection(fromUserId);
             }
         }
