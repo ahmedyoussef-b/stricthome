@@ -56,6 +56,7 @@ export default function SessionPage() {
 
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+    const pendingIceCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -257,6 +258,19 @@ export default function SessionPage() {
               return; 
           }
       }
+
+      // CAS SPÉCIAL: Gestion des candidats ICE sans remoteDescription
+      if (signal.type === 'ice-candidate' && !pc.remoteDescription && signal.candidate) {
+        console.log('⏳ [WebRTC] Candidat ICE en attente (remote description manquante)');
+        
+        if (!pendingIceCandidatesRef.current.has(fromUserId)) {
+          pendingIceCandidatesRef.current.set(fromUserId, []);
+        }
+        pendingIceCandidatesRef.current.get(fromUserId)!.push(signal.candidate);
+        
+        console.log(`📦 [WebRTC] Candidat ICE stocké pour ${fromUserId}. Total: ${pendingIceCandidatesRef.current.get(fromUserId)!.length}`);
+        return; // Sortir immédiatement pour éviter la boucle
+      }
   
       if (!await beginNegotiation()) {
         console.log('⏳ [WebRTC] Négociation en cours, mise en attente...');
@@ -279,13 +293,19 @@ export default function SessionPage() {
           } else if (signal.type === 'answer') {
               await pc.setRemoteDescription(new RTCSessionDescription(signal));
           } else if (signal.type === 'ice-candidate' && signal.candidate) {
-              if (pc.remoteDescription) {
-                  await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-              } else {
-                  console.log(`⏳ [WebRTC] Candidat ICE en attente pour ${fromUserId} (pas de remote description)`);
-                  queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
-              }
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
           }
+          
+          // Traiter les candidats en attente après avoir défini remoteDescription
+          if ((signal.type === 'offer' || signal.type === 'answer') && pendingIceCandidatesRef.current.has(fromUserId)) {
+              const candidates = pendingIceCandidatesRef.current.get(fromUserId)!;
+              console.log(`⚙️ [WebRTC] Traitement de ${candidates.length} candidat(s) ICE stocké(s) pour ${fromUserId}`);
+              for (const candidate of candidates) {
+                  await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              }
+              pendingIceCandidatesRef.current.delete(fromUserId);
+          }
+
       } catch (error: any) {
           console.error('❌ [WebRTC] Erreur traitement signal:', error);
           if (error.toString().includes('InvalidStateError') || error.toString().includes('wrong state')) {
