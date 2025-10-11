@@ -58,6 +58,7 @@ export default function SessionPage() {
     const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
     const pendingIceCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>());
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
+    const negotiationTimeoutsRef = useRef(new Map<string, NodeJS.Timeout>());
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
@@ -91,14 +92,31 @@ export default function SessionPage() {
 
     const { negotiationQueue } = useWebRTCNegotiation();
 
+    const clearNegotiationTimeout = (peerId: string) => {
+        const timeout = negotiationTimeoutsRef.current.get(peerId);
+        if (timeout) {
+            clearTimeout(timeout);
+            negotiationTimeoutsRef.current.delete(peerId);
+            console.log(`⏹️ [TIMEOUT] Timeout de négociation nettoyé pour ${peerId} car la connexion est établie.`);
+        }
+    };
+
     const restartConnection = useCallback(async (peerId: string) => {
         console.log(`🔄 [CONNEXION] Redémarrage de la connexion avec ${peerId}`);
         const oldConnection = peerConnectionsRef.current.get(peerId);
         if (oldConnection) {
+            const state = oldConnection.connection.connectionState;
+            if (state === 'connected' || state === 'connecting') {
+                console.log(`⏭️ [RESTART] Connexion est à l'état '${state}', redémarrage annulé pour ${peerId}.`);
+                clearNegotiationTimeout(peerId);
+                return;
+            }
             oldConnection.connection.close();
             peerConnectionsRef.current.delete(peerId);
         }
         pendingIceCandidatesRef.current.delete(peerId); // Vider les candidats en attente
+        negotiationQueue.clear(peerId);
+        clearNegotiationTimeout(peerId);
         await new Promise(resolve => setTimeout(resolve, 100)); // Petit délai
         createPeerConnection(peerId);
     }, []);
@@ -196,35 +214,30 @@ export default function SessionPage() {
         pc.oniceconnectionstatechange = async () => {
             console.log(`🔌 [ÉTAT ICE] ${peerId} -> ${pc.iceConnectionState}`);
             
-            if (pc.iceConnectionState === 'connected') {
+            if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
                 console.log(`🎉 [CONNEXION] Connexion ICE établie avec ${peerId} !`);
+                clearNegotiationTimeout(peerId);
             }
             
-            if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-                console.log(`🔄 [CONNEXION] Reconnexion ICE tentée pour ${peerId}`);
-                if (pc.signalingState === 'stable') {
-                    try {
-                      await negotiationQueue.enqueue(peerId, async () => {
-                        const offer = await pc.createOffer({ iceRestart: true });
-                        await pc.setLocalDescription(offer);
-                        await broadcastSignal(peerId, pc.localDescription!);
-                      });
-                    } catch (e) {
-                        console.error('❌ [CONNEXION] Erreur lors du redémarrage ICE:', e);
-                    }
-                }
+            if (pc.iceConnectionState === 'failed') {
+                console.log(`🔄 [CONNEXION] Reconnexion ICE tentée pour ${peerId} après échec.`);
+                restartConnection(peerId);
             }
         };
 
         pc.onsignalingstatechange = () => {
             console.log(`🚦 [ÉTAT SIGNAL] ${peerId} -> ${pc.signalingState}`);
+            const timeout = negotiationTimeoutsRef.current.get(peerId);
+            if(timeout) clearTimeout(timeout);
+
             if (pc.signalingState === 'have-local-offer') {
-                setTimeout(() => {
+                const newTimeout = setTimeout(() => {
                     if (pc.signalingState === 'have-local-offer') {
                         console.log(`⏰ [TIMEOUT] Offre bloquée trop longtemps pour ${peerId}, réinitialisation.`);
                         restartConnection(peerId);
                     }
                 }, 10000); // 10 secondes
+                negotiationTimeoutsRef.current.set(peerId, newTimeout);
             }
         };
       
@@ -251,6 +264,18 @@ export default function SessionPage() {
 
       negotiationQueue.enqueue(fromUserId, async () => {
         let peer = peerConnectionsRef.current.get(fromUserId);
+        
+        // GESTION DES CANDIDATS ICE REÇUS TROP TÔT
+        if (signal.type === 'ice-candidate' && (!peer || !peer.connection.remoteDescription) && signal.candidate) {
+          console.log('⏳ [ICE] Candidat en attente (remote description manquante).');
+          if (!pendingIceCandidatesRef.current.has(fromUserId)) {
+            pendingIceCandidatesRef.current.set(fromUserId, []);
+          }
+          pendingIceCandidatesRef.current.get(fromUserId)!.push(signal.candidate);
+          console.log(`📦 [ICE] Candidat stocké pour ${fromUserId}. Total: ${pendingIceCandidatesRef.current.get(fromUserId)!.length}`);
+          return; // Sortir, ne pas retraiter
+        }
+        
         if (!peer) {
             console.warn(`🤔 [SIGNAL] Connexion non trouvée pour ${fromUserId}, mais signal reçu. Création...`);
             peer = { connection: createPeerConnection(fromUserId) };
@@ -258,22 +283,10 @@ export default function SessionPage() {
         const pc = peer.connection;
         
         // DÉTECTION D'IMPASSE (GLARE)
-        if (signal.type === 'offer' && pc.signalingState === 'have-local-offer') {
+        const isGlaring = signal.type === 'offer' && (pc.signalingState === 'have-local-offer' || pc.signalingState === 'have-remote-offer');
+        if (isGlaring) {
             console.log('⚔️ [IMPASSE] Détectée : les deux pairs ont envoyé des offres.');
             await rollbackToStable(fromUserId); // Rollback avant de traiter l'offre
-        }
-
-        // GESTION DES CANDIDATS ICE REÇUS TROP TÔT
-        if (signal.type === 'ice-candidate' && !pc.remoteDescription && signal.candidate) {
-          console.log('⏳ [ICE] Candidat en attente (remote description manquante).');
-          
-          if (!pendingIceCandidatesRef.current.has(fromUserId)) {
-            pendingIceCandidatesRef.current.set(fromUserId, []);
-          }
-          pendingIceCandidatesRef.current.get(fromUserId)!.push(signal.candidate);
-          
-          console.log(`📦 [ICE] Candidat stocké pour ${fromUserId}. Total: ${pendingIceCandidatesRef.current.get(fromUserId)!.length}`);
-          return; // Sortir de la tâche de file d'attente
         }
     
         try {
@@ -346,7 +359,10 @@ export default function SessionPage() {
         localStreamRef.current = null;
         console.log("🛑 [NETTOYAGE] Flux média local arrêté.");
         
-        peerConnectionsRef.current.forEach(pc => pc.connection.close());
+        peerConnectionsRef.current.forEach((pc, peerId) => {
+            pc.connection.close();
+            clearNegotiationTimeout(peerId);
+        });
         peerConnectionsRef.current.clear();
         console.log("🛑 [NETTOYAGE] Toutes les connexions pair-à-pair sont fermées.");
         
@@ -391,6 +407,7 @@ export default function SessionPage() {
             peer.connection.close();
             peerConnectionsRef.current.delete(peerId);
         }
+        clearNegotiationTimeout(peerId);
         setRemoteStreams(prev => {
             const newMap = new Map(prev);
             newMap.delete(peerId);
