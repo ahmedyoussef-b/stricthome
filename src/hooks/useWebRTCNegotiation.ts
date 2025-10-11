@@ -34,14 +34,11 @@ export function useWebRTCNegotiation() {
     isNegotiating.current = false;
     console.log('🔓 [WebRTC] Fin de négociation - déverrouillé');
     
-    // Traiter UN SEUL signal en attente pour éviter la boucle
     if (pendingSignals.current.length > 0) {
       const nextSignal = pendingSignals.current.shift();
       if (nextSignal) {
         console.log(`🔄 [WebRTC] Signal en attente libéré: ${pendingSignals.current.length} restant(s)`);
-        // Utiliser setTimeout pour briser le cycle synchrone
         setTimeout(() => {
-          // Émettre un événement personnalisé pour que le composant principal puisse retraiter le signal
           window.dispatchEvent(new CustomEvent('webrtc-signal-retry', { 
             detail: nextSignal 
           }));
@@ -52,7 +49,6 @@ export function useWebRTCNegotiation() {
 
   const queueSignal = useCallback((signal: PendingSignal) => {
     const { fromUserId, signalData } = signal;
-    // Éviter les doublons de signaux 'offer' pour le même utilisateur
     const isDuplicateOffer = pendingSignals.current.some(
       s => s.fromUserId === fromUserId && s.signalData.signal.type === 'offer' && signalData.signal.type === 'offer'
     );
@@ -65,9 +61,22 @@ export function useWebRTCNegotiation() {
     }
   }, []);
 
+  const clearPendingSignals = useCallback((userId?: string) => {
+    if (userId) {
+      pendingSignals.current = pendingSignals.current.filter(
+        signal => signal.fromUserId !== userId
+      );
+      console.log(`🧹 [WebRTC] File d'attente nettoyée pour ${userId}`);
+    } else {
+      pendingSignals.current = [];
+      console.log("🧹 [WebRTC] File d'attente complètement nettoyée");
+    }
+  }, []);
+
   return {
     beginNegotiation,
     endNegotiation,
     queueSignal,
+    clearPendingSignals,
   };
 };

@@ -38,29 +38,10 @@ interface PeerConnection {
   stream?: MediaStream;
 }
 
-// Fonction utilitaire pour valider les signaux
-const validateSignal = (signal: any): signal is WebRTCSignal => {
-  if (!signal || typeof signal !== 'object') {
-    console.error('❌ [WebRTC] Signal non objet:', signal);
-    return false;
-  }
-  
-  if (!signal.type) {
-    console.error('❌ [WebRTC] Signal sans type:', signal);
-    return false;
-  }
-  
-  const validTypes = ['offer', 'answer', 'ice-candidate'];
-  if (!validTypes.includes(signal.type)) {
-    console.error('❌- [WebRTC] Type de signal invalide:', signal.type);
-    return false;
-  }
-  
-  return true;
-};
-
 export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
+
+const OFFER_COOLDOWN = 2000; // 2 secondes entre les offres
 
 export default function SessionPage() {
     const router = useRouter();
@@ -106,7 +87,34 @@ export default function SessionPage() {
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
-    const { queueSignal, endNegotiation, beginNegotiation } = useWebRTCNegotiation();
+    const { queueSignal, endNegotiation, beginNegotiation, clearPendingSignals } = useWebRTCNegotiation();
+
+    const restartConnection = useCallback(async (peerId: string) => {
+        const oldConnection = peerConnectionsRef.current.get(peerId);
+        if (oldConnection) {
+            oldConnection.connection.close();
+            peerConnectionsRef.current.delete(peerId);
+        }
+        await clearPendingSignals(peerId);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        createPeerConnection(peerId);
+    }, [clearPendingSignals]);
+
+    const rollbackToStable = async (peerId: string) => {
+        const peer = peerConnectionsRef.current.get(peerId);
+        if (!peer) return;
+        const pc = peer.connection;
+        try {
+            if (pc.signalingState !== 'stable') {
+                 console.log(`🔄 [WebRTC] Rollback pour ${peerId} depuis l'état ${pc.signalingState}`);
+                 await pc.setLocalDescription({ type: 'rollback' });
+            }
+        } catch (error) {
+            console.error(`❌ [WebRTC] Échec du rollback pour ${peerId}, réinitialisation complète`, error);
+            await restartConnection(peerId);
+        }
+    };
+
 
     const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
         if (peerConnectionsRef.current.has(peerId)) {
@@ -130,7 +138,14 @@ export default function SessionPage() {
         peerConnectionsRef.current.set(peerId, peer);
 
         let isNegotiating = false;
+        let lastOfferTime = 0;
+
         pc.onnegotiationneeded = async () => {
+            const now = Date.now();
+            if (now - lastOfferTime < OFFER_COOLDOWN) {
+                console.log('⏳ [WebRTC] Offre différée (trop rapide)');
+                return;
+            }
             if (isNegotiating) {
                 console.log(`⏳ [WebRTC] Négociation déjà en cours pour ${peerId}, ignore`);
                 return;
@@ -138,6 +153,7 @@ export default function SessionPage() {
             isNegotiating = true;
             console.log(`🔄 [WebRTC] Négociation nécessaire pour ${peerId}`);
             try {
+                lastOfferTime = now;
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
                 console.log(`📤 [WebRTC] Offre créée pour ${peerId}`);
@@ -190,6 +206,10 @@ export default function SessionPage() {
                 }
             }
         };
+
+        pc.onsignalingstatechange = () => {
+            console.log(`🚦 [WebRTC] ${peerId} - État de signalisation: ${pc.signalingState}`);
+        };
       
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => {
@@ -205,18 +225,6 @@ export default function SessionPage() {
         return pc;
       }, [broadcastSignal, spotlightedParticipantId]);
 
-    const restartConnection = useCallback(async (peerId: string) => {
-        const oldConnection = peerConnectionsRef.current.get(peerId);
-        if (oldConnection) {
-            oldConnection.connection.close();
-            peerConnectionsRef.current.delete(peerId);
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        createPeerConnection(peerId);
-    }, [createPeerConnection]);
-
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
       if (fromUserId === userId) {
           console.log(`⚠️ [WebRTC] Ignore signal de soi-même: ${signal.type}`);
@@ -230,20 +238,14 @@ export default function SessionPage() {
       }
       const pc = peer.connection;
       
-      // DÉTECTION D'IMPASSE (GLARE)
       if (signal.type === 'offer' && pc.signalingState === 'have-local-offer') {
           console.log('🔄 [WebRTC] IMPASSE DÉTECTÉE: Les deux pairs ont envoyé des offres');
-          
-          // Stratégie: celui avec l'ID le plus "grand" (alphabétiquement) cède
-          const shouldRestart = userId! > fromUserId;
-          
-          if (shouldRestart) {
-              console.log('🔄 [WebRTC] Nous abandonnons notre offre (ID plus élevé) et redémarrons.');
-              await restartConnection(fromUserId);
-              // Après le redémarrage, on peut traiter la nouvelle offre
+          const shouldRollback = userId! > fromUserId;
+          if (shouldRollback) {
+              console.log('🔄 [WebRTC] Nous abandonnons notre offre (ID plus élevé) et effectuons un rollback.');
+              await rollbackToStable(userId!);
           } else {
               console.log('🔄 [WebRTC] Nous gardons notre offre (ID plus bas), l\'offre distante sera ignorée pour l\'instant.');
-              // On ignore l'offre entrante, l'autre pair devrait recevoir notre offre et y répondre.
               return; 
           }
       }
