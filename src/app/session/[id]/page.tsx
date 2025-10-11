@@ -1,5 +1,3 @@
-
-
 // src/app/session/[id]/page.tsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -58,7 +56,7 @@ export default function SessionPage() {
 
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
-    const pendingIceCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    const pendingIceCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>());
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -91,7 +89,7 @@ export default function SessionPage() {
 
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR') || null;
 
-    const { queueSignal, endNegotiation, beginNegotiation, clearPendingSignals } = useWebRTCNegotiation();
+    const { negotiationQueue } = useWebRTCNegotiation();
 
     const restartConnection = useCallback(async (peerId: string) => {
         console.log(`🔄 [CONNEXION] Redémarrage de la connexion avec ${peerId}`);
@@ -100,10 +98,10 @@ export default function SessionPage() {
             oldConnection.connection.close();
             peerConnectionsRef.current.delete(peerId);
         }
-        await clearPendingSignals(peerId);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        pendingIceCandidatesRef.current.delete(peerId); // Vider les candidats en attente
+        await new Promise(resolve => setTimeout(resolve, 100)); // Petit délai
         createPeerConnection(peerId);
-    }, [clearPendingSignals]);
+    }, []);
 
     const rollbackToStable = async (peerId: string) => {
         const peer = peerConnectionsRef.current.get(peerId);
@@ -135,7 +133,9 @@ export default function SessionPage() {
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' }
           ],
-          iceTransportPolicy: 'all'
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require'
         }) as RTCPeerConnection & { _createdAt?: number };
 
         pc._createdAt = Date.now();
@@ -147,6 +147,7 @@ export default function SessionPage() {
         let lastOfferTime = 0;
 
         pc.onnegotiationneeded = async () => {
+          negotiationQueue.enqueue(peerId, async () => {
             console.log(`💬 [NÉGOCIATION] 'onnegotiationneeded' déclenché pour ${peerId}`);
             const now = Date.now();
             if (now - lastOfferTime < OFFER_COOLDOWN) {
@@ -160,8 +161,7 @@ export default function SessionPage() {
             isNegotiating = true;
             try {
                 lastOfferTime = now;
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
+                await pc.setLocalDescription(await pc.createOffer());
                 console.log(`📤 [NÉGOCIATION] Offre créée pour ${peerId}`);
                 await broadcastSignal(peerId, pc.localDescription!);
             } catch (e) {
@@ -169,6 +169,7 @@ export default function SessionPage() {
             } finally {
                 isNegotiating = false;
             }
+          });
         };
 
         pc.onicecandidate = (event) => {
@@ -203,9 +204,11 @@ export default function SessionPage() {
                 console.log(`🔄 [CONNEXION] Reconnexion ICE tentée pour ${peerId}`);
                 if (pc.signalingState === 'stable') {
                     try {
-                      const offer = await pc.createOffer({ iceRestart: true });
-                      await pc.setLocalDescription(offer);
-                      await broadcastSignal(peerId, pc.localDescription!);
+                      await negotiationQueue.enqueue(peerId, async () => {
+                        const offer = await pc.createOffer({ iceRestart: true });
+                        await pc.setLocalDescription(offer);
+                        await broadcastSignal(peerId, pc.localDescription!);
+                      });
                     } catch (e) {
                         console.error('❌ [CONNEXION] Erreur lors du redémarrage ICE:', e);
                     }
@@ -237,7 +240,7 @@ export default function SessionPage() {
         }
               
         return pc;
-      }, [broadcastSignal, spotlightedParticipantId, restartConnection]);
+      }, [broadcastSignal, spotlightedParticipantId, restartConnection, negotiationQueue]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
       console.log(`📥 [SIGNAL] Signal '${signal.type}' reçu de ${fromUserId}.`);
@@ -246,88 +249,74 @@ export default function SessionPage() {
           return;
       }
 
-      let peer = peerConnectionsRef.current.get(fromUserId);
-      if (!peer) {
-          console.warn(`🤔 [SIGNAL] Connexion non trouvée pour ${fromUserId}, mais signal reçu. Création...`);
-          peer = { connection: createPeerConnection(fromUserId) };
-      }
-      const pc = peer.connection;
-      
-      // DÉTECTION D'IMPASSE (GLARE)
-      if (signal.type === 'offer' && pc.signalingState === 'have-local-offer') {
-          console.log('⚔️ [IMPASSE] Détectée : les deux pairs ont envoyé des offres.');
-          const shouldRollback = userId! > fromUserId; // Stratégie déterministe
-          if (shouldRollback) {
-              console.log('🏳️ [IMPASSE] Nous abandonnons notre offre (ID plus élevé) et effectuons un rollback.');
-              await rollbackToStable(userId!);
-          } else {
-              console.log('🛡️ [IMPASSE] Nous gardons notre offre (ID plus bas), l\'offre distante sera ignorée pour l\'instant.');
-              return; 
-          }
-      }
-
-      // GESTION DES CANDIDATS ICE REÇUS TROP TÔT
-      if (signal.type === 'ice-candidate' && !pc.remoteDescription && signal.candidate) {
-        console.log('⏳ [ICE] Candidat en attente (remote description manquante).');
-        
-        if (!pendingIceCandidatesRef.current.has(fromUserId)) {
-          pendingIceCandidatesRef.current.set(fromUserId, []);
+      negotiationQueue.enqueue(fromUserId, async () => {
+        let peer = peerConnectionsRef.current.get(fromUserId);
+        if (!peer) {
+            console.warn(`🤔 [SIGNAL] Connexion non trouvée pour ${fromUserId}, mais signal reçu. Création...`);
+            peer = { connection: createPeerConnection(fromUserId) };
         }
-        pendingIceCandidatesRef.current.get(fromUserId)!.push(signal.candidate);
+        const pc = peer.connection;
         
-        console.log(`📦 [ICE] Candidat stocké pour ${fromUserId}. Total: ${pendingIceCandidatesRef.current.get(fromUserId)!.length}`);
-        return; // Sortir immédiatement pour éviter la boucle
-      }
-  
-      // VERROUILLAGE POUR ÉVITER LES CONDITIONS DE COURSE
-      if (!await beginNegotiation()) {
-        console.log('⏳ [VERROU] Négociation en cours, mise en attente du signal...');
-        queueSignal({ fromUserId, signalData: { fromUserId, toUserId: userId!, signal } });
-        return;
-      }
+        // DÉTECTION D'IMPASSE (GLARE)
+        if (signal.type === 'offer' && pc.signalingState === 'have-local-offer') {
+            console.log('⚔️ [IMPASSE] Détectée : les deux pairs ont envoyé des offres.');
+            await rollbackToStable(fromUserId); // Rollback avant de traiter l'offre
+        }
 
-      try {
-          console.log(`⚙️ [TRAITEMENT] Traitement du signal ${signal.type} de ${fromUserId} (état actuel: ${pc.signalingState})`);
-  
-          if (signal.type === 'offer') {
-              if (pc.signalingState !== 'stable') {
-                console.warn(`⚠️ [TRAITEMENT] Offre ignorée - état instable: ${pc.signalingState}`);
-                return;
-              }
-              await pc.setRemoteDescription(new RTCSessionDescription(signal));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              await broadcastSignal(fromUserId, pc.localDescription!);
-          } else if (signal.type === 'answer') {
-              await pc.setRemoteDescription(new RTCSessionDescription(signal));
-          } else if (signal.type === 'ice-candidate' && signal.candidate) {
-              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-          }
+        // GESTION DES CANDIDATS ICE REÇUS TROP TÔT
+        if (signal.type === 'ice-candidate' && !pc.remoteDescription && signal.candidate) {
+          console.log('⏳ [ICE] Candidat en attente (remote description manquante).');
           
-          // APPLIQUER LES CANDIDATS EN ATTENTE
-          if ((signal.type === 'offer' || signal.type === 'answer') && pendingIceCandidatesRef.current.has(fromUserId)) {
-              const candidates = pendingIceCandidatesRef.current.get(fromUserId)!;
-              console.log(`⚙️ [ICE] Traitement de ${candidates.length} candidat(s) stocké(s) pour ${fromUserId}`);
-              for (const candidate of candidates) {
-                  try {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                  } catch (e) {
-                      console.error(`❌ [ICE] Erreur lors de l'ajout d'un candidat en attente pour ${fromUserId}:`, e);
-                  }
-              }
-              pendingIceCandidatesRef.current.delete(fromUserId);
+          if (!pendingIceCandidatesRef.current.has(fromUserId)) {
+            pendingIceCandidatesRef.current.set(fromUserId, []);
           }
+          pendingIceCandidatesRef.current.get(fromUserId)!.push(signal.candidate);
+          
+          console.log(`📦 [ICE] Candidat stocké pour ${fromUserId}. Total: ${pendingIceCandidatesRef.current.get(fromUserId)!.length}`);
+          return; // Sortir de la tâche de file d'attente
+        }
+    
+        try {
+            console.log(`⚙️ [TRAITEMENT] Traitement du signal ${signal.type} de ${fromUserId} (état actuel: ${pc.signalingState})`);
+    
+            if (signal.type === 'offer') {
+                if (pc.signalingState !== 'stable') {
+                  console.warn(`⚠️ [TRAITEMENT] Offre ignorée - état instable: ${pc.signalingState}`);
+                  return;
+                }
+                await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                await broadcastSignal(fromUserId, pc.localDescription!);
+            } else if (signal.type === 'answer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(signal));
+            } else if (signal.type === 'ice-candidate' && signal.candidate) {
+                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
+            
+            // APPLIQUER LES CANDIDATS EN ATTENTE
+            if (pc.remoteDescription && pendingIceCandidatesRef.current.has(fromUserId)) {
+                const candidates = pendingIceCandidatesRef.current.get(fromUserId)!;
+                console.log(`⚙️ [ICE] Traitement de ${candidates.length} candidat(s) stocké(s) pour ${fromUserId}`);
+                for (const candidate of candidates) {
+                    try {
+                      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.error(`❌ [ICE] Erreur lors de l'ajout d'un candidat en attente pour ${fromUserId}:`, e);
+                    }
+                }
+                pendingIceCandidatesRef.current.delete(fromUserId);
+            }
 
-      } catch (error: any) {
-          console.error('❌ [TRAITEMENT] Erreur lors du traitement du signal:', error);
-          if (error.toString().includes('InvalidStateError') || error.toString().includes('wrong state')) {
-            console.log('🔄 [TRAITEMENT] Réinitialisation de la connexion après une erreur d\'état critique.');
-            await restartConnection(fromUserId);
-          }
-      } finally {
-          endNegotiation(); // Libérer le verrou
-      }
-    }, [userId, broadcastSignal, createPeerConnection, beginNegotiation, endNegotiation, queueSignal, restartConnection, rollbackToStable]);
+        } catch (error: any) {
+            console.error('❌ [TRAITEMENT] Erreur lors du traitement du signal:', error);
+            if (error.toString().includes('InvalidStateError') || error.toString().includes('wrong state')) {
+              console.log('🔄 [TRAITEMENT] Réinitialisation de la connexion après une erreur d\'état critique.');
+              await restartConnection(fromUserId);
+            }
+        }
+      });
+    }, [userId, broadcastSignal, createPeerConnection, restartConnection, rollbackToStable, negotiationQueue]);
     
     useEffect(() => {
         const retryHandler = (event: Event) => {

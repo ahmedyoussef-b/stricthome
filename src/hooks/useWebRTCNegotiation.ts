@@ -1,5 +1,5 @@
 // hooks/useWebRTCNegotiation.ts
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 
 // Définir des types plus stricts pour les signaux
 export type WebRTCSignal =
@@ -15,68 +15,49 @@ export type PendingSignal = {
     };
 };
 
-export function useWebRTCNegotiation() {
-  const isNegotiating = useRef(false);
-  const pendingSignals = useRef<PendingSignal[]>([]);
+class NegotiationQueue {
+  private queue: Map<string, Array<() => Promise<void>>> = new Map();
+  private processing: Map<string, boolean> = new Map();
 
-  const beginNegotiation = useCallback(async (): Promise<boolean> => {
-    if (isNegotiating.current) {
-      console.log('⏳ [WebRTC] Négociation déjà en cours, attente...');
-      return false;
+  async enqueue(userId: string, task: () => Promise<void>) {
+    if (!this.queue.has(userId)) {
+      this.queue.set(userId, []);
     }
-    
-    isNegotiating.current = true;
-    console.log('🔒 [WebRTC] Début de négociation - verrouillé');
-    return true;
-  }, []);
+    this.queue.get(userId)!.push(task);
+    await this.process(userId);
+  }
 
-  const endNegotiation = useCallback(() => {
-    isNegotiating.current = false;
-    console.log('🔓 [WebRTC] Fin de négociation - déverrouillé');
-    
-    if (pendingSignals.current.length > 0) {
-      const nextSignal = pendingSignals.current.shift();
-      if (nextSignal) {
-        console.log(`🔄 [WebRTC] Signal en attente libéré: ${pendingSignals.current.length} restant(s)`);
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('webrtc-signal-retry', { 
-            detail: nextSignal 
-          }));
-        }, 100);
+  private async process(userId: string) {
+    if (this.processing.get(userId)) return;
+
+    this.processing.set(userId, true);
+    while (this.queue.get(userId)?.length) {
+      const task = this.queue.get(userId)!.shift();
+      try {
+        if (task) await task();
+      } catch (e) {
+        console.error(`Error processing task for ${userId}:`, e);
       }
+      await new Promise(resolve => setTimeout(resolve, 100)); // Délai entre les tâches
     }
-  }, []);
+    this.processing.set(userId, false);
+  }
 
-  const queueSignal = useCallback((signal: PendingSignal) => {
-    const { fromUserId, signalData } = signal;
-    const isDuplicateOffer = pendingSignals.current.some(
-      s => s.fromUserId === fromUserId && s.signalData.signal.type === 'offer' && signalData.signal.type === 'offer'
-    );
-    
-    if (!isDuplicateOffer) {
-      pendingSignals.current.push(signal);
-      console.log(`📥 [WebRTC] Signal ${signalData.signal.type} mis en attente pour ${fromUserId}. File: ${pendingSignals.current.length}`);
-    } else {
-      console.log(`[WebRTC] Offre dupliquée de ${fromUserId} ignorée.`);
-    }
-  }, []);
-
-  const clearPendingSignals = useCallback((userId?: string) => {
+  clear(userId?: string) {
     if (userId) {
-      pendingSignals.current = pendingSignals.current.filter(
-        signal => signal.fromUserId !== userId
-      );
-      console.log(`🧹 [WebRTC] File d'attente nettoyée pour ${userId}`);
+      this.queue.delete(userId);
+      this.processing.set(userId, false);
+      console.log(`🧹 [WebRTC Queue] File d'attente nettoyée pour ${userId}`);
     } else {
-      pendingSignals.current = [];
-      console.log("🧹 [WebRTC] File d'attente complètement nettoyée");
+      this.queue.clear();
+      this.processing.clear();
+      console.log("🧹 [WebRTC Queue] Toutes les files d'attente ont été nettoyées");
     }
-  }, []);
+  }
+}
 
-  return {
-    beginNegotiation,
-    endNegotiation,
-    queueSignal,
-    clearPendingSignals,
-  };
+export function useWebRTCNegotiation() {
+  const negotiationQueue = useRef(new NegotiationQueue()).current;
+
+  return { negotiationQueue };
 };
