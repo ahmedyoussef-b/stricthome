@@ -108,7 +108,7 @@ export default function SessionPage() {
         try {
             if (pc.signalingState !== 'stable') {
                  console.log(`🔄 [WebRTC] Rollback pour ${peerId} depuis l'état ${pc.signalingState}`);
-                 await pc.setLocalDescription({ type: 'rollback' });
+                 await pc.setLocalDescription({ type: 'rollback' } as any);
             }
         } catch (error) {
             console.error(`❌ [WebRTC] Échec du rollback pour ${peerId}, réinitialisation complète`, error);
@@ -301,7 +301,11 @@ export default function SessionPage() {
               const candidates = pendingIceCandidatesRef.current.get(fromUserId)!;
               console.log(`⚙️ [WebRTC] Traitement de ${candidates.length} candidat(s) ICE stocké(s) pour ${fromUserId}`);
               for (const candidate of candidates) {
-                  await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                  try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                  } catch (e) {
+                      console.error(`❌ [WebRTC] Erreur ajout candidat ICE en attente pour ${fromUserId}:`, e);
+                  }
               }
               pendingIceCandidatesRef.current.delete(fromUserId);
           }
