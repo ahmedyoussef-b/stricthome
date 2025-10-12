@@ -1,7 +1,4 @@
 // components/SkillMatrix.tsx
-'use client';
-
-import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -16,33 +13,59 @@ import {
   Tooltip
 } from 'recharts';
 import { Target, TrendingUp, Brain, Zap } from 'lucide-react';
-
-interface SkillMetric {
-  skill: string;
-  currentLevel: number;
-  targetLevel: number;
-  progress: number;
-  sessions: number;
-  lastActivity: Date;
-}
+import prisma from '@/lib/prisma';
+import { TaskCategory } from '@prisma/client';
 
 interface SkillMatrixProps {
   studentId: string;
   classId: string | null | undefined;
 }
 
-export function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
-  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('month');
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+export async function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
+  if (!classId) return null;
 
-  // Données simulées - à remplacer par votre API
-  const skillData: SkillMetric[] = [
-    { skill: 'Résolution de problèmes', currentLevel: 75, targetLevel: 90, progress: 65, sessions: 12, lastActivity: new Date() },
-    { skill: 'Collaboration', currentLevel: 60, targetLevel: 85, progress: 45, sessions: 8, lastActivity: new Date() },
-    { skill: 'Pensée critique', currentLevel: 70, targetLevel: 95, progress: 55, sessions: 15, lastActivity: new Date() },
-    { skill: 'Communication', currentLevel: 65, targetLevel: 80, progress: 70, sessions: 10, lastActivity: new Date() },
-    { skill: 'Créativité', currentLevel: 55, targetLevel: 75, progress: 40, sessions: 6, lastActivity: new Date() },
-  ];
+  const studentProgress = await prisma.studentProgress.findMany({
+    where: {
+      studentId: studentId,
+      task: {
+        category: {
+          not: 'PERSONAL'
+        }
+      }
+    },
+    include: {
+      task: true,
+    }
+  });
+
+  const classTasks = await prisma.task.findMany({
+    where: {
+      isActive: true,
+      category: {
+        not: 'PERSONAL'
+      }
+    }
+  });
+
+  const skillData = Object.values(TaskCategory).filter(c => c !== 'PERSONAL').map(category => {
+    const categoryTasks = classTasks.filter(t => t.category === category);
+    const completedTasksInCategory = studentProgress.filter(p => p.task.category === category && (p.status === 'COMPLETED' || p.status === 'VERIFIED'));
+
+    const totalPointsPossible = categoryTasks.reduce((sum, task) => sum + task.points, 0);
+    const pointsEarned = completedTasksInCategory.reduce((sum, p) => sum + (p.pointsAwarded ?? 0), 0);
+    
+    const currentLevel = totalPointsPossible > 0 ? Math.round((pointsEarned / totalPointsPossible) * 100) : 0;
+    const progress = completedTasksInCategory.length > 0 ? (completedTasksInCategory.length / categoryTasks.length) * 100 : 0;
+
+    return {
+      skill: category,
+      currentLevel: currentLevel,
+      targetLevel: 80, // Target could be dynamic
+      progress: progress,
+      sessions: completedTasksInCategory.length,
+      lastActivity: completedTasksInCategory[0]?.completionDate ?? new Date(0),
+    };
+  });
 
   const radarData = skillData.map(skill => ({
     subject: skill.skill,
@@ -51,11 +74,11 @@ export function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
     fullMark: 100,
   }));
 
-  const recommendations = useMemo(() => [
-    { skill: 'Résolution de problèmes', action: 'Proposer des défis algorithmiques complexes', priority: 'high' },
-    { skill: 'Collaboration', action: 'Activités de groupe avec rôles définis', priority: 'medium' },
-    { skill: 'Créativité', action: 'Sessions de brainstorming guidé', priority: 'high' },
-  ], []);
+  const recommendations = skillData.filter(s => s.currentLevel < 50).map(skill => ({
+      skill: skill.skill,
+      action: `Se concentrer sur les tâches de type '${skill.skill}'`,
+      priority: skill.currentLevel < 25 ? 'high' as const : 'medium' as const,
+  }));
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -92,7 +115,7 @@ export function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {recommendations.map((rec, index) => (
+          {recommendations.length > 0 ? recommendations.map((rec, index) => (
             <div key={index} className={`p-3 rounded-lg border-l-4 ${
               rec.priority === 'high' 
                 ? 'border-l-red-500 bg-red-50' 
@@ -107,10 +130,10 @@ export function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
               <p className="text-xs text-muted-foreground">{rec.action}</p>
               <Button variant="outline" size="sm" className="w-full mt-2">
                 <Zap className="h-3 w-3 mr-1" />
-                Appliquer
+                Voir Tâches
               </Button>
             </div>
-          ))}
+          )) : <p className="text-sm text-muted-foreground text-center">Aucune recommandation pour le moment. Excellent travail !</p>}
         </CardContent>
       </Card>
 
@@ -129,16 +152,16 @@ export function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
                 <div className="flex justify-between items-center">
                   <span className="font-medium">{skill.skill}</span>
                   <div className="flex items-center gap-4">
-                    <Badge variant="outline">{skill.sessions} sessions</Badge>
+                    <Badge variant="outline">{skill.sessions} tâches</Badge>
                     <span className="text-sm font-bold text-blue-600">
                       Niveau {skill.currentLevel}/100
                     </span>
                   </div>
                 </div>
                 <Progress value={skill.progress} className="h-2" />
-                <div className="flex justify-between text-xs text-muted-foreground">
+                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Objectif: {skill.targetLevel}/100</span>
-                  <span>Dernière activité: {skill.lastActivity.toLocaleDateString()}</span>
+                   {skill.lastActivity > new Date(0) && <span>Dernière activité: {skill.lastActivity.toLocaleDateString()}</span>}
                 </div>
               </div>
             ))}

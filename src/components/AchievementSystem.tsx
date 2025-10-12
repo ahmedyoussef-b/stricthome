@@ -1,89 +1,104 @@
 // components/AchievementSystem.tsx
-'use client';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Trophy, 
   Star, 
-  Zap, 
-  Target, 
-  Users, 
-  Brain,
   Award,
-  Crown
 } from 'lucide-react';
+import prisma from '@/lib/prisma';
+import * as Icons from 'lucide-react';
+
+type IconName = keyof typeof Icons;
+
+const Icon = ({ name, ...props }: { name: IconName } & Icons.LucideProps) => {
+    const LucideIcon = Icons[name] as React.FC<Icons.LucideProps>;
+    if (!LucideIcon) return <Icons.Award {...props} />;
+    return <LucideIcon {...props} />;
+};
 
 interface Achievement {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  icon: JSX.Element;
-  progress: number;
-  target: number;
-  reward: number;
-  category: 'skills' | 'collaboration' | 'mastery' | 'consistency';
-  unlocked: boolean;
+  icon: string;
+  points: number;
+  criteria: any;
 }
 
-export function AchievementSystem() {
-  const achievements: Achievement[] = [
-    {
-      id: '1',
-      title: 'Premiers Pas',
-      description: 'Compléter 5 sessions d\'apprentissage',
-      icon: <Zap className="h-6 w-6" />,
-      progress: 3,
-      target: 5,
-      reward: 100,
-      category: 'consistency',
-      unlocked: false
-    },
-    {
-      id: '2',
-      title: 'Communicateur Né',
-      description: 'Atteindre le niveau 80 en compétence Communication',
-      icon: <Users className="h-6 w-6" />,
-      progress: 65,
-      target: 80,
-      reward: 200,
-      category: 'skills',
-      unlocked: false
-    },
-    {
-      id: '3',
-      title: 'Maître de la Pensée Critique',
-      description: 'Résoudre 10 problèmes complexes',
-      icon: <Brain className="h-6 w-6" />,
-      progress: 7,
-      target: 10,
-      reward: 300,
-      category: 'mastery',
-      unlocked: false
-    },
-    {
-      id: '4',
-      title: 'Leader Collaboratif',
-      description: 'Animer 3 sessions de groupe avec succès',
-      icon: <Crown className="h-6 w-6" />,
-      progress: 2,
-      target: 3,
-      reward: 250,
-      category: 'collaboration',
-      unlocked: false
+interface AchievementSystemProps {
+  studentId: string;
+}
+
+export async function AchievementSystem({ studentId }: AchievementSystemProps) {
+  const allAchievements = await prisma.achievement.findMany();
+  const studentProgress = await prisma.studentProgress.findMany({
+    where: { studentId },
+    include: { task: true }
+  });
+  const student = await prisma.user.findUnique({
+    where: { id: studentId },
+    include: { leaderboard: true }
+  });
+
+  const getAchievementProgress = (achievement: Achievement) => {
+    const criteria = achievement.criteria as any;
+    let progress = 0;
+    let target = 1;
+    let unlocked = false;
+    
+    // This is a simplified progress calculation.
+    // A more robust system would be needed for a real app.
+    switch (criteria.type) {
+      case 'total_tasks':
+        progress = studentProgress.filter(p => p.status === 'COMPLETED' || p.status === 'VERIFIED').length;
+        target = criteria.count || 50;
+        break;
+      case 'streak':
+         progress = student?.leaderboard?.currentStreak ?? 0;
+         target = criteria.days || 7;
+        break;
+      case 'first_task':
+        progress = studentProgress.length > 0 ? 1 : 0;
+        target = 1;
+        break;
+       case 'group_sessions':
+         // This would need tracking of session participation
+         progress = 0; // Placeholder
+         target = criteria.count || 10;
+         break;
+       case 'questions_asked':
+         // This would need tracking of messages that are questions
+         progress = 0; // Placeholder
+         target = criteria.count || 20;
+         break;
     }
-  ];
+    
+    unlocked = progress >= target;
+    
+    return { progress, target, unlocked };
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'skills': return 'bg-blue-100 text-blue-800';
-      case 'collaboration': return 'bg-green-100 text-green-800';
-      case 'mastery': return 'bg-purple-100 text-purple-800';
-      case 'consistency': return 'bg-orange-100 text-orange-800';
+      case 'ACADEMIC': return 'bg-blue-100 text-blue-800';
+      case 'COLLABORATIVE': return 'bg-green-100 text-green-800';
+      case 'CREATIVE': return 'bg-purple-100 text-purple-800';
+      case 'PERSONAL': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return { text: '🥇 Or', className: 'bg-yellow-100 text-yellow-800' };
+    if (rank === 2) return { text: '🥈 Argent', className: 'bg-gray-200 text-gray-800' };
+    if (rank === 3) return { text: '🥉 Bronze', className: 'bg-amber-100 text-amber-800' };
+    return { text: `#${rank}`, className: 'bg-muted text-muted-foreground' };
+  }
+
+  const leaderboardEntry = student?.leaderboard;
+  const rankBadge = leaderboardEntry?.rank ? getRankBadge(leaderboardEntry.rank) : null;
 
   return (
     <Card>
@@ -95,74 +110,78 @@ export function AchievementSystem() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {achievements.map(achievement => (
-            <div key={achievement.id} className={`border rounded-lg p-4 ${
-              achievement.unlocked ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'
-            }`}>
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-full ${
-                  achievement.unlocked ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {achievement.icon}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold">{achievement.title}</h4>
-                    <Badge className={getCategoryColor(achievement.category)}>
-                      {achievement.category}
-                    </Badge>
+          {allAchievements.map(achievement => {
+            const { progress, target, unlocked } = getAchievementProgress(achievement);
+            const iconName = (achievement.icon as IconName) || 'Award';
+
+            return (
+              <div key={achievement.id} className={`border rounded-lg p-4 ${
+                unlocked ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-full ${
+                    unlocked ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    <Icon name={iconName} className="h-6 w-6" />
                   </div>
                   
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {achievement.description}
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Progression</span>
-                      <span>{achievement.progress}/{achievement.target}</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold">{achievement.name}</h4>
                     </div>
-                    <Progress 
-                      value={(achievement.progress / achievement.target) * 100} 
-                      className="h-2"
-                    />
-                  </div>
-                  
-                  <div className="flex justify-between items-center mt-3">
-                    <div className="flex items-center gap-1 text-sm text-yellow-600">
-                      <Award className="h-4 w-4" />
-                      {achievement.reward} pts
+                    
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {achievement.description}
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progression</span>
+                        <span>{progress}/{target}</span>
+                      </div>
+                      <Progress 
+                        value={(progress / target) * 100} 
+                        className="h-2"
+                      />
                     </div>
-                    {achievement.unlocked && (
-                      <Badge variant="default" className="bg-green-100 text-green-800">
-                        Débloqué
-                      </Badge>
-                    )}
+                    
+                    <div className="flex justify-between items-center mt-3">
+                      <div className="flex items-center gap-1 text-sm text-yellow-600">
+                        <Award className="h-4 w-4" />
+                        {achievement.points} pts
+                      </div>
+                      {unlocked && (
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          Débloqué
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         
         {/* Points totaux et classement */}
-        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <h4 className="font-semibold flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-600" />
-                Points totaux: 1,250
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                Classé #3 dans la classe
-              </p>
+        {leaderboardEntry && (
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-600" />
+                  Points totaux: {leaderboardEntry.totalPoints}
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Classé #{leaderboardEntry.rank} dans la classe
+                </p>
+              </div>
+              {rankBadge && <Badge variant="secondary" className={`text-lg ${rankBadge.className}`}>
+                {rankBadge.text}
+              </Badge>}
             </div>
-            <Badge variant="secondary" className="text-lg">
-              🥉 Bronze
-            </Badge>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -8,12 +8,24 @@ import { Header } from '@/components/Header';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { BackButton } from '@/components/BackButton';
+import prisma from '@/lib/prisma';
 
 export default async function AnalyticsPage() {
     const session = await getAuthSession();
     if (session?.user.role !== 'PROFESSEUR') {
         redirect('/login');
     }
+
+    // Pour la démo, on prend le premier élève de la première classe du prof
+    const firstClass = await prisma.classroom.findFirst({
+        where: { professeurId: session.user.id },
+        include: { eleves: { take: 1 } }
+    });
+
+    const student = firstClass?.eleves[0];
+    const studentId = student?.id;
+    const classId = firstClass?.id;
+
 
   return (
     <>
@@ -35,13 +47,13 @@ export default async function AnalyticsPage() {
       
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 space-y-8">
-          <SkillMatrix studentId="1" classId="1" />
+          {studentId && classId && <SkillMatrix studentId={studentId} classId={classId} />}
           <AdaptiveLearningEngine />
         </div>
         
         <div className="space-y-8">
           <AISkillAssessment />
-          <AchievementSystem />
+          {studentId && <AchievementSystem studentId={studentId}/>}
         </div>
       </div>
     </div>
