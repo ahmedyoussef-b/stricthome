@@ -19,7 +19,7 @@ export async function endAllActiveSessionsForTeacher() {
     },
     include: {
       participants: {
-        select: { id: true, classeId: true },
+        select: { id: true, classroomId: true },
       },
     },
   });
@@ -46,8 +46,8 @@ export async function endAllActiveSessionsForTeacher() {
   for (const endedSession of activeSessions) {
     const firstParticipant = endedSession.participants[0];
     // Notify clients on the class channel
-    if (firstParticipant?.classeId) {
-      const channelName = `presence-classe-${firstParticipant.classeId}`;
+    if (firstParticipant?.classroomId) {
+      const channelName = `presence-classe-${firstParticipant.classroomId}`;
       await pusherServer.trigger(channelName, 'session-ended', { sessionId: endedSession.id });
     }
     // Also notify clients on the specific session channel
