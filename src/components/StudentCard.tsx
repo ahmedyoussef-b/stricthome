@@ -17,8 +17,8 @@ import type { FullConversation, StudentForCard } from '@/lib/types';
 
 interface StudentCardProps {
   student: StudentForCard;
-  isSelected: boolean;
-  onSelectionChange: (studentId: string, isSelected: boolean) => void;
+  isSelected?: boolean;
+  onSelectionChange?: (studentId: string, isSelected: boolean) => void;
   isConnected: boolean;
   isSelectable?: boolean;
   rank?: number;
@@ -26,8 +26,8 @@ interface StudentCardProps {
 
 export function StudentCard({ 
     student, 
-    isSelected, 
-    onSelectionChange, 
+    isSelected = false, 
+    onSelectionChange = () => {}, 
     isConnected, 
     isSelectable = true,
     rank
@@ -133,14 +133,16 @@ export function StudentCard({
         )}
       </CardContent>
       <CardFooter className="flex flex-col gap-2">
-         <Button asChild className="w-full" variant="secondary" onClick={(e) => e.stopPropagation()}>
-            <Link href={`/student/${student.id}?viewAs=teacher`}>Voir la page</Link>
-        </Button>
         {isTeacherView && (
-             <Button className="w-full" variant="outline" onClick={handleStartConversation} disabled={isPending}>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                {isPending ? 'Chargement...' : 'Message'}
+          <>
+            <Button asChild className="w-full" variant="secondary" onClick={(e) => e.stopPropagation()}>
+                <Link href={`/student/${student.id}?viewAs=teacher`}>Voir la page</Link>
             </Button>
+            <Button className="w-full" variant="outline" onClick={handleStartConversation} disabled={isPending}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {isPending ? 'Chargement...' : 'Message'}
+            </Button>
+          </>
         )}
       </CardFooter>
     </Card>
