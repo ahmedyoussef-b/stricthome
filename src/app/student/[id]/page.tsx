@@ -10,7 +10,7 @@ import { getAuthSession } from '@/lib/session';
 import { ChatSheet } from '@/components/ChatSheet';
 import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import StudentPageClient from '@/components/StudentPageClient';
-import { Metier } from '@prisma/client';
+import { Metier, CoursSession } from '@prisma/client';
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
     const student = await prisma.user.findUnique({
@@ -18,15 +18,15 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
       include: {
         etat: {
           include: {
-            metier: true
-          }
+            metier: true,
+          },
         },
         sessionsParticipees: {
           where: { endedAt: null },
         },
         progress: true,
         classe: true,
-      }
+      },
     });
 
     if (!student) return null;
