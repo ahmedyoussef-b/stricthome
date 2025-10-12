@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import prisma from '@/lib/prisma';
 import * as Icons from 'lucide-react';
+import type { Achievement as AchievementType } from '@prisma/client';
 
 type IconName = keyof typeof Icons;
 
@@ -18,15 +19,6 @@ const Icon = ({ name, ...props }: { name: IconName } & Icons.LucideProps) => {
     if (!LucideIcon) return <Icons.Award {...props} />;
     return <LucideIcon {...props} />;
 };
-
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  points: number;
-  criteria: any;
-}
 
 interface AchievementSystemProps {
   studentId: string;
@@ -53,7 +45,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
 
   if (!student) return null;
 
-  const getAchievementProgress = (achievement: Achievement) => {
+  const getAchievementProgress = (achievement: AchievementType) => {
     const criteria = achievement.criteria as any;
     let progress = 0;
     let target = 1;
