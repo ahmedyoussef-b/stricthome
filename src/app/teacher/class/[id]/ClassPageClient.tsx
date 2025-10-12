@@ -36,12 +36,12 @@ type PusherMembers = {
 
 
 interface ClassPageClientProps {
-    classe: ClasseWithDetails;
+    classroom: ClasseWithDetails;
     teacher: AuthUser;
     announcements: AnnouncementWithAuthor[];
 }
 
-export default function ClassPageClient({ classe, teacher, announcements }: ClassPageClientProps) {
+export default function ClassPageClient({ classroom, teacher, announcements }: ClassPageClientProps) {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [isStartingSession, startSessionTransition] = useTransition();
   const [onlineUserEmails, setOnlineUserEmails] = useState<Set<string>>(new Set());
@@ -49,13 +49,13 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
   const { toast } = useToast();
 
   const sortedStudents = useMemo(() => {
-    return [...classe.eleves].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
-  }, [classe.eleves]);
+    return [...classroom.eleves].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
+  }, [classroom.eleves]);
 
   useEffect(() => {
-    if (!classe.id) return;
+    if (!classroom.id) return;
 
-    const channelName = `presence-classe-${classe.id}`;
+    const channelName = `presence-classe-${classroom.id}`;
     
     try {
         const channel = pusherClient.subscribe(channelName);
@@ -84,7 +84,7 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
     } catch (error) {
         console.error("💥 [Pusher] La souscription à Pusher a échoué:", error);
     }
-  }, [classe.id]);
+  }, [classroom.id]);
 
 
   const handleSelectionChange = (studentId: string, isSelected: boolean) => {
@@ -140,15 +140,15 @@ export default function ClassPageClient({ classe, teacher, announcements }: Clas
                     </Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{classe.nom}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{classroom.nom}</h1>
                     <p className="text-muted-foreground">Gérez vos élèves et leur parcours d'apprentissage.</p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <AddStudentForm classeId={classe.id} />
+                <AddStudentForm classroomId={classroom.id} />
                  {teacher.id && (
                     <ChatSheet 
-                        classeId={classe.id} 
+                        classroomId={classroom.id} 
                         userId={teacher.id} 
                         userRole={teacher.role as Role} 
                     />

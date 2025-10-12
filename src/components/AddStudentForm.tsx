@@ -30,7 +30,7 @@ function SubmitButton() {
     )
 }
 
-export function AddStudentForm({ classeId }: { classeId: string }) {
+export function AddStudentForm({ classroomId }: { classroomId: string }) {
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
@@ -72,7 +72,7 @@ export function AddStudentForm({ classeId }: { classeId: string }) {
                     </DialogDescription>
                 </DialogHeader>
                 <form ref={formRef} action={handleAddStudent} className="grid gap-4 py-4">
-                    <input type="hidden" name="classeId" value={classeId} />
+                    <input type="hidden" name="classroomId" value={classroomId} />
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">Nom</Label>
                         <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="col-span-3" required disabled={isPending} />

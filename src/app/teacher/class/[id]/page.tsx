@@ -8,15 +8,15 @@ import { getClassAnnouncements } from '@/lib/actions/announcement.actions';
 import { ClasseWithDetails } from '@/lib/types';
 
 export default async function ClassPage({ params }: { params: { id: string } }) {
-  const classeId = params.id;
+  const classroomId = params.id;
   const session = await getAuthSession();
 
   if (!session || session.user.role !== 'PROFESSEUR') {
       redirect('/login')
   }
 
-  const classe = await prisma.classe.findUnique({
-      where: { id: classeId, professeurId: session.user.id },
+  const classroom = await prisma.classroom.findUnique({
+      where: { id: classroomId, professeurId: session.user.id },
       include: {
         eleves: {
           include: {
@@ -31,17 +31,17 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       },
     });
 
-  if (!classe) {
+  if (!classroom) {
     notFound();
   }
 
-  const announcements = await getClassAnnouncements(classe.id);
+  const announcements = await getClassAnnouncements(classroom.id);
   
   // Cast the fetched data to our specific client-side type
-  const clientClasse: ClasseWithDetails = {
-    id: classe.id,
-    nom: classe.nom,
-    eleves: classe.eleves.map(e => ({
+  const clientClassroom: ClasseWithDetails = {
+    id: classroom.id,
+    nom: classroom.nom,
+    eleves: classroom.eleves.map(e => ({
       id: e.id,
       name: e.name,
       email: e.email,
@@ -50,5 +50,5 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
     }))
   };
 
-  return <ClassPageClient classe={clientClasse} teacher={session.user} announcements={announcements} />;
+  return <ClassPageClient classroom={clientClassroom} teacher={session.user} announcements={announcements} />;
 }

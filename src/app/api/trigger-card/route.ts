@@ -8,12 +8,12 @@ export async function POST(request: NextRequest) {
     const { isActive } = await request.json();
 
     // Broadcast à toutes les classes
-    const classes = await prisma.classe.findMany({
+    const classrooms = await prisma.classroom.findMany({
       select: { id: true }
     });
 
-    const events = classes.map(classe => ({
-        channel: `presence-classe-${classe.id}`,
+    const events = classrooms.map(classroom => ({
+        channel: `presence-classe-${classroom.id}`,
         name: 'card-trigger',
         data: { isActive }
     }));

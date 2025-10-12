@@ -20,7 +20,7 @@ export async function GET(
       include: {
         participants: { select: { id: true } }, // Select only IDs for security check
         professeur: true,
-        classe: {
+        classroom: {
             include: {
                 eleves: {
                      select: {
@@ -52,7 +52,7 @@ export async function GET(
     }
     
     // The class and its students are now included in the initial query
-    const studentsInClass = coursSession.classe?.eleves || [];
+    const studentsInClass = coursSession.classroom?.eleves || [];
 
     return NextResponse.json({ 
         session: coursSession, 

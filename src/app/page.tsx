@@ -51,21 +51,21 @@ export default async function HomePage() {
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold text-center mb-12">Annonces Récentes</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {announcements.map((annonce: AnnouncementWithAuthor) => (
-                  <Card key={annonce.id}>
+                {announcements.map((announcement: AnnouncementWithAuthor) => (
+                  <Card key={announcement.id}>
                     <CardHeader>
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary/10 rounded-full">
                           <Megaphone className="h-6 w-6 text-primary" />
                         </div>
-                        <CardTitle>{annonce.title}</CardTitle>
+                        <CardTitle>{announcement.title}</CardTitle>
                       </div>
                        <CardDescription>
-                         <p>Par {annonce.author.name ?? 'Utilisateur inconnu'} - {format(new Date(annonce.createdAt), 'dd MMMM yyyy')}</p>
+                         <p>Par {announcement.author.name ?? 'Utilisateur inconnu'} - {format(new Date(announcement.createdAt), 'dd MMMM yyyy')}</p>
                        </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p>{annonce.content}</p>
+                      <p>{announcement.content}</p>
                     </CardContent>
                   </Card>
                 ))}

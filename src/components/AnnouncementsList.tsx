@@ -37,16 +37,16 @@ export function AnnouncementsList({ announcements }: AnnouncementsListProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {announcements.map((annonce) => (
-            <div key={annonce.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-              <h3 className="font-semibold">{annonce.title}</h3>
-              <p className="text-sm mt-1">{annonce.content}</p>
+          {announcements.map((announcement) => (
+            <div key={announcement.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+              <h3 className="font-semibold">{announcement.title}</h3>
+              <p className="text-sm mt-1">{announcement.content}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                Par {annonce.author.name} - {format(new Date(annonce.createdAt), 'dd MMM yyyy')}
+                Par {announcement.author.name} - {format(new Date(announcement.createdAt), 'dd MMM yyyy')}
               </p>
-              {annonce.attachmentUrl && (
+              {announcement.attachmentUrl && (
                 <Button asChild variant="outline" size="sm" className="mt-3">
-                  <Link href={annonce.attachmentUrl} target="_blank" download>
+                  <Link href={announcement.attachmentUrl} target="_blank" download>
                     <Download className="mr-2 h-4 w-4" />
                     Télécharger la pièce jointe
                   </Link>

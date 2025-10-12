@@ -12,7 +12,7 @@ export async function createClass(formData: FormData) {
         throw new Error('Nom de la classe et ID du professeur sont requis.');
     }
     
-    const newClass = await prisma.classe.create({
+    const newClass = await prisma.classroom.create({
         data: {
             nom,
             professeurId,
@@ -28,14 +28,14 @@ export async function addStudentToClass(formData: FormData) {
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const ambition = formData.get('ambition') as string;
-    const classeId = formData.get('classeId') as string;
+    const classroomId = formData.get('classroomId') as string;
 
-    if (!name || !email || !classeId) {
+    if (!name || !email || !classroomId) {
         throw new Error('Nom, email et ID de classe sont requis.');
     }
     
-    const classe = await prisma.classe.findUnique({ where: { id: classeId } });
-    if (!classe) throw new Error('Classe non trouvée.');
+    const classroom = await prisma.classroom.findUnique({ where: { id: classroomId } });
+    if (!classroom) throw new Error('Classe non trouvée.');
 
     // Optional: Check if user with this email already exists
     let user = await prisma.user.findUnique({ where: { email } });
@@ -44,7 +44,7 @@ export async function addStudentToClass(formData: FormData) {
         // If user exists, update their class
         user = await prisma.user.update({
             where: { id: user.id },
-            data: { classeId },
+            data: { classroomId },
         });
     } else {
         // If user doesn't exist, create them
@@ -53,7 +53,7 @@ export async function addStudentToClass(formData: FormData) {
                 name,
                 email,
                 ambition,
-                classeId,
+                classroomId,
                 role: 'ELEVE',
             },
         });
@@ -67,7 +67,7 @@ export async function addStudentToClass(formData: FormData) {
         });
     }
 
-    revalidatePath(`/teacher/class/${classeId}`);
+    revalidatePath(`/teacher/class/${classroomId}`);
     
     return user;
 }

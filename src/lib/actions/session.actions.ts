@@ -14,10 +14,10 @@ export async function createCoursSession(professeurId: string, studentIds: strin
 
     const firstStudent = await prisma.user.findUnique({
         where: { id: studentIds[0] },
-        select: { classeId: true }
+        select: { classroomId: true }
     });
 
-    if (!firstStudent?.classeId) {
+    if (!firstStudent?.classroomId) {
         throw new Error("Could not determine the class for the session.");
     }
 
@@ -29,8 +29,8 @@ export async function createCoursSession(professeurId: string, studentIds: strin
             participants: {
                 connect: [{id: professeurId}, ...studentIds.map(id => ({ id }))]
             },
-            classe: {
-                connect: { id: firstStudent.classeId }
+            classroom: {
+                connect: { id: firstStudent.classroomId }
             },
             whiteboardControllerId: professeurId, // Teacher has control by default
             spotlightedParticipantSid: professeurId, // Teacher is in spotlight by default
@@ -39,7 +39,7 @@ export async function createCoursSession(professeurId: string, studentIds: strin
 
     console.log(`✅ [DB] Session ${session.id} créée. Envoi de la notification Pusher...`);
     
-    const channelName = `presence-classe-${firstStudent.classeId}`;
+    const channelName = `presence-classe-${firstStudent.classroomId}`;
     await pusherServer.trigger(channelName, 'session-started', {
         sessionId: session.id,
         invitedStudentIds: studentIds,
@@ -163,7 +163,7 @@ export async function endCoursSession(sessionId: string) {
         professeurId: session.user.id,
         endedAt: null,
     },
-    include: { participants: { select: { id: true, classeId: true } } },
+    include: { participants: { select: { id: true, classroomId: true } } },
   });
 
   if (!coursSession) {
@@ -178,8 +178,8 @@ export async function endCoursSession(sessionId: string) {
   console.log(`✅ [DB] Session ${sessionId} marquée comme terminée en base de données.`);
 
   const firstParticipant = coursSession.participants[0];
-  if (firstParticipant?.classeId) {
-      const channelName = `presence-classe-${firstParticipant.classeId}`;
+  if (firstParticipant?.classroomId) {
+      const channelName = `presence-classe-${firstParticipant.classroomId}`;
       await pusherServer.trigger(channelName, 'session-ended', { sessionId: updatedSession.id });
       console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de classe ${channelName}.`);
   }

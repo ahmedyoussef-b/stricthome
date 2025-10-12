@@ -1,4 +1,3 @@
-
 // prisma/seed.ts
 import { PrismaClient, Role, TaskType, TaskDifficulty } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
@@ -22,12 +21,12 @@ async function main() {
   await prisma.reaction.deleteMany();
   await prisma.message.deleteMany();
   await prisma.conversation.deleteMany();
-  await prisma.annonce.deleteMany();
+  await prisma.announcement.deleteMany();
   await prisma.coursSession.deleteMany();
   await prisma.task.deleteMany();
   
   // Delete classes before users since classes depend on users (professeurId)
-  await prisma.classe.deleteMany();
+  await prisma.classroom.deleteMany();
   
   // Finally delete users
   await prisma.user.deleteMany();
@@ -124,13 +123,13 @@ async function main() {
 
   // Create classes (AFTER teacher is created)
   console.log('🏫 Création des classes...');
-  const classeA = await prisma.classe.create({
+  const classroomA = await prisma.classroom.create({
     data: { nom: 'Classe A', professeurId: teacher.id },
   });
-  const classeB = await prisma.classe.create({
+  const classroomB = await prisma.classroom.create({
     data: { nom: 'Classe B', professeurId: teacher.id },
   });
-  const classeC = await prisma.classe.create({
+  const classroomC = await prisma.classroom.create({
     data: { nom: 'Classe C', professeurId: teacher.id },
   });
   console.log('✅ 3 Classes créées.');
@@ -146,11 +145,11 @@ async function main() {
       'Mehdi', 'Samira', 'Bilal', 'Zahra', 'Idris', 'Anissa', 'Malik', 'Khadija', 'Walid', 'Salma'
   ];
 
-  const classes = [classeA, classeB, classeC];
+  const classrooms = [classroomA, classroomB, classroomC];
   let studentIndex = 0;
   const students = [];
 
-  for (const classe of classes) {
+  for (const classroom of classrooms) {
       for (let i = 0; i < 10; i++) {
           const name = studentNames[studentIndex];
           const student = await prisma.user.create({
@@ -160,7 +159,7 @@ async function main() {
                   role: 'ELEVE',
                   ambition: `devenir ${name === 'Fatima' ? 'médecin' : 'ingénieur'}`,
                   points: Math.floor(Math.random() * 250),
-                  classeId: classe.id,
+                  classroomId: classroom.id,
               },
           });
           
@@ -209,7 +208,7 @@ async function main() {
             message: "Bonjour la classe! N'oubliez pas vos devoirs pour demain.",
             senderId: teacher.id,
             senderName: teacher.name!,
-            classeId: classeA.id,
+            classroomId: classroomA.id,
         }
     });
 
@@ -218,7 +217,7 @@ async function main() {
             message: "Bonjour Monsieur, j'ai une question sur l'exercice 3.",
             senderId: students[0].id,
             senderName: students[0].name!,
-            classeId: classeA.id,
+            classroomId: classroomA.id,
         }
     });
 
@@ -227,7 +226,7 @@ async function main() {
             message: "Quelqu'un a compris la leçon d'aujourd'hui ?",
             senderId: students[1].id,
             senderName: students[1].name!,
-            classeId: classeA.id,
+            classroomId: classroomA.id,
         }
     });
   }
@@ -235,7 +234,7 @@ async function main() {
   
   // Create some announcements
   console.log('📢 Création des annonces...');
-  await prisma.annonce.create({
+  await prisma.announcement.create({
     data: {
       title: 'Bienvenue sur Classroom Connector !',
       content: "C'est un nouvel espace pour apprendre et explorer ensemble. N'hésitez pas à poser des questions !",
@@ -243,20 +242,20 @@ async function main() {
       // Public announcement (classeId is null)
     }
   });
-  await prisma.annonce.create({
+  await prisma.announcement.create({
     data: {
       title: 'Rappel pour la Classe A',
       content: 'Le projet sur les volcans est à rendre pour vendredi prochain. Bon courage !',
       authorId: teacher.id,
-      classeId: classeA.id,
+      classeId: classroomA.id,
     }
   });
-  await prisma.annonce.create({
+  await prisma.announcement.create({
     data: {
       title: 'Concours de Mathématiques',
       content: 'Participez au concours de mathématiques la semaine prochaine ! Des points bonus à gagner.',
       authorId: teacher.id,
-      classeId: classeB.id,
+      classeId: classroomB.id,
     }
   });
   console.log('✅ Annonces créées.');
@@ -337,3 +336,5 @@ main()
     
 
     
+
+

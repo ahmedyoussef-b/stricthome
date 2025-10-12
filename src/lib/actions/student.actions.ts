@@ -28,11 +28,11 @@ export async function setStudentCareer(studentId: string, careerId: string | nul
 
     const student = await prisma.user.findUnique({
       where: { id: studentId },
-      select: { classeId: true }
+      select: { classroomId: true }
     });
 
-    if (student?.classeId) {
-        await pusherServer.trigger(`presence-classe-${student.classeId}`, 'student-updated', {
+    if (student?.classroomId) {
+        await pusherServer.trigger(`presence-classe-${student.classroomId}`, 'student-updated', {
             studentId,
         });
     }

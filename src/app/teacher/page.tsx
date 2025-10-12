@@ -5,7 +5,7 @@ import { Users, Video, Brain, Edit } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { AddClassForm } from '@/components/AddClassForm';
-import { User, Classe } from '@prisma/client';
+import { User, Classroom } from '@prisma/client';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ export default async function TeacherPage() {
     },
   });
 
-  const classes = teacher?.classesEnseignees || [];
+  const classrooms = teacher?.classesEnseignees || [];
 
   return (
     <>
@@ -68,12 +68,12 @@ export default async function TeacherPage() {
               </Link>
             </Button>
             <ToggleButton />
-            <CreateAnnouncementForm classes={classes} />
+            <CreateAnnouncementForm classrooms={classrooms} />
             <AddClassForm teacherId={user.id} />
           </div>
         </div>
 
-        {classes.length === 0 ? (
+        {classrooms.length === 0 ? (
           <Card className="text-center p-8">
             <CardHeader>
               <CardTitle>Aucune classe trouvée</CardTitle>
@@ -82,8 +82,8 @@ export default async function TeacherPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {classes.map(classe => (
-              <Link href={`/teacher/class/${classe.id}`} className="group" key={classe.id}>
+            {classrooms.map(classroom => (
+              <Link href={`/teacher/class/${classroom.id}`} className="group" key={classroom.id}>
                 <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                   <CardHeader>
                     <div className="flex items-center gap-4">
@@ -91,8 +91,8 @@ export default async function TeacherPage() {
                         <Users className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <CardTitle>{classe.nom}</CardTitle>
-                        <CardDescription>{(classe as any)._count.eleves} élèves</CardDescription>
+                        <CardTitle>{classroom.nom}</CardTitle>
+                        <CardDescription>{(classroom as any)._count.eleves} élèves</CardDescription>
                       </div>
                     </div>
                   </CardHeader>

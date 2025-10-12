@@ -23,7 +23,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
           where: { endedAt: null },
         },
         progress: true,
-        classe: true,
+        classroom: true,
       }
     });
 
@@ -72,15 +72,15 @@ export default async function StudentPage({
   const career = student.etat?.metier;
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
-  const classeId = student.classeId;
+  const classroomId = student.classroomId;
   const announcements = await getStudentAnnouncements(student.id);
 
   return (
     <CareerThemeWrapper career={career ?? undefined}>
       <div className="flex flex-col min-h-screen">
         <Header user={session.user}>
-            {classeId && !isTeacherView && session.user.role && (
-                <ChatSheet classeId={classeId} userId={session.user.id} userRole={session.user.role} />
+            {classroomId && !isTeacherView && session.user.role && (
+                <ChatSheet classroomId={classroomId} userId={session.user.id} userRole={session.user.role} />
             )}
         </Header>
         <StudentPageClient

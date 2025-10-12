@@ -9,25 +9,25 @@ import { ReactionWithUser, MessageWithReactions } from '../types';
 import type { Session, User } from 'next-auth';
 
 
-export async function getMessages(classeId: string): Promise<MessageWithReactions[]> {
+export async function getMessages(classroomId: string): Promise<MessageWithReactions[]> {
     const session = await getAuthSession();
     if (!session?.user) {
         throw new Error("Unauthorized to fetch messages.");
     }
 
-    if (!classeId) {
+    if (!classroomId) {
         throw new Error('Classe ID is required.');
     }
     
     // Security check: ensure the user is part of the class they are trying to view messages from.
     if ((session.user as User).role === 'PROFESSEUR') {
-        const classe = await prisma.classe.findFirst({
-            where: { id: classeId, professeurId: session.user.id }
+        const classroom = await prisma.classroom.findFirst({
+            where: { id: classroomId, professeurId: session.user.id }
         });
-        if (!classe) throw new Error("Unauthorized: Teacher does not teach this class.");
+        if (!classroom) throw new Error("Unauthorized: Teacher does not teach this class.");
     } else if ((session.user as User).role === 'ELEVE') {
         const user = await prisma.user.findFirst({
-            where: { id: session.user.id, classeId: classeId }
+            where: { id: session.user.id, classroomId: classroomId }
         });
         if (!user) throw new Error("Unauthorized: Student does not belong to this class.");
     } else {
@@ -35,7 +35,7 @@ export async function getMessages(classeId: string): Promise<MessageWithReaction
     }
 
     const messages = await prisma.message.findMany({
-        where: { classeId },
+        where: { classroomId },
         include: { 
             reactions: {
                 include: {
@@ -51,19 +51,19 @@ export async function getMessages(classeId: string): Promise<MessageWithReaction
 export async function sendMessage(formData: FormData) {
     const session = await getAuthSession();
     const messageContent = formData.get('message') as string;
-    const classeId = formData.get('classeId') as string;
+    const classroomId = formData.get('classroomId') as string;
     
     if (!session?.user?.id) {
         throw new Error("Unauthorized");
     }
-    if (!messageContent || !classeId) {
+    if (!messageContent || !classroomId) {
         throw new Error("Message and classe ID are required.");
     }
 
     const newMessage = await prisma.message.create({
         data: {
             message: messageContent,
-            classeId,
+            classroomId,
             senderId: session.user.id,
             senderName: session.user.name ?? "Utilisateur",
         },
@@ -76,7 +76,7 @@ export async function sendMessage(formData: FormData) {
         }
     });
 
-    await pusherServer.trigger(`presence-classe-${classeId}`, 'new-message', newMessage);
+    await pusherServer.trigger(`presence-classe-${classroomId}`, 'new-message', newMessage);
 
     return newMessage;
 }
@@ -96,13 +96,13 @@ export async function toggleReaction(messageId: string, emoji: string) {
     });
     
     const message = await prisma.message.findUnique({ where: { id: messageId }});
-    if (!message || !message.classeId) throw new Error("Message not found");
+    if (!message || !message.classroomId) throw new Error("Message not found");
 
     if (existingReaction) {
         await prisma.reaction.delete({ where: { id: existingReaction.id }});
         
         const reactionData: ReactionWithUser = { ...existingReaction, user: { id: session.user.id, name: session.user.name ?? null } };
-        await pusherServer.trigger(`presence-classe-${message.classeId}`, 'reaction-update', { messageId, reaction: reactionData, action: 'removed' });
+        await pusherServer.trigger(`presence-classe-${message.classroomId}`, 'reaction-update', { messageId, reaction: reactionData, action: 'removed' });
 
     } else {
         const newReaction = await prisma.reaction.create({
@@ -115,13 +115,13 @@ export async function toggleReaction(messageId: string, emoji: string) {
                 user: { select: { id: true, name: true }}
             }
         });
-        await pusherServer.trigger(`presence-classe-${message.classeId}`, 'reaction-update', { messageId, reaction: newReaction, action: 'added' });
+        await pusherServer.trigger(`presence-classe-${message.classroomId}`, 'reaction-update', { messageId, reaction: newReaction, action: 'added' });
     }
 
     revalidatePath(`/teacher`); // Or a more specific path if needed
 }
 
-export async function deleteChatHistory(classeId: string) {
+export async function deleteChatHistory(classroomId: string) {
     const session = await getAuthSession();
     if (!session?.user) {
       throw new Error('Unauthorized');
@@ -131,24 +131,24 @@ export async function deleteChatHistory(classeId: string) {
       throw new Error('Unauthorized');
     }
   
-    const classe = await prisma.classe.findFirst({
+    const classroom = await prisma.classroom.findFirst({
       where: {
-        id: classeId,
+        id: classroomId,
         professeurId: session.user.id,
       },
     });
   
-    if (!classe) {
+    if (!classroom) {
       throw new Error('Unauthorized or class not found');
     }
   
     await prisma.message.deleteMany({
       where: {
-        classeId: classeId,
+        classroomId: classroomId,
       },
     });
 
-    await pusherServer.trigger(`presence-classe-${classeId}`, 'history-cleared', {});
+    await pusherServer.trigger(`presence-classe-${classroomId}`, 'history-cleared', {});
   
-    revalidatePath(`/teacher/class/${classeId}`);
+    revalidatePath(`/teacher/class/${classroomId}`);
   }

@@ -138,7 +138,7 @@ function SubmitButton() {
 }
 
 
-export function ChatSheet({ classeId, userId, userRole }: { classeId: string, userId: string, userRole: Role }) {
+export function ChatSheet({ classroomId, userId, userRole }: { classroomId: string, userId: string, userRole: Role }) {
   const [messages, setMessages] = useState<MessageWithStatus[]>([]);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -156,12 +156,12 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
   }, []);
 
   useEffect(() => {
-    if (!classeId) return;
+    if (!classroomId) return;
     
     const fetchMessages = () => {
       startTransition(async () => {
         try {
-          const res = await getMessages(classeId);
+          const res = await getMessages(classroomId);
           setMessages(res || []);
           scrollToBottom('auto');
         } catch (error) {
@@ -174,7 +174,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
       });
     };
     fetchMessages();
-  }, [classeId, toast, scrollToBottom]);
+  }, [classroomId, toast, scrollToBottom]);
   
   const handleNewMessage = useCallback((newMessage: MessageWithReactions) => {
     setMessages(prev => {
@@ -225,9 +225,9 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
 
 
   useEffect(() => {
-    if (!classeId) return;
+    if (!classroomId) return;
 
-    const channelName = `presence-classe-${classeId}`;
+    const channelName = `presence-classe-${classroomId}`;
     try {
         const channel = pusherClient.subscribe(channelName);
         
@@ -253,7 +253,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
         });
     }
 
-  }, [classeId, handleNewMessage, handleReactionUpdate, handleHistoryCleared, toast]);
+  }, [classroomId, handleNewMessage, handleReactionUpdate, handleHistoryCleared, toast]);
 
   const handleReaction = (messageId: string, emoji: string) => {
     if (messageId.startsWith('temp-')) {
@@ -291,7 +291,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
         createdAt: new Date(),
         reactions: [],
         status: 'pending',
-        classeId: classeId,
+        classroomId: classroomId,
         conversationId: null,
     };
     
@@ -315,7 +315,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
     
     const formData = new FormData();
     formData.append('message', msg.message);
-    formData.append('classeId', msg.classeId!);
+    formData.append('classroomId', msg.classroomId!);
 
     sendMessage(formData).catch((error) => {
         console.error("💥 Échec de la nouvelle tentative d'envoi:", error);
@@ -364,7 +364,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <form action={deleteChatHistory.bind(null, classeId)}>
+                    <form action={deleteChatHistory.bind(null, classroomId)}>
                         <AlertDialogAction asChild>
                             <Button type="submit">Supprimer</Button>
                         </AlertDialogAction>
@@ -376,7 +376,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
           </div>
         </SheetHeader>
         <div className="flex-1 flex flex-col min-h-0">
-          {classeId && <OnlineUsers channelType='classe' channelId={classeId} />}
+          {classroomId && <OnlineUsers channelType='classe' channelId={classroomId} />}
           <ScrollArea className="flex-1 pr-4 -mr-4 mt-4" ref={scrollAreaRef}>
             <div className="space-y-6 py-4">
               {messages.map((msg) => (
@@ -400,7 +400,7 @@ export function ChatSheet({ classeId, userId, userRole }: { classeId: string, us
             action={sendMessageAction}
             className="flex gap-2 border-t pt-4"
           >
-            <input type="hidden" name="classeId" value={classeId} />
+            <input type="hidden" name="classroomId" value={classroomId} />
             <Input
               name="message"
               placeholder="Écrivez un message..."

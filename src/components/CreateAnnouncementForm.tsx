@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { createAnnouncement } from '@/lib/actions';
-import type { Classe } from '@prisma/client';
+import type { Classroom } from '@prisma/client';
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -34,10 +34,10 @@ function SubmitButton() {
 }
 
 interface CreateAnnouncementFormProps {
-    classes: Pick<Classe, 'id' | 'nom'>[];
+    classrooms: Pick<Classroom, 'id' | 'nom'>[];
 }
 
-export function CreateAnnouncementForm({ classes }: CreateAnnouncementFormProps) {
+export function CreateAnnouncementForm({ classrooms }: CreateAnnouncementFormProps) {
     const [open, setOpen] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const { toast } = useToast();
@@ -92,8 +92,8 @@ export function CreateAnnouncementForm({ classes }: CreateAnnouncementFormProps)
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="public">Publique (Tous)</SelectItem>
-                                {classes.map(classe => (
-                                    <SelectItem key={classe.id} value={classe.id}>Classe: {classe.nom}</SelectItem>
+                                {classrooms.map(classroom => (
+                                    <SelectItem key={classroom.id} value={classroom.id}>Classe: {classroom.nom}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>

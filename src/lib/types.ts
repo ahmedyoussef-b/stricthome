@@ -1,11 +1,11 @@
 
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Annonce as PrismaAnnonce, Classe, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
 
-export type UserWithClasse = Prisma.UserGetPayload<{
-    include: { classe: true }
+export type UserWithClassroom = Prisma.UserGetPayload<{
+    include: { classroom: true }
 }>
 
-export type ClasseWithUsers = Prisma.ClasseGetPayload<{
+export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
 }>
 
@@ -16,7 +16,7 @@ export type StudentWithStateAndCareer = Prisma.UserGetPayload<{
                 metier: true
             }
         },
-        classe: true,
+        classroom: true,
         progress: true,
         sessionsParticipees: {
             where: {
@@ -66,7 +66,7 @@ export type FullConversation = Prisma.ConversationGetPayload<{
     }
 }>
 
-export type AnnouncementWithAuthor = PrismaAnnonce & {
+export type AnnouncementWithAuthor = PrismaAnnouncement & {
     author: {
         name: string | null;
     }
@@ -84,7 +84,7 @@ export type StudentWithCareer = Pick<User, 'id' | 'name' | 'email'> & {
     } | null
 }
 
-export type ClasseWithDetails = Omit<Classe, 'professeurId'> & {
+export type ClasseWithDetails = Omit<Classroom, 'professeurId'> & {
   eleves: StudentForCard[];
 };
 
@@ -102,7 +102,7 @@ export type CareerWithTheme = Metier & {
 export type CoursSessionWithRelations = CoursSession & {
     participants: User[];
     professeur: User;
-    classe: Classe | null;
+    classroom: Classroom | null;
 };
 
 // Competition System Types

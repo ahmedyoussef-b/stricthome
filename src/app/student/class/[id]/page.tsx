@@ -14,7 +14,7 @@ import { useMemo } from 'react';
 async function getOnlineUsers(classId: string): Promise<string[]> {
     // In a real app, you would query a real-time database or a service like Pusher/Ably
     // For this example, we'll just return a few mock online users.
-    const allStudents = await prisma.user.findMany({ where: { classeId }, select: { email: true }});
+    const allStudents = await prisma.user.findMany({ where: { classroomId: classId }, select: { email: true }});
     // Let's pretend half the class is online
     return allStudents.slice(0, Math.ceil(allStudents.length / 2)).map(s => s.email).filter((e): e is string => !!e);
 }
@@ -25,10 +25,10 @@ export default async function StudentClassPage({ params }: { params: { id: strin
     redirect('/login');
   }
 
-  const classeId = params.id;
+  const classroomId = params.id;
 
-  const classe = await prisma.classe.findUnique({
-    where: { id: classeId },
+  const classroom = await prisma.classroom.findUnique({
+    where: { id: classroomId },
     include: {
       eleves: {
         include: {
@@ -43,18 +43,18 @@ export default async function StudentClassPage({ params }: { params: { id: strin
     },
   });
 
-  if (!classe) {
+  if (!classroom) {
     notFound();
   }
 
   // Security check: ensure the logged-in student is part of this class
-  if (session.user.role === 'ELEVE' && session.user.classeId !== classe.id) {
+  if (session.user.role === 'ELEVE' && session.user.classroomId !== classroom.id) {
     notFound();
   }
 
   // We are not using a real-time presence here, so we will pass emails
   // For a real app, you would use a client component with Pusher.
-  const onlineUserEmails = await getOnlineUsers(classe.id);
+  const onlineUserEmails = await getOnlineUsers(classroom.id);
 
 
   return (
@@ -65,7 +65,7 @@ export default async function StudentClassPage({ params }: { params: { id: strin
           <div className="flex items-center gap-4">
             <BackButton />
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">{classe.nom}</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{classroom.nom}</h1>
               <p className="text-muted-foreground">Membres de la classe</p>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default async function StudentClassPage({ params }: { params: { id: strin
         </Alert>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {classe.eleves.map((student, index) => {
+          {classroom.eleves.map((student, index) => {
             const isConnected = !!student.email && onlineUserEmails.includes(student.email);
             return (
               <StudentCard
