@@ -89,7 +89,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.classroomId = (user as any).classroomId;
+        token.classeId = (user as any).classeId;
       }
       return token;
     },
@@ -101,8 +101,8 @@ export const authOptions: NextAuthOptions = {
         if (token.role) {
            session.user.role = token.role as Role;
         }
-        if (token.classroomId) {
-            session.user.classroomId = token.classroomId as string;
+        if (token.classeId) {
+            session.user.classeId = token.classeId as string;
         }
       }
       return session;
