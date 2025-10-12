@@ -1,5 +1,3 @@
-
-
 // src/app/student/[id]/page.tsx
 import { Header } from '@/components/Header';
 import prisma from '@/lib/prisma';
@@ -24,7 +22,11 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
         sessionsParticipees: {
           where: { endedAt: null },
         },
-        progress: true,
+        progress: {
+          include: {
+            task: true,
+          },
+        },
         classe: true,
       },
     });
