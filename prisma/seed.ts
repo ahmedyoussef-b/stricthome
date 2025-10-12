@@ -100,23 +100,29 @@ async function main() {
   console.log('🎯 Création des tâches...');
   await prisma.task.createMany({
     data: [
+      // --- PERSONAL TASKS (AUTOMATED) ---
+      // Connection Time Task
+      { title: 'Connexion du Soir', description: 'Connectez-vous entre 18h00 et 18h10.', points: 10, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '18:00', endTime: '18:10', isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
+      // Continuous Activity Task
+      { title: 'Marathon de Concentration', description: 'Restez actif sur la plateforme pendant 60 minutes continues.', points: 100, type: TaskType.DAILY, category: 'PERSONAL', duration: 60, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
+      
+      // --- MANUAL TASKS ---
       // Daily
-      { title: 'Connexion quotidienne', description: 'Connectez-vous une fois par jour.', points: 5, type: TaskType.DAILY, category: 'PERSONAL', duration: 1, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
-      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', duration: 1, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
-      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', duration: 1, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
-      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', duration: 1, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
+      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
+      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
+      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
       
       // Weekly
-      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: 7, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', duration: 7, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: 7, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
-      { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', duration: 7, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
+      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
+      { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
+      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
+      { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
       
       // Monthly
-      { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, category: 'ACADEMIC', duration: 30, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Projet créatif mensuel', description: 'Soumettez un projet personnel ambitieux lié à votre ambition.', points: 150, type: TaskType.MONTHLY, category: 'CREATIVE', duration: 30, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
-      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY, category: 'PERSONAL', duration: 30, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
-      { title: 'Présentation Académique', description: 'Préparez et présentez un sujet de recherche à la classe.', points: 180, type: TaskType.MONTHLY, category: 'ACADEMIC', duration: 30, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
+      { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
+      { title: 'Projet créatif mensuel', description: 'Soumettez un projet personnel ambitieux lié à votre ambition.', points: 150, type: TaskType.MONTHLY, category: 'CREATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
+      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY, category: 'PERSONAL', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
+      { title: 'Présentation Académique', description: 'Préparez et présentez un sujet de recherche à la classe.', points: 180, type: TaskType.MONTHLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
     ]
   });
   console.log('✅ Tâches créées.');
@@ -309,7 +315,7 @@ async function main() {
   console.log(`   - 3 classes créées`);
   console.log(`   - ${students.length} élèves créés`);
   console.log(`   - 3 métiers créés`);
-  console.log(`   - 12 tâches créées`);
+  console.log(`   - 14 tâches créées`);
   console.log(`   - 5 succès créés`);
   console.log(`   - Classement initialisé`);
 }
@@ -336,5 +342,6 @@ main()
     
 
     
+
 
 
