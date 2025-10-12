@@ -74,7 +74,7 @@ export default async function StudentPage({
   const metier = student.etat?.metier;
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
-  const classeId = student.classeId;
+  const classeId = student.classe?.id;
   const announcements = await getStudentAnnouncements(student.id);
 
   return (
