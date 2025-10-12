@@ -17,7 +17,7 @@ import { ChatSheet } from '@/components/ChatSheet';
 import { pusherClient } from '@/lib/pusher/client';
 import { Role } from '@prisma/client';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
-import { AnnouncementWithAuthor, ClasseWithDetails } from '@/lib/types';
+import { AnnouncementWithAuthor, ClassroomWithDetails } from '@/lib/types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // Définition de types spécifiques pour les données Pusher
@@ -36,7 +36,7 @@ type PusherMembers = {
 
 
 interface ClassPageClientProps {
-    classroom: ClasseWithDetails;
+    classroom: ClassroomWithDetails;
     teacher: AuthUser;
     announcements: AnnouncementWithAuthor[];
 }

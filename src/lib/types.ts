@@ -84,7 +84,7 @@ export type StudentWithCareer = Pick<User, 'id' | 'name' | 'email'> & {
     } | null
 }
 
-export type ClasseWithDetails = Omit<Classroom, 'professeurId'> & {
+export type ClassroomWithDetails = Omit<Classroom, 'professeurId'> & {
   eleves: StudentForCard[];
 };
 
