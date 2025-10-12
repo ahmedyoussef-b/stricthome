@@ -6,14 +6,18 @@ export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
 }>
 
 export type StudentWithStateAndCareer = Prisma.UserGetPayload<{
-    include: { 
+    include: {
         etat: {
             include: {
                 metier: true
             }
         },
         classe: true,
-        progress: true,
+        progress: {
+            include: {
+                task: true
+            }
+        },
         sessionsParticipees: {
             where: {
                 endedAt: null

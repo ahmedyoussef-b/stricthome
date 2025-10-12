@@ -66,7 +66,7 @@ export default function StudentPageClient({
               endedAt: null,
               spotlightedParticipantSid: null,
               whiteboardControllerId: '',
-              classeId: student.classe?.id ?? null,
+              classroomId: student.classe?.id ?? null,
             };
             setActiveSession(newSession);
         }
@@ -95,7 +95,7 @@ export default function StudentPageClient({
     } catch (error) {
       console.error("Pusher subscription failed:", error);
     }
-  }, [student.id, student.classe?.id, isTeacherView, router]);
+  }, [student.id, student.classe, isTeacherView, router]);
 
   const handleUploadSuccess = (result: any) => {
     console.log('Upload successful:', result);
