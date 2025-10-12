@@ -18,7 +18,8 @@ import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { TaskList } from './TaskList';
+import { CloudinaryUploadWidget } from '../CloudinaryUploadWidget';
+import { useToast } from '@/hooks/use-toast';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -34,6 +35,7 @@ export default function StudentPageClient({
   isTeacherView,
 }: StudentPageClientProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [showCard, setShowCard] = useState(false);
   const [activeSession, setActiveSession] = useState<CoursSession | null>(
     student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null
@@ -91,6 +93,15 @@ export default function StudentPageClient({
       console.error("Pusher subscription failed:", error);
     }
   }, [student.id, student.classeId, isTeacherView, router]);
+
+  const handleUploadSuccess = (result: any) => {
+    console.log('Upload successful:', result);
+    toast({
+      title: "Téléversement réussi !",
+      description: `Le fichier ${result.info.original_filename} a été envoyé.`,
+    });
+    // Here you would typically save the file URL (result.info.secure_url) to your database
+  };
 
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
@@ -197,6 +208,27 @@ export default function StudentPageClient({
               <p className="text-sm text-amber-600/80">points collectés</p>
             </CardContent>
           </Card>
+          
+          {!isTeacherView && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileUp />
+                  Soumettre un devoir
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
+                  {({ open }) => (
+                    <Button onClick={open} className="w-full">
+                      Téléverser un fichier
+                    </Button>
+                  )}
+                </CloudinaryUploadWidget>
+              </CardContent>
+            </Card>
+          )}
+
         </div>
       </div>
     </main>
