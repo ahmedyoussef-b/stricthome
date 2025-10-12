@@ -16,7 +16,7 @@ export type StudentWithStateAndCareer = Prisma.UserGetPayload<{
                 metier: true
             }
         },
-        classroom: true,
+        classe: true,
         progress: true,
         sessionsParticipees: {
             where: {

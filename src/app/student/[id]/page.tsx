@@ -1,4 +1,5 @@
 
+
 // src/app/student/[id]/page.tsx
 import { Header } from '@/components/Header';
 import prisma from '@/lib/prisma';
@@ -38,10 +39,10 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
                 ...student.etat,
                 metier: null
             }
-        } as StudentWithStateAndCareer;
+        } as unknown as StudentWithStateAndCareer;
     }
 
-    return student as StudentWithStateAndCareer;
+    return student as unknown as StudentWithStateAndCareer;
 }
 
 export default async function StudentPage({
@@ -70,18 +71,18 @@ export default async function StudentPage({
   }
 
 
-  const career = student.etat?.metier;
+  const metier = student.etat?.metier;
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
-  const classroomId = student.classeId;
+  const classeId = student.classeId;
   const announcements = await getStudentAnnouncements(student.id);
 
   return (
-    <CareerThemeWrapper career={career ?? undefined}>
+    <CareerThemeWrapper career={metier ?? undefined}>
       <div className="flex flex-col min-h-screen">
         <Header user={session.user}>
-            {classroomId && !isTeacherView && session.user.role && (
-                <ChatSheet classroomId={classroomId} userId={session.user.id} userRole={session.user.role} />
+            {classeId && !isTeacherView && session.user.role && (
+                <ChatSheet classroomId={classeId} userId={session.user.id} userRole={session.user.role} />
             )}
         </Header>
         <StudentPageClient
