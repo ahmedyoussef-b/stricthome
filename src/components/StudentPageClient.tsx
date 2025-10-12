@@ -46,9 +46,9 @@ export default function StudentPageClient({
   useActivityTracker(!isTeacherView);
 
   useEffect(() => {
-    if (isTeacherView || !student.classeId) return;
+    if (isTeacherView || !student.classe?.id) return;
 
-    const channelName = `presence-classe-${student.classeId}`;
+    const channelName = `presence-classe-${student.classe.id}`;
     try {
       const channel = pusherClient.subscribe(channelName);
 
@@ -65,7 +65,7 @@ export default function StudentPageClient({
               endedAt: null,
               spotlightedParticipantSid: null,
               whiteboardControllerId: '',
-              classeId: student.classeId,
+              classeId: student.classe?.id ?? null,
             };
             setActiveSession(newSession);
         }
@@ -94,7 +94,7 @@ export default function StudentPageClient({
     } catch (error) {
       console.error("Pusher subscription failed:", error);
     }
-  }, [student.id, student.classeId, isTeacherView, router]);
+  }, [student.id, student.classe?.id, isTeacherView, router]);
 
   const handleUploadSuccess = (result: any) => {
     console.log('Upload successful:', result);
@@ -147,7 +147,7 @@ export default function StudentPageClient({
             {student.classe && !isTeacherView && (
               <div className="mt-4">
                 <Button asChild>
-                  <Link href={`/student/class/${student.classeId}`}>
+                  <Link href={`/student/class/${student.classe.id}`}>
                     <Users className="mr-2 h-4 w-4" />
                     Voir ma classe
                   </Link>

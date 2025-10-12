@@ -2,7 +2,7 @@
 import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
 
 export type UserWithClassroom = Prisma.UserGetPayload<{
-    include: { classroom: true }
+    include: { classe: true }
 }>
 
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
@@ -102,7 +102,7 @@ export type CareerWithTheme = Metier & {
 export type CoursSessionWithRelations = CoursSession & {
     participants: User[];
     professeur: User;
-    classroom: Classroom | null;
+    classe: Classroom | null;
 };
 
 // Competition System Types
