@@ -4,7 +4,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcrypt';
-import { ProgressStatus } from '@prisma/client';
+import { ProgressStatus, Task } from '@prisma/client';
 
 const SALT_ROUNDS = 10;
 
@@ -36,7 +36,7 @@ export async function verifyParentPassword(studentId: string, password: string):
   return bcrypt.compare(password, student.parentPassword);
 }
 
-export async function getTasksForValidation(studentId: string) {
+export async function getTasksForValidation(studentId: string): Promise<(Task & { progressId: string })[]> {
   const progress = await prisma.studentProgress.findMany({
     where: {
       studentId: studentId,
@@ -50,8 +50,8 @@ export async function getTasksForValidation(studentId: string) {
     },
   });
 
-  // We only need to return the tasks, not the full progress object
-  return progress.map(p => p.task);
+  // Return the tasks with their associated progressId
+  return progress.map(p => ({ ...p.task, progressId: p.id }));
 }
 
 export async function validateTaskByParent(progressId: string) {
@@ -66,6 +66,7 @@ export async function validateTaskByParent(progressId: string) {
   
   const { task, student } = progress;
 
+  // We are updating the existing progress, not creating a new one
   await prisma.$transaction([
     prisma.studentProgress.update({
       where: { id: progressId },
@@ -93,3 +94,5 @@ export async function validateTaskByParent(progressId: string) {
   revalidatePath(`/student/${student.id}/parent`);
   revalidatePath(`/student/${student.id}`);
 }
+
+    

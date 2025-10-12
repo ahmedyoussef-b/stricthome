@@ -4,6 +4,15 @@
 
 echo "🚀 Démarrage de la configuration du dépôt et du push initial..."
 
+# Synchroniser la base de données
+echo "🔄 Synchronisation de la base de données avec le schéma Prisma..."
+if npx prisma db push; then
+    echo "✅ Base de données synchronisée avec succès."
+else
+    echo "❌ Échec de la synchronisation de la base de données. Le déploiement est annulé."
+    exit 1
+fi
+
 # Fonction pour vérifier la connexion
 check_github_connection() {
     echo "🔍 Vérification de la connexion à GitHub..."

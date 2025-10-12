@@ -8,19 +8,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { setParentPassword, validateTaskByParent } from '@/lib/actions/parent.actions';
-import { Task } from '@prisma/client';
+import { Task, StudentProgress } from '@prisma/client';
 import { Award, Check, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+type TaskForValidation = Task & { progressId: string };
 
 interface TaskValidationClientProps {
   studentId: string;
   studentName: string;
-  initialTasks: Task[];
+  initialTasksForValidation: TaskForValidation[];
   isAuthenticated: boolean;
   hasPasswordSet: boolean;
 }
 
-function TaskItem({ task, onValidate, isPending }: { task: Task; onValidate: () => void; isPending: boolean; }) {
+function TaskItem({ task, onValidate, isPending }: { task: TaskForValidation; onValidate: () => void; isPending: boolean; }) {
   return (
     <div className="flex items-center gap-4 py-3 border-b last:border-b-0">
       <div className="flex-grow">
@@ -43,13 +45,13 @@ function TaskItem({ task, onValidate, isPending }: { task: Task; onValidate: () 
 export function TaskValidationClient({
   studentId,
   studentName,
-  initialTasks,
+  initialTasksForValidation,
   isAuthenticated,
   hasPasswordSet,
 }: TaskValidationClientProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState(initialTasksForValidation);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -78,11 +80,11 @@ export function TaskValidationClient({
     });
   };
   
-  const handleValidateTask = (taskId: string) => {
+  const handleValidateTask = (progressId: string) => {
       startTransition(async () => {
           try {
-              await validateTaskByParent(taskId);
-              setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
+              await validateTaskByParent(progressId);
+              setTasks(prevTasks => prevTasks.filter(t => t.progressId !== progressId));
               toast({ title: 'Tâche validée !', description: `Les points ont été attribués à ${studentName}.` });
           } catch(error) {
               toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de valider la tâche.' });
@@ -98,9 +100,9 @@ export function TaskValidationClient({
           <div className="divide-y">
             {tasks.map(task => (
               <TaskItem
-                key={task.id}
+                key={task.progressId}
                 task={task}
-                onValidate={() => handleValidateTask(task.id)}
+                onValidate={() => handleValidateTask(task.progressId)}
                 isPending={isPending}
               />
             ))}
@@ -145,3 +147,5 @@ export function TaskValidationClient({
     </form>
   );
 }
+
+    

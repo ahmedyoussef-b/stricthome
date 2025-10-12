@@ -108,6 +108,7 @@ async function main() {
       
       // --- MANUAL TASKS ---
       // Daily
+      { title: 'Bureau bien rangé', description: 'Prouvez que votre bureau est bien rangé aujourd\'hui.', points: 20, type: TaskType.DAILY, category: 'CREATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
       { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
       { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
       { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
@@ -315,7 +316,7 @@ async function main() {
   console.log(`   - 3 classes créées`);
   console.log(`   - ${students.length} élèves créés`);
   console.log(`   - 3 métiers créés`);
-  console.log(`   - 14 tâches créées`);
+  console.log(`   - 15 tâches créées`);
   console.log(`   - 5 succès créés`);
   console.log(`   - Classement initialisé`);
 }
@@ -346,3 +347,6 @@ main()
 
 
 
+
+
+    

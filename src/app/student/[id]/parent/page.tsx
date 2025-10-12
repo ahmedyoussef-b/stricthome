@@ -68,7 +68,7 @@ export default async function ParentValidationPage({
             <TaskValidationClient
               studentId={student.id}
               studentName={student.name || 'l\'élève'}
-              initialTasks={tasksForValidation}
+              initialTasksForValidation={tasksForValidation}
               isAuthenticated={isAuthenticated}
               hasPasswordSet={hasPasswordSet}
             />
@@ -79,3 +79,5 @@ export default async function ParentValidationPage({
     </>
   );
 }
+
+    
