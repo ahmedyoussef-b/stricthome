@@ -18,7 +18,6 @@ import { Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { CloudinaryUploadWidget } from '../CloudinaryUploadWidget';
 import { useToast } from '@/hooks/use-toast';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 

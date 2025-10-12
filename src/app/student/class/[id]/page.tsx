@@ -1,3 +1,4 @@
+
 //src/app/student/class/[id]/page.tsx
 
 import { notFound, redirect } from 'next/navigation';
@@ -5,7 +6,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { Header } from '@/components/Header';
 import { StudentClassView } from '@/components/StudentClassView';
-import {  User } from '@prisma/client';
+import {  User, Classroom } from '@prisma/client';
 
 export type ClassroomWithStudents = Classroom & {
     eleves: (User & {
