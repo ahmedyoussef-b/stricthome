@@ -39,7 +39,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
   });
   const student = await prisma.user.findUnique({
     where: { id: studentId },
-    include: { leaderboard: true }
+    include: { leaderboardEntry: true }
   });
 
   const getAchievementProgress = (achievement: Achievement) => {
@@ -56,7 +56,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
         target = criteria.count || 50;
         break;
       case 'streak':
-         progress = student?.leaderboard?.currentStreak ?? 0;
+         progress = student?.leaderboardEntry?.currentStreak ?? 0;
          target = criteria.days || 7;
         break;
       case 'first_task':
@@ -97,7 +97,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
     return { text: `#${rank}`, className: 'bg-muted text-muted-foreground' };
   }
 
-  const leaderboardEntry = student?.leaderboard;
+  const leaderboardEntry = student?.leaderboardEntry;
   const rankBadge = leaderboardEntry?.rank ? getRankBadge(leaderboardEntry.rank) : null;
 
   return (

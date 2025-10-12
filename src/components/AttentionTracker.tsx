@@ -192,7 +192,7 @@ export function AttentionTracker() {
                           className={`h-2 rounded-full transition-all ${
                             student.isFocused ? 'bg-green-500' : 'bg-red-500'
                           }`}
-                          style={{ width: `${'student.attention'}%` }}
+                          style={{ width: `${student.attention}%` }}
                         ></div>
                       </div>
                       <span className={`text-sm font-medium ${getAttentionColor(student.attention)}`}>
