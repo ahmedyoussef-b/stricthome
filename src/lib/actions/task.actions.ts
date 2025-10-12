@@ -6,6 +6,78 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
+import { Task, TaskCategory, TaskDifficulty, TaskType } from '@prisma/client';
+
+async function verifyTeacher() {
+  const session = await getAuthSession();
+  if (session?.user.role !== 'PROFESSEUR') {
+    throw new Error('Unauthorized');
+  }
+}
+
+export async function createTask(formData: FormData): Promise<Task[]> {
+  await verifyTeacher();
+  
+  const data = {
+    title: formData.get('title') as string,
+    description: formData.get('description') as string,
+    points: parseInt(formData.get('points') as string, 10),
+    type: formData.get('type') as TaskType,
+    category: formData.get('category') as TaskCategory,
+    difficulty: formData.get('difficulty') as TaskDifficulty,
+    duration: 1, // default duration
+    isActive: true, // default active
+  };
+
+  if (!data.title || !data.description || isNaN(data.points)) {
+    throw new Error('Invalid data');
+  }
+
+  await prisma.task.create({ data });
+  
+  revalidatePath('/teacher/tasks');
+  return prisma.task.findMany({ orderBy: { type: 'asc' } });
+}
+
+export async function updateTask(formData: FormData): Promise<Task[]> {
+  await verifyTeacher();
+
+  const id = formData.get('id') as string;
+  const data = {
+    title: formData.get('title') as string,
+    description: formData.get('description') as string,
+    points: parseInt(formData.get('points') as string, 10),
+    type: formData.get('type') as TaskType,
+    category: formData.get('category') as TaskCategory,
+    difficulty: formData.get('difficulty') as TaskDifficulty,
+  };
+
+  if (!id || !data.title || !data.description || isNaN(data.points)) {
+    throw new Error('Invalid data');
+  }
+  
+  await prisma.task.update({ where: { id }, data });
+
+  revalidatePath('/teacher/tasks');
+  return prisma.task.findMany({ orderBy: { type: 'asc' } });
+}
+
+export async function deleteTask(id: string): Promise<Task[]> {
+    await verifyTeacher();
+    
+    // First, delete related student progress to avoid foreign key constraint errors
+    await prisma.studentProgress.deleteMany({
+        where: { taskId: id },
+    });
+
+    await prisma.task.delete({
+        where: { id },
+    });
+
+    revalidatePath('/teacher/tasks');
+    return prisma.task.findMany({ orderBy: { type: 'asc' } });
+}
+
 
 export async function completeTask(taskId: string) {
   const session = await getAuthSession();
@@ -37,8 +109,6 @@ export async function completeTask(taskId: string) {
       periodStart = startOfMonth(now);
       break;
     default:
-        // For 'FINAL' or other types, we might not have a periodic check
-        // For now, allow completion if not already marked as 'COMPLETED' or 'VERIFIED'
       periodStart = new Date(0); // A long time ago
       break;
   }
@@ -93,7 +163,6 @@ export async function completeTask(taskId: string) {
     })
   ]);
 
-  // Revalidate the student's page to show updated points and task status
   revalidatePath(`/student/${userId}`);
   
   return progress;
