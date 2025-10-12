@@ -1,4 +1,3 @@
-
 // src/app/teacher/class/[id]/page.tsx
 import prisma from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
