@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { setParentPassword, validateTaskByParent } from '@/lib/actions/parent.actions';
+import { validateTaskByParent, setParentPassword } from '@/lib/actions/parent.actions';
 import { Task } from '@prisma/client';
-import { Award, Check, Loader2, Brain, Star, CheckCircle2 } from 'lucide-react';
+import { Award, Check, Loader2, Brain, Star, CheckCircle2, Utensils, MessageSquare } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
@@ -24,62 +24,73 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 
 type TaskForValidation = Task & { progressId: string };
+type DetailedFeedback = { taste: number, presentation: number, autonomy: number, comment: string };
 
 interface TaskItemProps {
   task: TaskForValidation;
-  onValidate: (progressId: string, accuracy?: number, feedback?: string) => void;
+  onValidate: (progressId: string, feedback?: DetailedFeedback | number, recipeName?: string) => void;
   isPending: boolean;
 }
 
-function AccuracyValidationDialog({ task, onValidate, isPending }: Omit<TaskItemProps, 'onValidate'> & { onValidate: (accuracy: number, feedback: string) => void; }) {
+function DetailedValidationDialog({ task, onValidate, isPending }: Omit<TaskItemProps, 'onValidate'> & { onValidate: (feedback: DetailedFeedback, recipeName: string) => void; }) {
   const [open, setOpen] = useState(false);
-  const [accuracy, setAccuracy] = useState(80);
-  const [feedback, setFeedback] = useState('');
+  const [recipeName, setRecipeName] = useState('');
+  const [taste, setTaste] = useState(80);
+  const [presentation, setPresentation] = useState(80);
+  const [autonomy, setAutonomy] = useState(80);
+  const [comment, setComment] = useState('');
+
+  const averageScore = Math.round((taste + presentation + autonomy) / 3);
+  const calculatedPoints = Math.round(task.points * (averageScore / 100));
 
   const handleSubmit = () => {
-    onValidate(accuracy, feedback);
+    if (!recipeName.trim()) {
+        alert("Veuillez entrer le nom de la recette.");
+        return;
+    }
+    const feedback: DetailedFeedback = { taste, presentation, autonomy, comment };
+    onValidate(feedback, recipeName);
     setOpen(false);
   };
-
-  const calculatedPoints = Math.round(task.points * (accuracy / 100));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" disabled={isPending} variant="secondary">
-          <Brain className="mr-2 h-4 w-4" />
-          Évaluer
+          <Utensils className="mr-2 h-4 w-4" />
+          Évaluer le plat
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Évaluer la tâche: {task.title}</DialogTitle>
           <DialogDescription>
-            Indiquez le pourcentage de réussite de l'élève pour cette tâche. Les points seront calculés en conséquence.
+            Évaluez la performance de votre enfant sur plusieurs critères pour cette activité culinaire.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6 py-4">
+          <div className="space-y-2">
+             <Label htmlFor="recipeName">Nom de la recette</Label>
+             <Input id="recipeName" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="Ex: Couscous aux légumes" />
+          </div>
           <div className="space-y-4">
-            <Label htmlFor="accuracy">Exactitude: {accuracy}%</Label>
-            <Slider
-              id="accuracy"
-              min={0}
-              max={100}
-              step={1}
-              value={[accuracy]}
-              onValueChange={(value) => setAccuracy(value[0])}
-            />
+            <Label>Goût: {taste}%</Label>
+            <Slider value={[taste]} onValueChange={(v) => setTaste(v[0])} />
+          </div>
+          <div className="space-y-4">
+            <Label>Présentation: {presentation}%</Label>
+            <Slider value={[presentation]} onValueChange={(v) => setPresentation(v[0])} />
+          </div>
+          <div className="space-y-4">
+            <Label>Autonomie: {autonomy}%</Label>
+            <Slider value={[autonomy]} onValueChange={(v) => setAutonomy(v[0])} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="feedback">Feedback (optionnel)</Label>
-            <Textarea
-              id="feedback"
-              placeholder="Ex: Belle récitation, quelques hésitations..."
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-            />
+            <Label htmlFor="comment">Commentaire (optionnel)</Label>
+            <Textarea id="comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ex: Très bon et bien organisé !" />
           </div>
           <div className="text-center font-bold text-lg p-4 bg-amber-100/50 rounded-lg border border-amber-200">
+            Score Moyen: {averageScore}% <br />
             Points attribués: {calculatedPoints} / {task.points}
           </div>
         </div>
@@ -87,7 +98,7 @@ function AccuracyValidationDialog({ task, onValidate, isPending }: Omit<TaskItem
           <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending ? <Loader2 className="animate-spin" /> : <Check />}
-            Confirmer la validation
+            Confirmer l'évaluation
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -96,7 +107,8 @@ function AccuracyValidationDialog({ task, onValidate, isPending }: Omit<TaskItem
 }
 
 function TaskItem({ task, onValidate, isPending }: TaskItemProps) {
-  if (task.requiresAccuracy) {
+  // Logic to distinguish the new cooking task
+  if (task.title === 'Projet créatif mensuel') {
     return (
       <div className="flex items-center gap-4 py-3 border-b last:border-b-0">
         <div className="flex-grow">
@@ -107,10 +119,10 @@ function TaskItem({ task, onValidate, isPending }: TaskItemProps) {
           <Award className="h-4 w-4" />
           <span>{task.points}</span>
         </div>
-        <AccuracyValidationDialog 
+        <DetailedValidationDialog 
           task={task}
           isPending={isPending}
-          onValidate={(accuracy, feedback) => onValidate(task.progressId, accuracy, feedback)}
+          onValidate={(feedback, recipeName) => onValidate(task.progressId, feedback, recipeName)}
         />
       </div>
     );
@@ -151,14 +163,13 @@ export function TaskValidationClient({
   const router = useRouter();
   const { toast } = useToast();
   const [tasks, setTasks] = useState(initialTasksForValidation);
-  const [lastValidated, setLastValidated] = useState<{ progressId: string, accuracy: number, feedback: string, points: number, title: string } | null>(null);
+  const [lastValidated, setLastValidated] = useState<{ progressId: string, feedback: any, points: number, title: string } | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    const urlPassword = hasPasswordSet ? password : undefined;
 
     if (!hasPasswordSet) {
       if (password !== confirmPassword) {
@@ -185,17 +196,20 @@ export function TaskValidationClient({
     });
   };
   
-  const handleValidateTask = (progressId: string, accuracy?: number, feedback?: string) => {
+  const handleValidateTask = (progressId: string, feedback?: DetailedFeedback | number, recipeName?: string) => {
     startTransition(async () => {
         try {
             const taskToValidate = tasks.find(t => t.progressId === progressId);
             if (!taskToValidate) return;
 
-            await validateTaskByParent(progressId, accuracy, feedback);
+            const validationResult = await validateTaskByParent(progressId, feedback, recipeName);
             
-            const points = accuracy !== undefined ? Math.round(taskToValidate.points * (accuracy / 100)) : taskToValidate.points;
-            
-            setLastValidated({ progressId, accuracy: accuracy ?? 100, feedback: feedback ?? '', points, title: taskToValidate.title });
+            setLastValidated({ 
+                progressId, 
+                feedback: typeof feedback === 'object' ? feedback : { accuracy: feedback }, 
+                points: validationResult.pointsAwarded, 
+                title: taskToValidate.title 
+            });
             setTasks(prevTasks => prevTasks.filter(t => t.progressId !== progressId));
             
         } catch(error: any) {
@@ -203,6 +217,36 @@ export function TaskValidationClient({
         }
     })
   }
+  
+  const renderFeedbackDetails = (feedback: any) => {
+    if (feedback.taste !== undefined) { // Detailed feedback
+        const average = Math.round((feedback.taste + feedback.presentation + feedback.autonomy) / 3);
+        return (
+            <>
+                 <p className='flex items-center gap-2'>
+                    <Star className="h-4 w-4"/>
+                    <strong>Score Moyen :</strong> {average}%
+                </p>
+                {feedback.comment && (
+                     <p className='flex items-start gap-2'>
+                        <MessageSquare className="h-4 w-4 mt-1"/>
+                        <strong>Commentaire :</strong> "{feedback.comment}"
+                    </p>
+                )}
+            </>
+        )
+    }
+    if (feedback.accuracy) { // Simple accuracy feedback
+         return (
+            <p className='flex items-center gap-2'>
+                <Brain className="h-4 w-4"/>
+                <strong>Exactitude :</strong> {feedback.accuracy}%
+            </p>
+        )
+    }
+    return null;
+  }
+
 
   if (isAuthenticated) {
     return (
@@ -215,25 +259,14 @@ export function TaskValidationClient({
              </AlertTitle>
              <AlertDescription className="text-green-700/90 mt-2 space-y-1">
                 <p className='flex items-center gap-2'>
-                    <Star className="h-4 w-4"/>
+                    <Award className="h-4 w-4"/>
                     <strong>Points gagnés :</strong> {lastValidated.points} pts
                 </p>
-                {lastValidated.accuracy < 100 && (
-                     <p className='flex items-center gap-2'>
-                        <Brain className="h-4 w-4"/>
-                        <strong>Exactitude :</strong> {lastValidated.accuracy}%
-                    </p>
-                )}
-                {lastValidated.feedback && (
-                     <p className='flex items-start gap-2'>
-                        <Brain className="h-4 w-4 mt-1"/>
-                        <strong>Feedback :</strong> "{lastValidated.feedback}"
-                    </p>
-                )}
+                {renderFeedbackDetails(lastValidated.feedback)}
              </AlertDescription>
            </Alert>
         )}
-        <h3 className="text-lg font-semibold mb-4">Tâches en attente de validation</h3>
+        <h3 className="text-lg font-semibold mb-4">Tâches en attente de validation ({tasks.length})</h3>
         {tasks.length > 0 ? (
           <div className="divide-y">
             {tasks.map(task => (

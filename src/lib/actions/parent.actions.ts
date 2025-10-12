@@ -8,6 +8,8 @@ import { ProgressStatus, Task } from '@prisma/client';
 
 const SALT_ROUNDS = 10;
 
+type DetailedFeedback = { taste: number, presentation: number, autonomy: number, comment: string };
+
 export async function setParentPassword(studentId: string, password: string) {
   if (password.length < 6) {
     throw new Error('Le mot de passe doit faire au moins 6 caractères.');
@@ -50,14 +52,13 @@ export async function getTasksForValidation(studentId: string): Promise<(Task & 
     },
   });
 
-  // Return the tasks with their associated progressId
   return progress.map(p => ({ ...p.task, progressId: p.id }));
 }
 
 export async function validateTaskByParent(
     progressId: string,
-    accuracy?: number,
-    feedback?: string
+    feedback?: DetailedFeedback | number,
+    recipeName?: string,
 ) {
   const progress = await prisma.studentProgress.findUnique({
     where: { id: progressId },
@@ -70,21 +71,42 @@ export async function validateTaskByParent(
   
   const { task, student } = progress;
   let pointsToAward = task.points;
+  let finalScore = 100;
+  
+  const progressUpdateData: any = {
+    status: ProgressStatus.VERIFIED,
+    recipeName: recipeName,
+  };
 
-  // Calculate points based on accuracy if provided
-  if (accuracy !== undefined && task.requiresAccuracy) {
-      pointsToAward = Math.round(task.points * (accuracy / 100));
+  // Detailed feedback for cooking task
+  if (typeof feedback === 'object' && 'taste' in feedback) {
+    finalScore = Math.round((feedback.taste + feedback.presentation + feedback.autonomy) / 3);
+    pointsToAward = Math.round(task.points * (finalScore / 100));
+
+    await prisma.parentFeedback.create({
+      data: {
+        studentProgressId: progressId,
+        taste: feedback.taste,
+        presentation: feedback.presentation,
+        autonomy: feedback.autonomy,
+        comment: feedback.comment,
+      }
+    });
+    progressUpdateData.accuracy = finalScore;
+  } 
+  // Simple accuracy feedback for other tasks
+  else if (typeof feedback === 'number') {
+    finalScore = feedback;
+    pointsToAward = Math.round(task.points * (finalScore / 100));
+    progressUpdateData.accuracy = finalScore;
   }
 
-  await prisma.$transaction([
+  progressUpdateData.pointsAwarded = pointsToAward;
+
+  const [updatedProgress] = await prisma.$transaction([
     prisma.studentProgress.update({
       where: { id: progressId },
-      data: { 
-        status: ProgressStatus.VERIFIED, 
-        pointsAwarded: pointsToAward,
-        accuracy: accuracy,
-        feedback: feedback,
-      },
+      data: progressUpdateData,
     }),
     prisma.user.update({
       where: { id: student.id },
@@ -107,4 +129,6 @@ export async function validateTaskByParent(
 
   revalidatePath(`/student/${student.id}/parent`);
   revalidatePath(`/student/${student.id}`);
+
+  return { pointsAwarded: updatedProgress.pointsAwarded ?? 0 };
 }
