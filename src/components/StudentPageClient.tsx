@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileUp, Sparkles, Trophy, Gift, Video, Target, Users } from 'lucide-react';
-import { AnnouncementWithAuthor } from '@/lib/types';
+import { AnnouncementWithAuthor, StudentWithStateAndCareer } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,6 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
-import type { StudentWithStateAndCareer } from '@/lib/types';
 
 
 interface StudentPageClientProps {
