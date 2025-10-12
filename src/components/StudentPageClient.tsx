@@ -138,8 +138,8 @@ export default function StudentPageClient({
             {student.classe && !isTeacherView && (
               <div className="mt-4">
                 <Button asChild>
-                  <Link href={`/teacher/class/${student.classe.id}`}>
-                    Voir ma classe
+                  <Link href={`/student/${student.id}`}>
+                    Voir mon tableau de bord
                   </Link>
                 </Button>
               </div>
