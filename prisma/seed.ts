@@ -101,9 +101,9 @@ async function main() {
   await prisma.task.createMany({
     data: [
       // --- PERSONAL TASKS (AUTOMATED) ---
-      // Connection Time Task
+      // Connection Time Task (duration 0 means instant completion on first ping within the window)
       { title: 'Connexion du Soir', description: 'Connectez-vous entre 18h00 et 18h10.', points: 10, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '18:00', endTime: '18:10', isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
-      // Continuous Activity Task
+      // Continuous Activity Task (duration > 0 means continuous activity is required)
       { title: 'Marathon de Concentration', description: 'Restez actif sur la plateforme pendant 60 minutes continues.', points: 100, type: TaskType.DAILY, category: 'PERSONAL', duration: 60, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
       
       // --- MANUAL TASKS ---
@@ -342,6 +342,7 @@ main()
     
 
     
+
 
 
 

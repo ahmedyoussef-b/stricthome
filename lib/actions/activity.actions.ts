@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { differenceInMinutes, parseISO } from 'date-fns';
+import type { Task } from '@prisma/client';
 
 const MAX_INACTIVITY_MINUTES = 5;
 
@@ -18,15 +19,11 @@ export async function trackStudentActivity(elapsedSeconds: number) {
   const userId = session.user.id;
   const now = new Date();
 
-  // Find active "login" tasks
+  // Find active "personal" tasks
   const activeTasks = await prisma.task.findMany({
     where: {
       isActive: true,
       category: 'PERSONAL',
-      OR: [
-        { startTime: { not: null }, endTime: { not: null } },
-        { duration: { gt: 0 } },
-      ],
     },
   });
 
@@ -38,9 +35,17 @@ export async function trackStudentActivity(elapsedSeconds: number) {
     let isInTimeWindow = true;
     if (task.startTime && task.endTime) {
       const nowTime = now.getHours() * 60 + now.getMinutes();
-      const startTime = parseISO(`1970-01-01T${task.startTime}:00.000Z`).getUTCHours() * 60 + parseISO(`1970-01-01T${task.startTime}:00.000Z`).getUTCMinutes();
-      const endTime = parseISO(`1970-01-01T${task.endTime}:00.000Z`).getUTCHours() * 60 + parseISO(`1970-01-01T${task.endTime}:00.000Z`).getUTCMinutes();
-      isInTimeWindow = nowTime >= startTime && nowTime <= endTime;
+      // We need to parse the time considering the local timezone of the server.
+      // The time is stored as HH:mm. We create a date object for today with that time.
+      const startHours = parseInt(task.startTime.split(':')[0], 10);
+      const startMinutes = parseInt(task.startTime.split(':')[1], 10);
+      const endHours = parseInt(task.endTime.split(':')[0], 10);
+      const endMinutes = parseInt(task.endTime.split(':')[1], 10);
+      
+      const startTimeInMinutes = startHours * 60 + startMinutes;
+      const endTimeInMinutes = endHours * 60 + endMinutes;
+      
+      isInTimeWindow = nowTime >= startTimeInMinutes && nowTime <= endTimeInMinutes;
     }
     
     if (!isInTimeWindow) {
@@ -54,7 +59,8 @@ export async function trackStudentActivity(elapsedSeconds: number) {
       where: {
         studentId: userId,
         taskId: task.id,
-        startedAt: {
+        // Check for progress started today
+        createdAt: {
           gte: today,
         },
       },
@@ -93,6 +99,7 @@ export async function trackStudentActivity(elapsedSeconds: number) {
       // User was inactive for too long, reset progress for continuous tasks
       await prisma.studentProgress.update({
         where: { id: progress.id },
+        // Reset active seconds and restart the tracking from now
         data: { activeSeconds: 0, lastActivityAt: now, startedAt: now },
       });
       // Don't add elapsed time, just restart the counter
@@ -119,21 +126,36 @@ export async function trackStudentActivity(elapsedSeconds: number) {
 }
 
 async function completeProgress(userId: string, task: Task, completionTime: Date, progressId?: string, finalSeconds?: number) {
-  const data = {
-    studentId: userId,
-    taskId: task.id,
+  const data: any = {
     status: 'COMPLETED' as const,
     completionDate: completionTime,
-    startedAt: progressId ? undefined : completionTime,
     lastActivityAt: completionTime,
-    activeSeconds: finalSeconds,
     pointsAwarded: task.points,
   };
 
+  if (finalSeconds !== undefined) {
+    data.activeSeconds = finalSeconds;
+  }
+  
+  if (progressId) {
+     // Update existing progress
+     await prisma.studentProgress.update({
+        where: { id: progressId },
+        data: data,
+     });
+  } else {
+    // Create new progress for instant tasks
+    await prisma.studentProgress.create({
+        data: {
+            ...data,
+            studentId: userId,
+            taskId: task.id,
+            startedAt: completionTime,
+        }
+    });
+  }
+
   await prisma.$transaction([
-    progressId
-      ? prisma.studentProgress.update({ where: { id: progressId }, data: { ...data, startedAt: undefined } })
-      : prisma.studentProgress.create({ data }),
     prisma.user.update({
       where: { id: userId },
       data: { points: { increment: task.points } },
@@ -144,7 +166,7 @@ async function completeProgress(userId: string, task: Task, completionTime: Date
       create: {
           studentId: userId,
           totalPoints: task.points,
-          rank: 0,
+          rank: 0, // Rank will be recalculated by a separate job or trigger
       }
     })
   ]);
