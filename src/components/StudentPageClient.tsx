@@ -184,23 +184,6 @@ export default function StudentPageClient({
             </Card>
           )}
            
-          <Card>
-            <CardHeader>
-              <CardTitle>Parcours de l'élève</CardTitle>
-              <CardDescription>
-                Voici la liste des tâches quotidiennes, hebdomadaires et mensuelles.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TaskList
-                tasks={tasks}
-                studentProgress={student.progress}
-                studentId={student.id}
-                isTeacherView={isTeacherView}
-              />
-            </CardContent>
-          </Card>
-
           <AnnouncementsList announcements={announcements} />
 
            {!isTeacherView && (
@@ -222,26 +205,6 @@ export default function StudentPageClient({
             <CardContent className="text-center">
               <p className="text-5xl font-extrabold text-amber-700">{student.points}</p>
               <p className="text-sm text-amber-600/80">points collectés</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileUp />
-                Soumettre un devoir
-              </CardTitle>
-              <CardDescription>
-                Importez votre travail pour que votre professeur puisse le consulter.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form>
-                <div className="grid w-full max-w-sm items-center gap-1.5">
-                  <Input id="homework" type="file" />
-                </div>
-                <Button className="mt-4">Soumettre</Button>
-              </form>
             </CardContent>
           </Card>
         </div>
