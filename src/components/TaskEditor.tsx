@@ -63,7 +63,7 @@ export function TaskEditor({ initialTasks }: TaskEditorProps) {
         {tasks.map((task) => (
           <Card 
             key={task.id} 
-            className="cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col" 
+            className="cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col" 
             onClick={() => openEditForm(task)}
           >
             <CardHeader>
