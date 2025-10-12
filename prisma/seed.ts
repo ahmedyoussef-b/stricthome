@@ -115,7 +115,7 @@ async function main() {
       
       // Weekly
       { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Apprentissage par cœur', description: 'Réciter un texte d\'une page appris par cœur.', points: 75, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
+      { title: 'Apprentissage par cœur', description: 'Réciter un texte d\'une page appris par cœur.', points: 75, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM, requiresAccuracy: true },
       { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.MEDIUM },
       { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.EASY },
       { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', duration: null, startTime: null, endTime: null, isActive: true, prerequisites: [], difficulty: TaskDifficulty.HARD },
@@ -351,3 +351,4 @@ main()
 
 
     
+

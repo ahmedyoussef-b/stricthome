@@ -54,7 +54,11 @@ export async function getTasksForValidation(studentId: string): Promise<(Task & 
   return progress.map(p => ({ ...p.task, progressId: p.id }));
 }
 
-export async function validateTaskByParent(progressId: string) {
+export async function validateTaskByParent(
+    progressId: string,
+    accuracy?: number,
+    feedback?: string
+) {
   const progress = await prisma.studentProgress.findUnique({
     where: { id: progressId },
     include: { task: true, student: true },
@@ -65,26 +69,36 @@ export async function validateTaskByParent(progressId: string) {
   }
   
   const { task, student } = progress;
+  let pointsToAward = task.points;
 
-  // We are updating the existing progress, not creating a new one
+  // Calculate points based on accuracy if provided
+  if (accuracy !== undefined && task.requiresAccuracy) {
+      pointsToAward = Math.round(task.points * (accuracy / 100));
+  }
+
   await prisma.$transaction([
     prisma.studentProgress.update({
       where: { id: progressId },
-      data: { status: ProgressStatus.VERIFIED, pointsAwarded: task.points },
+      data: { 
+        status: ProgressStatus.VERIFIED, 
+        pointsAwarded: pointsToAward,
+        accuracy: accuracy,
+        feedback: feedback,
+      },
     }),
     prisma.user.update({
       where: { id: student.id },
-      data: { points: { increment: task.points } },
+      data: { points: { increment: pointsToAward } },
     }),
     prisma.leaderboard.upsert({
       where: { studentId: student.id },
       update: {
-        totalPoints: { increment: task.points },
+        totalPoints: { increment: pointsToAward },
         completedTasks: { increment: 1 },
       },
       create: {
         studentId: student.id,
-        totalPoints: task.points,
+        totalPoints: pointsToAward,
         completedTasks: 1,
         rank: 0, 
       },
@@ -94,5 +108,3 @@ export async function validateTaskByParent(progressId: string) {
   revalidatePath(`/student/${student.id}/parent`);
   revalidatePath(`/student/${student.id}`);
 }
-
-    
