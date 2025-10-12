@@ -2,7 +2,7 @@
 'use client';
 
 import { Participant } from "./Participant";
-import type { UserWithClassroom } from "@/lib/types";
+import type { User } from "@prisma/client";
 
 interface VideoGridProps {
     sessionId: string;
@@ -13,7 +13,7 @@ interface VideoGridProps {
     isTeacher: boolean;
     onGiveWhiteboardControl: (userId: string) => void;
     onSpotlightParticipant: (userId: string) => void;
-    allSessionUsers: UserWithClassroom[];
+    allSessionUsers: User[];
     whiteboardControllerId: string | null;
 }
 

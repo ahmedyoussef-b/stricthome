@@ -1,10 +1,6 @@
 
 import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
 
-export type UserWithClassroom = Prisma.UserGetPayload<{
-    include: { classe: true }
-}>
-
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
 }>
