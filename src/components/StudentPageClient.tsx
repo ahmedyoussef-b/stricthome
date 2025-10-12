@@ -18,8 +18,6 @@ import { Task, Metier, CoursSession } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { AchievementSystem } from './AchievementSystem';
-import { CareerPredictor } from './CareerPredictor';
 import { TaskList } from './TaskList';
 
 interface StudentPageClientProps {
@@ -186,12 +184,24 @@ export default function StudentPageClient({
            
           <AnnouncementsList announcements={announcements} />
 
-           {!isTeacherView && (
-            <AchievementSystem />
-          )}
-           {!isTeacherView && (
-             <CareerPredictor />
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target />
+                Parcours de l'élève
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {student.progress && (
+                <TaskList
+                  tasks={tasks}
+                  studentProgress={student.progress}
+                  studentId={student.id}
+                  isTeacherView={isTeacherView}
+                />
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="flex flex-col gap-8">
