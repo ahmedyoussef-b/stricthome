@@ -66,7 +66,7 @@ export default function StudentPageClient({
               endedAt: null,
               spotlightedParticipantSid: null,
               whiteboardControllerId: '',
-              classroomId: null
+              classeId: student.classeId,
             };
             setActiveSession(newSession);
         }
