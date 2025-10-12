@@ -98,6 +98,10 @@ export function CreateAnnouncementForm({ classes }: CreateAnnouncementFormProps)
                             </SelectContent>
                         </Select>
                     </div>
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="attachmentUrl" className="text-right">Lien du Fichier (Optionnel)</Label>
+                        <Input id="attachmentUrl" name="attachmentUrl" placeholder="https://..." className="col-span-3" />
+                    </div>
                     <DialogFooter>
                         <DialogClose asChild>
                              <Button type="button" variant="secondary">Annuler</Button>

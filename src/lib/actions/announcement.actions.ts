@@ -15,6 +15,8 @@ export async function createAnnouncement(formData: FormData) {
   const title = formData.get('title') as string;
   const content = formData.get('content') as string;
   const target = formData.get('target') as string; // 'public' or a classeId
+  const attachmentUrl = formData.get('attachmentUrl') as string | null;
+
 
   if (!title || !content) {
     throw new Error('Title and content are required');
@@ -26,6 +28,7 @@ export async function createAnnouncement(formData: FormData) {
       content,
       authorId: session.user.id,
       classeId: target === 'public' ? null : target,
+      attachmentUrl: attachmentUrl,
     },
   });
 

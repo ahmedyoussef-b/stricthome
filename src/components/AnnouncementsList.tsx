@@ -2,7 +2,9 @@
 import { AnnouncementWithAuthor } from '@/lib/types';
 import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Megaphone } from 'lucide-react';
+import { Button } from './ui/button';
+import { Megaphone, Download } from 'lucide-react';
+import Link from 'next/link';
 
 interface AnnouncementsListProps {
   announcements: AnnouncementWithAuthor[];
@@ -42,6 +44,14 @@ export function AnnouncementsList({ announcements }: AnnouncementsListProps) {
               <p className="text-xs text-muted-foreground mt-2">
                 Par {annonce.author.name} - {format(new Date(annonce.createdAt), 'dd MMM yyyy')}
               </p>
+              {annonce.attachmentUrl && (
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <Link href={annonce.attachmentUrl} target="_blank" download>
+                    <Download className="mr-2 h-4 w-4" />
+                    Télécharger la pièce jointe
+                  </Link>
+                </Button>
+              )}
             </div>
           ))}
         </div>
