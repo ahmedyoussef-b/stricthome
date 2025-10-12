@@ -184,24 +184,25 @@ export default function StudentPageClient({
            
           <AnnouncementsList announcements={announcements} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target />
-                Parcours de l'élève
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {student.progress && (
+          {!isTeacherView && student.progress && tasks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target />
+                  Parcours de l'élève
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <TaskList
                   tasks={tasks}
                   studentProgress={student.progress}
                   studentId={student.id}
                   isTeacherView={isTeacherView}
                 />
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+
         </div>
 
         <div className="flex flex-col gap-8">

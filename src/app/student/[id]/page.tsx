@@ -72,7 +72,8 @@ export default async function StudentPage({
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
   const classeId = student.classeId;
-  const tasks = await prisma.task.findMany();
+  // Only fetch tasks if it's the student's view
+  const tasks = !isTeacherView ? await prisma.task.findMany() : [];
   const announcements = await getStudentAnnouncements(student.id);
 
   return (
