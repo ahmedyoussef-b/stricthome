@@ -4,6 +4,8 @@
 // and export all actions from this file.
 // For more information, see https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
 
+import prisma from './prisma';
+
 export * from './actions/class.actions';
 export * from './actions/session.actions';
 export * from './actions/student.actions';

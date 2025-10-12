@@ -15,42 +15,43 @@ enum Role {
 }
 
 model User {
-  id                    String                 @id @default(cuid())
-  name                  String?
-  email                 String?                @unique
-  emailVerified         DateTime?
-  image                 String?
-  role                  Role                   @default(ELEVE)
-  ambition              String?
-  points                Int                    @default(0)
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  classroomId           String?
-  classroom             Classroom?             @relation("AppartientA", fields: [classroomId], references: [id])
-  classesEnseignees     Classroom[]            @relation("Enseigne")
-  etat                  EtatEleve?
-  messages              Message[]
-  reactions             Reaction[]
-  sessionsEnseignees    CoursSession[]         @relation("ProfesseurDeSession")
-  sessionsParticipees   CoursSession[]         @relation("ParticipantDeSession")
-  announcements         Announcement[]
-  studentProgress       StudentProgress[]
-  leaderboardEntry      Leaderboard?
-  studentAchievements   StudentAchievement[]
-  finalRoundParticipant FinalRoundParticipant?
-  conversationsAsInitiator Conversation[] @relation("Initiator")
-  conversationsAsReceiver  Conversation[] @relation("Receiver")
+  id                       String                 @id @default(cuid())
+  name                     String?
+  email                    String?                @unique
+  emailVerified            DateTime?
+  image                    String?
+  role                     Role                   @default(ELEVE)
+  ambition                 String?
+  points                   Int                    @default(0)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  classroomId              String?
+  classroom                Classroom?             @relation("AppartientA", fields: [classroomId], references: [id])
+  classesEnseignees        Classroom[]            @relation("Enseigne")
+  etat                     EtatEleve?
+  messages                 Message[]
+  reactions                Reaction[]
+  sessionsEnseignees       CoursSession[]         @relation("ProfesseurDeSession")
+  sessionsParticipees      CoursSession[]         @relation("ParticipantDeSession")
+  announcements            Announcement[]
+  studentProgress          StudentProgress[]
+  leaderboardEntry         Leaderboard?
+  studentAchievements      StudentAchievement[]
+  finalRoundParticipant    FinalRoundParticipant?
+  conversationsAsInitiator Conversation[]         @relation("Initiator")
+  conversationsAsReceiver  Conversation[]         @relation("Receiver")
 }
 
 model Classroom {
-  id           String         @id @default(cuid())
-  nom          String
-  professeurId String
-  professeur   User           @relation("Enseigne", fields: [professeurId], references: [id])
-  eleves       User[]         @relation("AppartientA")
-  sessions     CoursSession[]
+  id            String         @id @default(cuid())
+  nom           String
+  professeurId  String
+  professeur    User           @relation("Enseigne", fields: [professeurId], references: [id])
+  eleves        User[]         @relation("AppartientA")
+  sessions      CoursSession[]
   announcements Announcement[]
-  messages     Message[]
+  messages      Message[]
+
   @@map("classrooms")
 }
 
@@ -61,6 +62,7 @@ model EtatEleve {
   isPunished Boolean @default(false)
   metier     Metier? @relation(fields: [metierId], references: [id])
   metierId   String?
+
   @@map("etats_eleves")
 }
 
@@ -71,20 +73,22 @@ model Metier {
   icon        String?
   theme       Json
   etats       EtatEleve[]
+
   @@map("metiers")
 }
 
 model CoursSession {
-  id                       String   @id @default(cuid())
-  professeurId             String
-  professeur               User     @relation("ProfesseurDeSession", fields: [professeurId], references: [id])
-  participants             User[]   @relation("ParticipantDeSession")
-  createdAt                DateTime @default(now())
-  endedAt                  DateTime?
-  classroomId              String?
-  classroom                Classroom? @relation(fields: [classroomId], references: [id])
+  id                        String     @id @default(cuid())
+  professeurId              String
+  professeur                User       @relation("ProfesseurDeSession", fields: [professeurId], references: [id])
+  participants              User[]     @relation("ParticipantDeSession")
+  createdAt                 DateTime   @default(now())
+  endedAt                   DateTime?
+  classroomId               String?
+  classroom                 Classroom? @relation(fields: [classroomId], references: [id])
   spotlightedParticipantSid String?
-  whiteboardControllerId   String?
+  whiteboardControllerId    String?
+
   @@map("cours_sessions")
 }
 
@@ -166,7 +170,7 @@ enum TaskDifficulty {
 }
 
 model Task {
-  id            String           @id @default(cuid())
+  id            String            @id @default(cuid())
   title         String
   description   String
   points        Int
@@ -174,13 +178,13 @@ model Task {
   category      TaskCategory
   difficulty    TaskDifficulty
   duration      Int? // Duration in minutes for completion
-  isActive      Boolean          @default(true)
+  isActive      Boolean           @default(true)
   prerequisites Json? // e.g. { "requiredTaskId": "xyz", "minPoints": 100 }
   startTime     String? // e.g. "18:00"
   endTime       String? // e.g. "18:10"
   progress      StudentProgress[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@map("tasks")
 }
@@ -212,15 +216,15 @@ model StudentProgress {
 }
 
 model Achievement {
-  id                  String               @id @default(cuid())
-  name                String
-  description         String
-  icon                String
-  points              Int
-  criteria            Json // { "type": "streak", "days": 7 } or { "type": "total_tasks", "count": 50 }
-  students            StudentAchievement[]
-  createdAt           DateTime             @default(now())
-  isPublic            Boolean              @default(true)
+  id          String               @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  points      Int
+  criteria    Json // { "type": "streak", "days": 7 } or { "type": "total_tasks", "count": 50 }
+  students    StudentAchievement[]
+  createdAt   DateTime             @default(now())
+  isPublic    Boolean              @default(true)
 
   @@map("achievements")
 }
@@ -256,26 +260,26 @@ model Leaderboard {
 
 // Final round models
 model FinalRound {
-  id             String                @id @default(cuid())
-  name           String
-  description    String
-  startDate      DateTime
-  endDate        DateTime
-  isActive       Boolean               @default(false)
-  participants   FinalRoundParticipant[]
+  id           String                  @id @default(cuid())
+  name         String
+  description  String
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean                 @default(false)
+  participants FinalRoundParticipant[]
 
   @@map("final_rounds")
 }
 
 model FinalRoundParticipant {
-  id           String     @id @default(cuid())
-  round        FinalRound @relation(fields: [roundId], references: [id])
-  roundId      String
-  student      User       @relation(fields: [studentId], references: [id])
-  studentId    String     @unique
-  score        Int
-  rank         Int
-  submittedAt  DateTime?
+  id          String     @id @default(cuid())
+  round       FinalRound @relation(fields: [roundId], references: [id])
+  roundId     String
+  student     User       @relation(fields: [studentId], references: [id])
+  studentId   String     @unique
+  score       Int
+  rank        Int
+  submittedAt DateTime?
 
   @@map("final_round_participants")
 }
