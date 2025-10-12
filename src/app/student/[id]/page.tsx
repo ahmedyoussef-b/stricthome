@@ -1,3 +1,4 @@
+
 // src/app/student/[id]/page.tsx
 import { Header } from '@/components/Header';
 import prisma from '@/lib/prisma';
