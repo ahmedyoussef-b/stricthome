@@ -4,13 +4,14 @@
 
 import { Task, StudentProgress, TaskType } from "@prisma/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap, FileUp } from "lucide-react";
 import { Button } from "./ui/button";
 import { completeTask } from "@/lib/actions/task.actions";
 import { useTransition, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
+import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 
 interface TaskListProps {
   tasks: Task[];
@@ -47,15 +48,17 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
-    const handleComplete = () => {
+    const handleComplete = (submissionUrl?: string) => {
         if (isTeacherView) return;
 
         startTransition(async () => {
             try {
-                await completeTask(task.id);
+                await completeTask(task.id, submissionUrl);
                 toast({
-                    title: "Tâche accomplie !",
-                    description: `Vous avez gagné ${task.points} points.`,
+                    title: task.requiresProof ? "Preuve soumise !" : "Tâche accomplie !",
+                    description: task.requiresProof 
+                        ? "Votre preuve est en attente de validation."
+                        : `Vous avez gagné ${task.points} points.`,
                 });
             } catch (error) {
                 toast({
@@ -66,6 +69,10 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
             }
         });
     }
+
+    const handleUploadSuccess = (result: any) => {
+        handleComplete(result.info.secure_url);
+    };
 
     return (
         <div className="flex items-center gap-4 py-3">
@@ -88,13 +95,24 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
                     <span>{task.points}</span>
                 </div>
                 {!isTeacherView && (
-                    <Button 
-                        size="sm" 
-                        onClick={handleComplete} 
-                        disabled={isCompleted || isPending}
-                    >
-                        {isPending ? <Loader2 className="animate-spin" /> : 'Valider'}
-                    </Button>
+                    task.requiresProof ? (
+                        <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
+                            {({ open }) => (
+                                <Button size="sm" onClick={open} disabled={isCompleted || isPending}>
+                                    {isPending ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                                    Soumettre
+                                </Button>
+                            )}
+                        </CloudinaryUploadWidget>
+                    ) : (
+                        <Button 
+                            size="sm" 
+                            onClick={() => handleComplete()} 
+                            disabled={isCompleted || isPending}
+                        >
+                            {isPending ? <Loader2 className="animate-spin" /> : 'Valider'}
+                        </Button>
+                    )
                 )}
             </div>
         </div>
@@ -127,27 +145,29 @@ export function TaskList({ tasks, studentProgress, studentId, isTeacherView }: T
   return (
     <Accordion type="multiple" defaultValue={['Quotidien', 'Hebdomadaire', 'Mensuel']} className="w-full">
       {taskGroups.map(group => (
-        <AccordionItem value={group.title} key={group.title}>
-            <AccordionTrigger>
-                <div className="flex items-center gap-2">
-                    <group.icon className="h-5 w-5 text-primary" />
-                    <span className="font-semibold text-lg">{group.title}</span>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent>
-                 <div className="divide-y">
-                     {group.tasks.map(task => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            studentId={studentId}
-                            isCompleted={isTaskCompletedInPeriod(task, studentProgress)}
-                            isTeacherView={isTeacherView}
-                        />
-                    ))}
-                 </div>
-            </AccordionContent>
-        </AccordionItem>
+        group.tasks.length > 0 && (
+          <AccordionItem value={group.title} key={group.title}>
+              <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                      <group.icon className="h-5 w-5 text-primary" />
+                      <span className="font-semibold text-lg">{group.title}</span>
+                  </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                   <div className="divide-y">
+                       {group.tasks.map(task => (
+                          <TaskItem
+                              key={task.id}
+                              task={task}
+                              studentId={studentId}
+                              isCompleted={isTaskCompletedInPeriod(task, studentProgress)}
+                              isTeacherView={isTeacherView}
+                          />
+                      ))}
+                   </div>
+              </AccordionContent>
+          </AccordionItem>
+        )
       ))}
     </Accordion>
   )

@@ -78,7 +78,7 @@ export async function deleteTask(id: string): Promise<Task[]> {
 }
 
 
-export async function completeTask(taskId: string) {
+export async function completeTask(taskId: string, submissionUrl?: string) {
   const session = await getAuthSession();
   if (!session?.user || session.user.role !== 'ELEVE') {
     throw new Error('Unauthorized');
@@ -91,6 +91,11 @@ export async function completeTask(taskId: string) {
 
   if (!task) {
     throw new Error('Task not found');
+  }
+
+  // Check if task requires proof and if it was provided
+  if (task.requiresProof && !submissionUrl) {
+    throw new Error('Une preuve est requise pour cette tâche.');
   }
 
   // Check if task is already completed or pending within the valid period
@@ -117,12 +122,12 @@ export async function completeTask(taskId: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  // For manual tasks (not 'PERSONAL'), set status to PENDING_VALIDATION
-  const isManualTask = task.category !== 'PERSONAL';
-  const finalStatus = isManualTask ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
+  // For manual tasks or those requiring proof, set status to PENDING_VALIDATION
+  const isValidationRequired = task.category !== 'PERSONAL' || task.requiresProof;
+  const finalStatus = isValidationRequired ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
 
   // If task is automated, complete it and award points
-  if (!isManualTask) {
+  if (!isValidationRequired) {
       await prisma.$transaction([
         prisma.user.update({
           where: { id: userId },
@@ -152,13 +157,14 @@ export async function completeTask(taskId: string) {
         })
       ]);
   } else {
-    // For manual tasks, just mark as pending validation
+    // For manual/proof tasks, just mark as pending validation
     await prisma.studentProgress.create({
       data: {
         studentId: userId,
         taskId,
         status: finalStatus,
         completionDate: new Date(), // Mark completion time, but points are awarded upon validation
+        submissionUrl,
       },
     });
   }
