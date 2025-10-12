@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
-import { Task, TaskCategory, TaskDifficulty, TaskType } from '@prisma/client';
+import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus } from '@prisma/client';
 
 async function verifyTeacher() {
   const session = await getAuthSession();
@@ -93,76 +93,75 @@ export async function completeTask(taskId: string) {
     throw new Error('Task not found');
   }
 
-  // Check if task is already completed within the valid period
+  // Check if task is already completed or pending within the valid period
   const now = new Date();
   let periodStart: Date;
 
   switch (task.type) {
-    case 'DAILY':
-      periodStart = startOfDay(now);
-      break;
-    case 'WEEKLY':
-      periodStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-      break;
-    case 'MONTHLY':
-      periodStart = startOfMonth(now);
-      break;
-    default:
-      periodStart = new Date(0); // A long time ago
-      break;
+    case 'DAILY': periodStart = startOfDay(now); break;
+    case 'WEEKLY': periodStart = startOfWeek(now, { weekStartsOn: 1 }); break;
+    case 'MONTHLY': periodStart = startOfMonth(now); break;
+    default: periodStart = new Date(0); break;
   }
 
   const existingProgress = await prisma.studentProgress.findFirst({
     where: {
       studentId: userId,
       taskId,
-      status: { in: ['COMPLETED', 'VERIFIED'] },
-      completionDate: {
-        gte: periodStart,
-      },
+      status: { in: ['COMPLETED', 'VERIFIED', 'PENDING_VALIDATION'] },
+      completionDate: { gte: periodStart },
     },
   });
 
   if (existingProgress) {
-    throw new Error('Tâche déjà accomplie pour cette période.');
+    throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  // Use a transaction to ensure all operations succeed
-  const [, progress] = await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: {
-        points: {
-          increment: task.points,
-        },
-      },
-    }),
-    prisma.studentProgress.create({
+  // For manual tasks (not 'PERSONAL'), set status to PENDING_VALIDATION
+  const isManualTask = task.category !== 'PERSONAL';
+  const finalStatus = isManualTask ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
+
+  // If task is automated, complete it and award points
+  if (!isManualTask) {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: { points: { increment: task.points } },
+        }),
+        prisma.studentProgress.create({
+          data: {
+            studentId: userId,
+            taskId,
+            status: finalStatus,
+            completionDate: new Date(),
+            pointsAwarded: task.points,
+          },
+        }),
+        prisma.leaderboard.upsert({
+          where: { studentId: userId },
+          update: { 
+            totalPoints: { increment: task.points },
+            completedTasks: { increment: 1 },
+          },
+          create: {
+            studentId: userId,
+            totalPoints: task.points,
+            completedTasks: 1,
+            rank: 0,
+          }
+        })
+      ]);
+  } else {
+    // For manual tasks, just mark as pending validation
+    await prisma.studentProgress.create({
       data: {
         studentId: userId,
         taskId,
-        status: 'COMPLETED',
-        completionDate: new Date(),
-        pointsAwarded: task.points,
+        status: finalStatus,
+        completionDate: new Date(), // Mark completion time, but points are awarded upon validation
       },
-    }),
-    // Update leaderboard
-    prisma.leaderboard.upsert({
-      where: { studentId: userId },
-      update: { 
-        totalPoints: { increment: task.points },
-        completedTasks: { increment: 1 },
-      },
-      create: {
-        studentId: userId,
-        totalPoints: task.points,
-        completedTasks: 1,
-        rank: 0, // Rank would be calculated separately
-      }
-    })
-  ]);
+    });
+  }
 
   revalidatePath(`/student/${userId}`);
-  
-  return progress;
 }

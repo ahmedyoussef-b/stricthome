@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp, Sparkles, Trophy, Gift, Video, Target, Users } from 'lucide-react';
+import { FileUp, Sparkles, Trophy, Gift, Video, Target, Users, KeyRound } from 'lucide-react';
 import { AnnouncementWithAuthor, StudentWithStateAndCareer } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -146,11 +146,17 @@ export default function StudentPageClient({
               />
             )}
             {student.classe && !isTeacherView && (
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
                 <Button asChild>
                   <Link href={`/student/class/${student.classe.id}`}>
                     <Users className="mr-2 h-4 w-4" />
                     Voir ma classe
+                  </Link>
+                </Button>
+                 <Button asChild variant="secondary">
+                  <Link href={`/student/${student.id}/parent`}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Espace Parent
                   </Link>
                 </Button>
               </div>
