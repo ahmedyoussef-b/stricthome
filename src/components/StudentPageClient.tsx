@@ -41,15 +41,15 @@ export default function StudentPageClient({
   const [activeSession, setActiveSession] = useState<CoursSession | null>(
     student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null
   );
-  const career = student.etat?.metier;
+  const metier = student.etat?.metier;
   
   // Start activity tracking if it's the student's view
   useActivityTracker(!isTeacherView);
 
   useEffect(() => {
-    if (isTeacherView || !student.classroomId) return;
+    if (isTeacherView || !student.classeId) return;
 
-    const channelName = `presence-classe-${student.classroomId}`;
+    const channelName = `presence-classe-${student.classeId}`;
     try {
       const channel = pusherClient.subscribe(channelName);
 
@@ -95,7 +95,7 @@ export default function StudentPageClient({
     } catch (error) {
       console.error("Pusher subscription failed:", error);
     }
-  }, [student.id, student.classroomId, isTeacherView, router]);
+  }, [student.id, student.classeId, isTeacherView, router]);
 
   const handleUploadSuccess = (result: any) => {
     console.log('Upload successful:', result);
@@ -142,13 +142,13 @@ export default function StudentPageClient({
               <TeacherCareerSelector
                 studentId={student.id}
                 careers={allCareers}
-                currentCareerId={career?.id}
+                currentCareerId={metier?.id}
               />
             )}
-            {student.classroom && !isTeacherView && (
+            {student.classe && !isTeacherView && (
               <div className="mt-4">
                 <Button asChild>
-                  <Link href={`/student/class/${student.classroomId}`}>
+                  <Link href={`/student/class/${student.classeId}`}>
                     <Users className="mr-2 h-4 w-4" />
                     Voir ma classe
                   </Link>
