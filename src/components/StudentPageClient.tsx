@@ -20,6 +20,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { CloudinaryUploadWidget } from '../CloudinaryUploadWidget';
 import { useToast } from '@/hooks/use-toast';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -42,6 +43,8 @@ export default function StudentPageClient({
   );
   const career = student.etat?.metier;
   
+  // Start activity tracking if it's the student's view
+  useActivityTracker(!isTeacherView);
 
   useEffect(() => {
     if (isTeacherView || !student.classeId) return;
@@ -209,26 +212,6 @@ export default function StudentPageClient({
             </CardContent>
           </Card>
           
-          {!isTeacherView && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileUp />
-                  Soumettre un devoir
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
-                  {({ open }) => (
-                    <Button onClick={open} className="w-full">
-                      Téléverser un fichier
-                    </Button>
-                  )}
-                </CloudinaryUploadWidget>
-              </CardContent>
-            </Card>
-          )}
-
         </div>
       </div>
     </main>
