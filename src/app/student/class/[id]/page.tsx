@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { Header } from '@/components/Header';
 import { StudentClassView } from '@/components/StudentClassView';
-import { Classroom, User } from '@prisma/client';
+import {  User } from '@prisma/client';
 
 export type ClassroomWithStudents = Classroom & {
     eleves: (User & {

@@ -30,7 +30,7 @@ export default async function StudentSkillsPage({ params }: { params: { id: stri
     notFound();
   }
   
-  if (!student.classroomId) {
+  if (!student.classeId) {
       // Or handle this case gracefully
       notFound();
   }
@@ -60,7 +60,7 @@ export default async function StudentSkillsPage({ params }: { params: { id: stri
         </Card>
 
         <div className="space-y-8">
-          <SkillMatrix studentId={student.id} classId={student.classroomId} />
+          <SkillMatrix studentId={student.id} classId={student.classeId} />
           <Separator />
           <AdaptiveLearningEngine />
         </div>
