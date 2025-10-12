@@ -1,3 +1,4 @@
+
 // src/app/student/[id]/page.tsx
 import { Header } from '@/components/Header';
 import prisma from '@/lib/prisma';
@@ -23,7 +24,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
           where: { endedAt: null },
         },
         progress: true,
-        classroom: true,
+        classe: true,
       }
     });
 
@@ -72,7 +73,7 @@ export default async function StudentPage({
   const career = student.etat?.metier;
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
-  const classroomId = student.classroomId;
+  const classroomId = student.classeId;
   const announcements = await getStudentAnnouncements(student.id);
 
   return (
