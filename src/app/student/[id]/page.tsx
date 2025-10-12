@@ -72,8 +72,6 @@ export default async function StudentPage({
   const allCareers = isTeacherView ? await prisma.metier.findMany() : [];
   
   const classeId = student.classeId;
-  // Only fetch tasks if it's the student's view
-  const tasks = !isTeacherView ? await prisma.task.findMany() : [];
   const announcements = await getStudentAnnouncements(student.id);
 
   return (
@@ -86,7 +84,6 @@ export default async function StudentPage({
         </Header>
         <StudentPageClient
             student={student}
-            tasks={tasks}
             announcements={announcements}
             allCareers={allCareers}
             isTeacherView={isTeacherView}

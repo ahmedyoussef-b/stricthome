@@ -22,7 +22,6 @@ import { TaskList } from './TaskList';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
-  tasks: Task[];
   announcements: AnnouncementWithAuthor[];
   allCareers: Metier[];
   isTeacherView: boolean;
@@ -30,7 +29,6 @@ interface StudentPageClientProps {
 
 export default function StudentPageClient({
   student,
-  tasks,
   announcements,
   allCareers,
   isTeacherView,
@@ -183,25 +181,6 @@ export default function StudentPageClient({
           )}
            
           <AnnouncementsList announcements={announcements} />
-
-          {!isTeacherView && student.progress && tasks.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target />
-                  Parcours de l'élève
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TaskList
-                  tasks={tasks}
-                  studentProgress={student.progress}
-                  studentId={student.id}
-                  isTeacherView={isTeacherView}
-                />
-              </CardContent>
-            </Card>
-          )}
 
         </div>
 
