@@ -1,3 +1,4 @@
+
 // components/AchievementSystem.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,14 +34,24 @@ interface AchievementSystemProps {
 
 export async function AchievementSystem({ studentId }: AchievementSystemProps) {
   const allAchievements = await prisma.achievement.findMany();
-  const studentProgress = await prisma.studentProgress.findMany({
-    where: { studentId },
-    include: { task: true }
-  });
+  
   const student = await prisma.user.findUnique({
     where: { id: studentId },
-    include: { leaderboardEntry: true }
+    include: { 
+        leaderboardEntry: true,
+        progress: {
+            where: { status: { in: ['COMPLETED', 'VERIFIED'] } }
+        },
+        sessionsParticipees: true,
+        messages: {
+            where: {
+                classroomId: { not: null }
+            }
+        }
+    }
   });
+
+  if (!student) return null;
 
   const getAchievementProgress = (achievement: Achievement) => {
     const criteria = achievement.criteria as any;
@@ -48,11 +59,9 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
     let target = 1;
     let unlocked = false;
     
-    // This is a simplified progress calculation.
-    // A more robust system would be needed for a real app.
     switch (criteria.type) {
       case 'total_tasks':
-        progress = studentProgress.filter(p => p.status === 'COMPLETED' || p.status === 'VERIFIED').length;
+        progress = student.progress.length;
         target = criteria.count || 50;
         break;
       case 'streak':
@@ -60,17 +69,16 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
          target = criteria.days || 7;
         break;
       case 'first_task':
-        progress = studentProgress.length > 0 ? 1 : 0;
+        progress = student.progress.length > 0 ? 1 : 0;
         target = 1;
         break;
        case 'group_sessions':
-         // This would need tracking of session participation
-         progress = 0; // Placeholder
+         progress = student.sessionsParticipees.length;
          target = criteria.count || 10;
          break;
        case 'questions_asked':
-         // This would need tracking of messages that are questions
-         progress = 0; // Placeholder
+         // This is a simplification. A real implementation might need AI to check if a message is a question.
+         progress = student.messages.length;
          target = criteria.count || 20;
          break;
     }
@@ -78,16 +86,6 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
     unlocked = progress >= target;
     
     return { progress, target, unlocked };
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'ACADEMIC': return 'bg-blue-100 text-blue-800';
-      case 'COLLABORATIVE': return 'bg-green-100 text-green-800';
-      case 'CREATIVE': return 'bg-purple-100 text-purple-800';
-      case 'PERSONAL': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const getRankBadge = (rank: number) => {
