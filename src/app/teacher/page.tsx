@@ -1,3 +1,4 @@
+
 // src/app/teacher/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Users, Video, Brain, Edit } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { AddClassForm } from '@/components/AddClassForm';
-import { User, Classroom } from '@prisma/client';
+import { User } from '@prisma/client';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
