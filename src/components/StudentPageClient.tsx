@@ -20,7 +20,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { AchievementSystem } from './AchievementSystem';
 import { CareerPredictor } from './CareerPredictor';
-import { CompetitionDashboard } from './CompetitionDashboard';
+import { TaskList } from './TaskList';
 
 interface StudentPageClientProps {
   student: StudentWithStateAndCareer;
@@ -183,15 +183,30 @@ export default function StudentPageClient({
                 </CardContent>
             </Card>
           )}
-
-          {!isTeacherView && <CompetitionDashboard />}
+           
+          <Card>
+            <CardHeader>
+              <CardTitle>Parcours de l'élève</CardTitle>
+              <CardDescription>
+                Voici la liste des tâches quotidiennes, hebdomadaires et mensuelles.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TaskList
+                tasks={tasks}
+                studentProgress={student.progress}
+                studentId={student.id}
+                isTeacherView={isTeacherView}
+              />
+            </CardContent>
+          </Card>
 
           <AnnouncementsList announcements={announcements} />
 
            {!isTeacherView && (
             <AchievementSystem />
           )}
-          {!isTeacherView && (
+           {!isTeacherView && (
              <CareerPredictor />
           )}
         </div>
