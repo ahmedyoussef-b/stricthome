@@ -2,7 +2,7 @@
 'use client';
 
 import { Participant } from "./Participant";
-import type { UserWithClasse } from "@/lib/types";
+import type { UserWithClassroom } from "@/lib/types";
 
 interface VideoGridProps {
     sessionId: string;
@@ -13,7 +13,7 @@ interface VideoGridProps {
     isTeacher: boolean;
     onGiveWhiteboardControl: (userId: string) => void;
     onSpotlightParticipant: (userId: string) => void;
-    allSessionUsers: UserWithClasse[];
+    allSessionUsers: UserWithClassroom[];
     whiteboardControllerId: string | null;
 }
 
