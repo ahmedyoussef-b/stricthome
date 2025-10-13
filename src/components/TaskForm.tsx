@@ -26,7 +26,7 @@ import { Loader2, Trash2, Upload, Link as LinkIcon, XCircle } from "lucide-react
 import { useFormStatus } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 import { createTask, updateTask, deleteTask } from "@/lib/actions/task.actions";
-import { Task, TaskType, TaskCategory, TaskDifficulty } from "@prisma/client";
+import { Task, TaskType, TaskCategory, TaskDifficulty, ValidationType } from "@prisma/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +40,7 @@ import {
 } from "./ui/alert-dialog";
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
+import { Switch } from "./ui/switch";
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -67,13 +68,16 @@ export function TaskForm({
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
   const [attachmentUrl, setAttachmentUrl] = useState((task as any)?.attachmentUrl ?? '');
+  const [requiresProof, setRequiresProof] = useState(task?.requiresProof ?? false);
 
   useEffect(() => {
     setAttachmentUrl((task as any)?.attachmentUrl ?? '');
+    setRequiresProof(task?.requiresProof ?? false);
   }, [task]);
 
   const handleFormAction = async (formData: FormData) => {
     formData.set('attachmentUrl', attachmentUrl);
+    formData.set('requiresProof', requiresProof.toString());
     try {
       const updatedTasks = task
         ? await updateTask(formData)
@@ -200,6 +204,29 @@ export function TaskForm({
                 </Select>
             </div>
           </div>
+           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="validationType">Mode de validation</Label>
+              <Select name="validationType" required defaultValue={task?.validationType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.values(ValidationType).map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Nécessite une preuve ?</Label>
+              <div className="flex items-center space-x-2 pt-2">
+                  <Switch
+                    id="requires-proof-switch"
+                    checked={requiresProof}
+                    onCheckedChange={setRequiresProof}
+                  />
+                  <Label htmlFor="requires-proof-switch">{requiresProof ? 'Oui' : 'Non'}</Label>
+                </div>
+            </div>
+          </div>
+
 
           <DialogFooter className="mt-4 pt-4 border-t sticky bottom-0 bg-background">
              {task && (

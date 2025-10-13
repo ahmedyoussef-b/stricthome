@@ -1,4 +1,3 @@
-
 // src/lib/actions/task.actions.ts
 'use server';
 
@@ -6,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
-import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus } from '@prisma/client';
+import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus, ValidationType } from '@prisma/client';
 
 async function verifyTeacher() {
   const session = await getAuthSession();
@@ -26,6 +25,8 @@ export async function createTask(formData: FormData): Promise<Task[]> {
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
     attachmentUrl: formData.get('attachmentUrl') as string | null,
+    validationType: formData.get('validationType') as ValidationType,
+    requiresProof: formData.get('requiresProof') === 'true',
     duration: 1, // default duration
     isActive: true, // default active
   };
@@ -52,6 +53,8 @@ export async function updateTask(formData: FormData): Promise<Task[]> {
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
     attachmentUrl: formData.get('attachmentUrl') as string | null,
+    validationType: formData.get('validationType') as ValidationType,
+    requiresProof: formData.get('requiresProof') === 'true',
   };
 
   if (!id || !data.title || !data.description || isNaN(data.points)) {
@@ -125,12 +128,14 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  // For manual tasks or those requiring proof, set status to PENDING_VALIDATION
-  const isValidationRequired = task.category !== 'PERSONAL' || task.requiresProof;
-  const finalStatus = isValidationRequired ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
+  const validationRequired = 
+    task.validationType === 'PROFESSOR' || 
+    task.validationType === 'PARENT' || 
+    task.requiresProof;
 
-  // If task is automated, complete it and award points
-  if (!isValidationRequired) {
+  const finalStatus = validationRequired ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
+
+  if (!validationRequired) {
       await prisma.$transaction([
         prisma.user.update({
           where: { id: userId },
@@ -166,7 +171,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
         studentId: userId,
         taskId,
         status: finalStatus,
-        completionDate: new Date(), // Mark completion time, but points are awarded upon validation
+        completionDate: new Date(),
         submissionUrl,
       },
     });
