@@ -8,8 +8,8 @@
  * - IsQuestionOutput - Le type de retour pour la fonction isQuestion.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/lib/genkit';
+import { z } from 'zod';
 
 const IsQuestionInputSchema = z.object({
   message: z.string().describe('Le contenu du message à analyser.'),
@@ -48,7 +48,7 @@ const isQuestionFlow = ai.defineFlow(
     inputSchema: IsQuestionInputSchema,
     outputSchema: IsQuestionOutputSchema,
   },
-  async (input) => {
+  async (input: IsQuestionInput) => {
     const { output } = await prompt(input);
     return output!;
   }
