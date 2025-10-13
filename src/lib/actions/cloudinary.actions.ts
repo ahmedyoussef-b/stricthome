@@ -4,7 +4,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 
 // Note: This needs to be configured with your Cloudinary credentials
-// You should set CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_SECRET in your .env file
+// You should set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,13 +15,14 @@ cloudinary.config({
 export async function getCloudinarySignature() {
   const timestamp = Math.round(new Date().getTime() / 1000);
 
-  if (!process.env.CLOUDINARY_API_SECRET) {
-      throw new Error('Cloudinary API secret is not defined.');
+  if (!process.env.CLOUDINARY_API_SECRET || !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET) {
+      throw new Error('Cloudinary API secret or upload preset is not defined.');
   }
 
   const signature = cloudinary.utils.api_sign_request(
     {
       timestamp: timestamp,
+      upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
     },
     process.env.CLOUDINARY_API_SECRET
   );

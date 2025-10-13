@@ -33,8 +33,13 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
   }, []);
 
   const openWidget = async () => {
-    if (!loaded || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-      console.error("Cloudinary script not loaded or cloud name not set.");
+    if (
+        !loaded || 
+        !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 
+        !process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || 
+        !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+    ) {
+      console.error("Cloudinary configuration is missing from environment variables.");
       return;
     }
     
@@ -43,12 +48,12 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
     const myWidget = (window as any).cloudinary.createUploadWidget(
       {
         cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+        apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+        uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
         uploadSignature: signature,
         uploadSignatureTimestamp: timestamp,
-        apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
         cropping: true,
         multiple: false,
-        folder: 'classroom-submissions',
       },
       (error: any, result: any) => {
         if (!error && result && result.event === 'success') {
