@@ -1,7 +1,7 @@
 // src/components/CloudinaryUploadWidget.tsx
 'use client';
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext } from 'react';
 import { getCloudinarySignature } from '@/lib/actions/cloudinary.actions';
 
 interface CloudinaryScriptContextType {
@@ -34,18 +34,23 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
 
   const openWidget = async () => {
     if (
-        !loaded ||
-        !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-        !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+      !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
     ) {
       console.error("Cloudinary configuration is missing from environment variables.");
       return;
     }
     
+    if (!loaded) {
+        console.error("Cloudinary script not loaded yet.");
+        return;
+    }
+
     const paramsToSign = {
         source: 'uw',
         cropping: true,
-        folder: 'stricthome'
+        folder: 'stricthome',
+        upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
     };
 
     const { timestamp, signature } = await getCloudinarySignature(paramsToSign);

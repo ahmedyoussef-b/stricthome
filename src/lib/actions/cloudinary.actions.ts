@@ -12,7 +12,7 @@ cloudinary.config({
   secure: true,
 });
 
-export async function getCloudinarySignature() {
+export async function getCloudinarySignature(paramsToSign: Record<string, unknown>) {
   const timestamp = Math.round(new Date().getTime() / 1000);
 
   if (!process.env.CLOUDINARY_API_SECRET) {
@@ -22,8 +22,7 @@ export async function getCloudinarySignature() {
   const signature = cloudinary.utils.api_sign_request(
     {
       timestamp: timestamp,
-      source: 'uw',
-      folder: 'stricthome'
+      ...paramsToSign
     },
     process.env.CLOUDINARY_API_SECRET
   );
