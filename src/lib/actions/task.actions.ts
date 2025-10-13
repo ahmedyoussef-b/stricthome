@@ -24,6 +24,7 @@ export async function createTask(formData: FormData): Promise<Task[]> {
     type: formData.get('type') as TaskType,
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
+    attachmentUrl: formData.get('attachmentUrl') as string | null,
     duration: 1, // default duration
     isActive: true, // default active
   };
@@ -49,6 +50,7 @@ export async function updateTask(formData: FormData): Promise<Task[]> {
     type: formData.get('type') as TaskType,
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
+    attachmentUrl: formData.get('attachmentUrl') as string | null,
   };
 
   if (!id || !data.title || !data.description || isNaN(data.points)) {

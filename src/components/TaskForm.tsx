@@ -1,7 +1,7 @@
 // src/components/TaskForm.tsx
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useRef, useTransition, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Upload, Link as LinkIcon, XCircle } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 import { createTask, updateTask, deleteTask } from "@/lib/actions/task.actions";
@@ -38,6 +38,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
+import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
+import Link from "next/link";
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -64,8 +66,14 @@ export function TaskForm({
 }: TaskFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const [attachmentUrl, setAttachmentUrl] = useState(task?.attachmentUrl ?? '');
+
+  useEffect(() => {
+    setAttachmentUrl(task?.attachmentUrl ?? '');
+  }, [task]);
 
   const handleFormAction = async (formData: FormData) => {
+    formData.set('attachmentUrl', attachmentUrl);
     try {
       const updatedTasks = task
         ? await updateTask(formData)
@@ -103,6 +111,14 @@ export function TaskForm({
     }
   }
 
+  const handleUploadSuccess = (result: any) => {
+    setAttachmentUrl(result.info.secure_url);
+    toast({
+      title: "Fichier téléversé!",
+      description: "Le lien vers la pièce jointe a été ajouté.",
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -114,7 +130,7 @@ export function TaskForm({
             Remplissez les détails de la tâche.
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={handleFormAction} className="grid gap-4 py-4">
+        <form ref={formRef} action={handleFormAction} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
           {task && <input type="hidden" name="id" value={task.id} />}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="title" className="text-right">Titre</Label>
@@ -123,6 +139,31 @@ export function TaskForm({
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="description" className="text-right pt-2">Description</Label>
             <Textarea id="description" name="description" className="col-span-3" required defaultValue={task?.description} />
+          </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="attachment" className="text-right pt-2">Pièce jointe</Label>
+            <div className="col-span-3 space-y-2">
+                <input type="hidden" name="attachmentUrl" value={attachmentUrl} />
+                <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
+                    {({ open }) => (
+                         <Button type="button" variant="outline" onClick={open} className="w-full">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Téléverser un document
+                        </Button>
+                    )}
+                </CloudinaryUploadWidget>
+                {attachmentUrl && (
+                    <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md flex justify-between items-center">
+                        <Link href={attachmentUrl} target="_blank" className="flex items-center gap-1 hover:underline truncate">
+                            <LinkIcon className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{attachmentUrl}</span>
+                        </Link>
+                         <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => setAttachmentUrl('')}>
+                            <XCircle className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -160,7 +201,7 @@ export function TaskForm({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="mt-4 pt-4 border-t sticky bottom-0 bg-background">
              {task && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
