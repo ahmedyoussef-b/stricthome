@@ -1,5 +1,5 @@
 // prisma/seed.ts
-import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory } from '@prisma/client';
+import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory, ValidationType } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
 import { execSync } from 'child_process';
 
@@ -114,6 +114,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Prendre une douche au quotidien',
@@ -123,6 +124,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: true,
+        validationType: ValidationType.PARENT
       },
       {
         title: 'Pièce bien rangée',
@@ -132,6 +134,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: true,
+        validationType: ValidationType.PARENT
       },
       {
         title: 'Apprendre une page Coran',
@@ -141,6 +144,7 @@ async function main() {
         category: TaskCategory.PERSONAL, // Or ACADEMIC
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
+        validationType: ValidationType.PARENT
       },
       {
         title: 'Connexion journalière',
@@ -152,6 +156,7 @@ async function main() {
         requiresProof: false,
         startTime: '05:00',
         endTime: '06:00',
+        validationType: ValidationType.AUTOMATIC
       },
       {
         title: 'Objectif prières',
@@ -161,6 +166,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
+        validationType: ValidationType.PARENT
       },
 
       // --- WEEKLY TASKS ---
@@ -172,6 +178,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Pas d\'appareil portable',
@@ -181,6 +188,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: false, 
+        validationType: ValidationType.PARENT
       },
       {
         title: 'Réaction emoji',
@@ -190,6 +198,7 @@ async function main() {
         category: TaskCategory.PERSONAL, // As per image
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
+        validationType: ValidationType.AUTOMATIC
       },
       {
         title: 'Mission hebdomadaire 1',
@@ -199,6 +208,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
+        validationType: ValidationType.AUTOMATIC
       },
       {
         title: 'Collaboration de groupe',
@@ -208,6 +218,7 @@ async function main() {
         category: TaskCategory.COLLABORATIVE,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
+        validationType: ValidationType.AUTOMATIC
       },
       {
         title: 'Synthèse de la semaine',
@@ -217,6 +228,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Défi créatif hebdomadaire',
@@ -226,6 +238,7 @@ async function main() {
         category: TaskCategory.CREATIVE,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
+        validationType: ValidationType.PARENT
       },
 
       // --- MONTHLY TASKS ---
@@ -237,6 +250,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Projet créatif mensuel',
@@ -246,6 +260,7 @@ async function main() {
         category: TaskCategory.CREATIVE,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
+        validationType: ValidationType.PARENT
       },
       {
         title: 'Maître des points',
@@ -255,6 +270,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.HARD,
         requiresProof: false,
+        validationType: ValidationType.AUTOMATIC
       },
       {
         title: 'Objectif Progression scolaire 2',
@@ -264,6 +280,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD, // Assuming hard
         requiresProof: false,
+        validationType: ValidationType.AUTOMATIC
       },
        // Other tasks from previous seedings
       { 
@@ -276,6 +293,7 @@ async function main() {
         isActive: true, 
         difficulty: TaskDifficulty.HARD, 
         requiresProof: false, 
+        validationType: ValidationType.AUTOMATIC
       },
       { 
         title: 'Question pertinente', 
@@ -285,6 +303,7 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
+        validationType: ValidationType.AUTOMATIC
       },
     ]
   });
@@ -478,7 +497,7 @@ async function main() {
   console.log(`   - 3 classes créées`);
   console.log(`   - ${students.length} élèves créés`);
   console.log(`   - 3 métiers créés`);
-  console.log(`   - 19 tâches créées`);
+  console.log(`   - ${await prisma.task.count()} tâches créées`);
   console.log(`   - 5 succès créés`);
   console.log(`   - Classement initialisé`);
 }
@@ -491,3 +510,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
