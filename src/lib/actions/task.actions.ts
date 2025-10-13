@@ -7,8 +7,6 @@ import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus } from '@prisma/client';
 
-// Define ValidationType locally to avoid dependency on Prisma Client generation
-type ValidationType = "AUTOMATIC" | "PROFESSOR" | "PARENT";
 
 async function verifyTeacher() {
   const session = await getAuthSession();
@@ -28,7 +26,7 @@ export async function createTask(formData: FormData): Promise<Task[]> {
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
     attachmentUrl: formData.get('attachmentUrl') as string | null,
-    validationType: formData.get('validationType') as ValidationType,
+    validationType: formData.get('validationType') as string,
     requiresProof: formData.get('requiresProof') === 'true',
     duration: 1, // default duration
     isActive: true, // default active
@@ -38,7 +36,7 @@ export async function createTask(formData: FormData): Promise<Task[]> {
     throw new Error('Invalid data');
   }
 
-  await prisma.task.create({ data });
+  await prisma.task.create({ data: data as any });
   
   revalidatePath('/teacher/tasks');
   return prisma.task.findMany({ orderBy: { type: 'asc' } });
@@ -56,7 +54,7 @@ export async function updateTask(formData: FormData): Promise<Task[]> {
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
     attachmentUrl: formData.get('attachmentUrl') as string | null,
-    validationType: formData.get('validationType') as ValidationType,
+    validationType: formData.get('validationType') as string,
     requiresProof: formData.get('requiresProof') === 'true',
   };
 
@@ -64,7 +62,7 @@ export async function updateTask(formData: FormData): Promise<Task[]> {
     throw new Error('Invalid data');
   }
   
-  await prisma.task.update({ where: { id }, data });
+  await prisma.task.update({ where: { id }, data: data as any });
 
   revalidatePath('/teacher/tasks');
   return prisma.task.findMany({ orderBy: { type: 'asc' } });
@@ -131,9 +129,10 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
+  const taskAsAny = task as any;
   const validationRequired = 
-    task.validationType === 'PROFESSOR' || 
-    task.validationType === 'PARENT' || 
+    taskAsAny.validationType === 'PROFESSOR' || 
+    taskAsAny.validationType === 'PARENT' || 
     task.requiresProof;
 
   const finalStatus = validationRequired ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
