@@ -5,7 +5,10 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
-import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus, ValidationType } from '@prisma/client';
+import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus } from '@prisma/client';
+
+// Define ValidationType locally to avoid dependency on Prisma Client generation
+type ValidationType = "AUTOMATIC" | "PROFESSOR" | "PARENT";
 
 async function verifyTeacher() {
   const session = await getAuthSession();
