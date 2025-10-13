@@ -9,7 +9,7 @@ async function main() {
 
   // Clean up existing data in the correct order to avoid foreign key constraints
   console.log('🧹 Nettoyage des anciennes données...');
-  await prisma.parentFeedback.deleteMany();
+  // await prisma.parentFeedback.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.finalRoundParticipant.deleteMany();
   await prisma.finalRound.deleteMany();
@@ -99,6 +99,7 @@ async function main() {
       // --- PERSONAL TASKS (AUTOMATED) ---
       { title: 'Connexion du Soir', description: 'Connectez-vous entre 18h00 et 18h10.', points: 10, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '18:00', endTime: '18:10', isActive: true, difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
       { title: 'Marathon de Concentration', description: 'Restez actif sur la plateforme pendant 60 minutes continues.', points: 100, type: TaskType.DAILY, category: 'PERSONAL', duration: 60, startTime: null, endTime: null, isActive: true, difficulty: TaskDifficulty.HARD, requiresProof: false, validationType: 'AUTOMATIC' },
+      { title: 'Connexion Matinale', description: 'Connectez-vous à la plateforme entre 05h00 et 06h00.', points: 25, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '05:00', endTime: '06:00', isActive: true, difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'AUTOMATIC' },
       
       // --- MANUAL TASKS ---
       // Daily
@@ -106,6 +107,7 @@ async function main() {
       { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
       { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
       { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
+      { title: 'Prendre sa douche', description: "Prouvez que vous avez pris votre douche aujourd'hui.", points: 15, type: TaskType.DAILY, category: 'CREATIVE', requiresProof: true, difficulty: TaskDifficulty.EASY, validationType: 'PARENT' },
       
       // Weekly
       { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
@@ -113,6 +115,7 @@ async function main() {
       { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
       { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.EASY, requiresProof: true, validationType: 'PROFESSOR' },
       { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', difficulty: TaskDifficulty.HARD, requiresProof: true, validationType: 'PROFESSOR' },
+      { title: 'Mémorisation Coranique', description: 'Apprenez par cœur une nouvelle page du Coran cette semaine.', points: 80, type: TaskType.WEEKLY, category: 'ACADEMIC', requiresProof: true, difficulty: TaskDifficulty.HARD, validationType: 'PROFESSOR' },
       
       // Monthly
       { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'AUTOMATIC' },
@@ -311,7 +314,7 @@ async function main() {
   console.log(`   - 3 classes créées`);
   console.log(`   - ${students.length} élèves créés`);
   console.log(`   - 3 métiers créés`);
-  console.log(`   - 16 tâches créées`);
+  console.log(`   - 19 tâches créées`);
   console.log(`   - 5 succès créés`);
   console.log(`   - Classement initialisé`);
 }
