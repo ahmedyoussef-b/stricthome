@@ -86,6 +86,7 @@ export async function validateTaskByParent(
     await prisma.parentFeedback.create({
       data: {
         studentProgressId: progressId,
+        studentId: student.id,
         taste: feedback.taste,
         presentation: feedback.presentation,
         autonomy: feedback.autonomy,
