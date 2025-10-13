@@ -24,8 +24,8 @@ async function main() {
   await prisma.announcement.deleteMany();
   await prisma.coursSession.deleteMany();
   await prisma.task.deleteMany();
-  await prisma.classroom.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.classroom.deleteMany();
   await prisma.metier.deleteMany();
   
   console.log('✅ Données nettoyées.');
