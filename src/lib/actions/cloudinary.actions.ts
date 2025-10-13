@@ -19,10 +19,13 @@ export async function getCloudinarySignature(paramsToSign: Record<string, unknow
       throw new Error('Cloudinary API secret is not defined.');
   }
 
+  // The upload_preset should not be part of the signature if it's a non-signed preset.
+  // We sign other parameters for security.
   const signature = cloudinary.utils.api_sign_request(
     {
       timestamp: timestamp,
       source: 'uw',
+      folder: 'stricthome', // Signing the folder is a good practice
       ...paramsToSign
     },
     process.env.CLOUDINARY_API_SECRET
