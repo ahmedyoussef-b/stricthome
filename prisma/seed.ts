@@ -97,28 +97,28 @@ async function main() {
   await prisma.task.createMany({
     data: [
       // --- PERSONAL TASKS (AUTOMATED) ---
-      { title: 'Connexion du Soir', description: 'Connectez-vous entre 18h00 et 18h10.', points: 10, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '18:00', endTime: '18:10', isActive: true, difficulty: TaskDifficulty.EASY },
-      { title: 'Marathon de Concentration', description: 'Restez actif sur la plateforme pendant 60 minutes continues.', points: 100, type: TaskType.DAILY, category: 'PERSONAL', duration: 60, startTime: null, endTime: null, isActive: true, difficulty: TaskDifficulty.HARD },
+      { title: 'Connexion du Soir', description: 'Connectez-vous entre 18h00 et 18h10.', points: 10, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '18:00', endTime: '18:10', isActive: true, difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
+      { title: 'Marathon de Concentration', description: 'Restez actif sur la plateforme pendant 60 minutes continues.', points: 100, type: TaskType.DAILY, category: 'PERSONAL', duration: 60, startTime: null, endTime: null, isActive: true, difficulty: TaskDifficulty.HARD, requiresProof: false, validationType: 'AUTOMATIC' },
       
       // --- MANUAL TASKS ---
       // Daily
-      { title: 'Bureau bien rangé', description: 'Prouvez que votre bureau est bien rangé aujourd\'hui.', points: 20, type: TaskType.DAILY, category: TaskCategory.CREATIVE, requiresProof: true, difficulty: TaskDifficulty.EASY },
-      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY },
-      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY },
-      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM },
+      { title: 'Bureau bien rangé', description: 'Prouvez que votre bureau est bien rangé aujourd\'hui.', points: 20, type: TaskType.DAILY, category: TaskCategory.CREATIVE, requiresProof: true, difficulty: TaskDifficulty.EASY, validationType: 'PROFESSOR' },
+      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
+      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
+      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
       
       // Weekly
-      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Apprentissage par cœur', description: 'Réciter un texte d\'une page appris par cœur.', points: 75, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresAccuracy: true },
-      { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.EASY },
-      { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', difficulty: TaskDifficulty.HARD, requiresProof: true },
+      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
+      { title: 'Apprentissage par cœur', description: 'Réciter un texte d\'une page appris par cœur.', points: 75, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: true, requiresAccuracy: true, validationType: 'PROFESSOR' },
+      { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
+      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.EASY, requiresProof: true, validationType: 'PROFESSOR' },
+      { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', difficulty: TaskDifficulty.HARD, requiresProof: true, validationType: 'PROFESSOR' },
       
       // Monthly
-      { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM },
-      { title: 'Projet créatif mensuel', description: 'Préparez un repas en autonomie et faites-le évaluer par vos parents.', points: 150, type: TaskType.MONTHLY, category: TaskCategory.CREATIVE, requiresProof: true, requiresAccuracy: true, difficulty: TaskDifficulty.HARD },
-      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY, category: 'PERSONAL', difficulty: TaskDifficulty.HARD },
-      { title: 'Présentation Académique', description: 'Préparez et présentez un sujet de recherche à la classe.', points: 180, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.HARD },
+      { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'AUTOMATIC' },
+      { title: 'Projet créatif mensuel', description: 'Préparez un repas en autonomie et faites-le évaluer par vos parents.', points: 150, type: TaskType.MONTHLY, category: TaskCategory.CREATIVE, requiresProof: true, requiresAccuracy: true, difficulty: TaskDifficulty.HARD, validationType: 'PARENT' },
+      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY, category: 'PERSONAL', difficulty: TaskDifficulty.HARD, requiresProof: false, validationType: 'AUTOMATIC' },
+      { title: 'Présentation Académique', description: 'Préparez et présentez un sujet de recherche à la classe.', points: 180, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.HARD, requiresProof: true, validationType: 'PROFESSOR' },
     ]
   });
   console.log('✅ Tâches créées.');
