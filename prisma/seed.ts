@@ -105,7 +105,6 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Prendre une douche au quotidien',
@@ -115,7 +114,6 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: true,
-        validationType: 'PARENT',
       },
       {
         title: 'Pièce bien rangée',
@@ -125,7 +123,6 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: true,
-        validationType: 'PARENT',
       },
       {
         title: 'Apprendre une page Coran',
@@ -135,7 +132,6 @@ async function main() {
         category: TaskCategory.PERSONAL, // Or ACADEMIC
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Connexion journalière',
@@ -145,7 +141,6 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
-        validationType: 'AUTOMATIC',
         startTime: '05:00',
         endTime: '06:00',
       },
@@ -157,7 +152,6 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PARENT',
       },
 
       // --- WEEKLY TASKS ---
@@ -169,7 +163,6 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Pas d\'appareil portable',
@@ -178,8 +171,7 @@ async function main() {
         type: TaskType.WEEKLY,
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
-        requiresProof: false, // Relies on trust or parent validation
-        validationType: 'PARENT',
+        requiresProof: false, 
       },
       {
         title: 'Réaction emoji',
@@ -189,7 +181,6 @@ async function main() {
         category: TaskCategory.PERSONAL, // As per image
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
-        validationType: 'AUTOMATIC',
       },
       {
         title: 'Mission hebdomadaire 1',
@@ -199,7 +190,6 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Collaboration de groupe',
@@ -209,7 +199,6 @@ async function main() {
         category: TaskCategory.COLLABORATIVE,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Synthèse de la semaine',
@@ -219,7 +208,6 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Défi créatif hebdomadaire',
@@ -229,7 +217,6 @@ async function main() {
         category: TaskCategory.CREATIVE,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PARENT',
       },
 
       // --- MONTHLY TASKS ---
@@ -241,7 +228,6 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Projet créatif mensuel',
@@ -251,7 +237,6 @@ async function main() {
         category: TaskCategory.CREATIVE,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PROFESSEUR',
       },
       {
         title: 'Maître des points',
@@ -261,7 +246,6 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.HARD,
         requiresProof: false,
-        validationType: 'AUTOMATIC',
       },
       {
         title: 'Objectif Progression scolaire 2',
@@ -271,7 +255,6 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD, // Assuming hard
         requiresProof: false,
-        validationType: 'PROFESSEUR',
       },
        // Other tasks from previous seedings
       { 
@@ -284,7 +267,6 @@ async function main() {
         isActive: true, 
         difficulty: TaskDifficulty.HARD, 
         requiresProof: false, 
-        validationType: 'AUTOMATIC' 
       },
       { 
         title: 'Question pertinente', 
@@ -294,7 +276,6 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
-        validationType: 'PROFESSEUR' 
       },
     ]
   });
