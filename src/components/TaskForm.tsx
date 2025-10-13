@@ -1,7 +1,7 @@
 // src/components/TaskForm.tsx
 "use client";
 
-import { useRef, useTransition, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -41,11 +41,7 @@ import {
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
 import { Switch } from "./ui/switch";
-
-// Define ValidationType values locally to avoid dependency on Prisma Client generation
-const validationTypes = ["AUTOMATIC", "PROFESSOR", "PARENT"];
-type ValidationType = "AUTOMATIC" | "PROFESSOR" | "PARENT";
-
+import { ValidationType } from "@/lib/types";
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -215,7 +211,7 @@ export function TaskForm({
               <Select name="validationType" required defaultValue={(task as any)?.validationType ?? 'PROFESSOR'}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {validationTypes.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  {Object.values(ValidationType).map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

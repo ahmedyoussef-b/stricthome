@@ -6,6 +6,7 @@ import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus } from '@prisma/client';
+import { ValidationType } from '@/lib/types';
 
 
 async function verifyTeacher() {
@@ -26,7 +27,7 @@ export async function createTask(formData: FormData): Promise<Task[]> {
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
     attachmentUrl: formData.get('attachmentUrl') as string | null,
-    validationType: formData.get('validationType') as string,
+    validationType: formData.get('validationType') as ValidationType,
     requiresProof: formData.get('requiresProof') === 'true',
     duration: 1, // default duration
     isActive: true, // default active
@@ -54,7 +55,7 @@ export async function updateTask(formData: FormData): Promise<Task[]> {
     category: formData.get('category') as TaskCategory,
     difficulty: formData.get('difficulty') as TaskDifficulty,
     attachmentUrl: formData.get('attachmentUrl') as string | null,
-    validationType: formData.get('validationType') as string,
+    validationType: formData.get('validationType') as ValidationType,
     requiresProof: formData.get('requiresProof') === 'true',
   };
 
@@ -131,8 +132,8 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  const validationType = taskAsAny.validationType;
-  const isAutomaticValidation = validationType === 'AUTOMATIC' && !task.requiresProof;
+  const validationType = taskAsAny.validationType as ValidationType;
+  const isAutomaticValidation = validationType === ValidationType.AUTOMATIC;
   
   const finalStatus = isAutomaticValidation
     ? ProgressStatus.COMPLETED

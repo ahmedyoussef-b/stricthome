@@ -102,5 +102,12 @@ export type CoursSessionWithRelations = CoursSession & {
     classe: Classroom | null;
 };
 
+export enum ValidationType {
+  AUTOMATIC = "AUTOMATIC",
+  PROFESSOR = "PROFESSOR",
+  PARENT = "PARENT"
+}
+
+
 // Competition System Types
 export type { Task, StudentProgress, Leaderboard } from '@prisma/client';
