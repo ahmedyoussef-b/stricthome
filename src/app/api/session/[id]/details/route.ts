@@ -18,7 +18,19 @@ export async function GET(
     const coursSession = await prisma.coursSession.findUnique({
       where: { id: sessionId },
       include: {
-        participants: { select: { id: true } }, // Select only IDs for security check
+        participants: { 
+          select: { 
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            etat: {
+              select: {
+                  metier: true
+              }
+            }
+          } 
+        },
         professeur: true,
         classroom: {
             include: {
@@ -27,6 +39,7 @@ export async function GET(
                         id: true,
                         name: true,
                         email: true,
+                        role: true,
                         etat: {
                             select: {
                                 metier: true
@@ -44,14 +57,13 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    // Security check: only participants or the teacher can get details
+    // Security check: only participants can get details
     const isParticipant = coursSession.participants.some(p => p.id === session.user.id);
     
     if (!isParticipant) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     
-    // The class and its students are now included in the initial query
     const studentsInClass = coursSession.classroom?.eleves || [];
 
     return NextResponse.json({ 

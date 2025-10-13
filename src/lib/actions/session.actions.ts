@@ -21,13 +21,15 @@ export async function createCoursSession(professeurId: string, studentIds: strin
         throw new Error("Could not determine the class for the session.");
     }
 
+    const participantIds = [{ id: professeurId }, ...studentIds.map(id => ({ id }))];
+
     const session = await prisma.coursSession.create({
         data: {
             professeur: {
                 connect: { id: professeurId }
             },
             participants: {
-                connect: [{id: professeurId}, ...studentIds.map(id => ({ id }))]
+                connect: participantIds
             },
             classroom: {
                 connect: { id: firstStudent.classroomId }

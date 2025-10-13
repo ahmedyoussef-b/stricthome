@@ -24,6 +24,7 @@ async function getStudentData(id: string): Promise<StudentWithStateAndCareer | n
         },
         sessionsParticipees: {
           where: { endedAt: null },
+          orderBy: { createdAt: 'desc' }
         },
         progress: {
           include: {

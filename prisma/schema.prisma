@@ -7,7 +7,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -23,21 +24,23 @@ model User {
   points        Int       @default(0)
 
   // Relations
-  classe                Classroom?         @relation(fields: [classroomId], references: [id])
+  classe                Classroom?                @relation("ClassroomStudents", fields: [classroomId], references: [id])
   classroomId           String?
-  classesEnseignees     CoursSession[]     @relation("SessionProfessor")
-  sessionsParticipees   CoursSession[]     @relation("SessionParticipants")
+  classesEnseignees     Classroom[]              @relation("ClassroomTeacher")
+  sessionsEnseignees    CoursSession[]           @relation("SessionProfessor")
+  sessionsParticipees   CoursSession[]           @relation("SessionParticipants")
   etat                  EtatEleve?
-  messages              Message[]          @relation("MessageSender")
+  messages              Message[]                @relation("MessageSender")
   reactions             Reaction[]
   announcements         Announcement[]
-  authoredConversations Conversation[]     @relation("ConversationInitiator")
-  receivedConversations Conversation[]     @relation("ConversationReceiver")
+  authoredConversations Conversation[]           @relation("ConversationInitiator")
+  receivedConversations Conversation[]           @relation("ConversationReceiver")
   studentProgress       StudentProgress[]
   achievements          StudentAchievement[]
   leaderboardEntry      Leaderboard?
   finalRoundEntries     FinalRoundParticipant[]
   parentFeedbacks       ParentFeedback[]
+  etalonnage            Etalonnage?
 
   // Obsolete - for Auth.js v4 compatibility
   accounts Account[]
@@ -45,23 +48,22 @@ model User {
 }
 
 model Etalonnage {
-    id        String @id @default(cuid())
-    studentId String @unique
-    student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id        String @id @default(cuid())
+  studentId String @unique
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-    // Scores
-    communication Int @default(50)
-    problemSolving Int @default(50)
-    collaboration Int @default(50)
-    creativity Int @default(50)
-    leadership Int @default(50)
-    academics Int @default(50)
+  // Scores
+  communication  Int @default(50)
+  problemSolving Int @default(50)
+  collaboration  Int @default(50)
+  creativity     Int @default(50)
+  leadership     Int @default(50)
+  academics      Int @default(50)
 
-    // Timestamps
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
 
 model EtatEleve {
   id         String  @id @default(cuid())
@@ -84,14 +86,22 @@ model Metier {
 }
 
 model Classroom {
-  id           String         @id @default(cuid())
-  nom          String
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  
+  // Relations avec User
   professeurId String
-  professeur   User           @relation(fields: [professeurId], references: [id], onDelete: NoAction)
-  eleves       User[]
-  annonces     Announcement[]
-  messages     Message[]
+  professeur   User     @relation("ClassroomTeacher", fields: [professeurId], references: [id], onDelete: NoAction)
+  eleves       User[]   @relation("ClassroomStudents")
+  
+  // Relations avec autres modèles
   sessions     CoursSession[]
+  messages     Message[]
+  announcements Announcement[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model CoursSession {
@@ -224,7 +234,6 @@ model ParentFeedback {
 
   createdAt         DateTime @default(now())
 }
-
 
 model Achievement {
   id             String    @id @default(cuid())
