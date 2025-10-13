@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, createContext } from 'react';
-import { getCloudinarySignature } from '@/lib/actions/cloudinary.actions';
 
 interface CloudinaryScriptContextType {
   loaded: boolean;
@@ -32,57 +31,37 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
     };
   }, []);
 
-  const openWidget = async () => {
-    console.log('[WIDGET] openWidget appelé. Script chargé:', loaded);
+  const openWidget = () => {
     if (!loaded) {
       console.error("[WIDGET] Cloudinary script not loaded yet.");
       return;
     }
+
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
 
-    console.log('[WIDGET] Variables d\'environnement lues:', { cloudName, uploadPreset, apiKey });
-
-    if (!cloudName || !uploadPreset || !apiKey) {
-      console.error("[WIDGET] Cloudinary configuration is missing from environment variables.");
+    if (!cloudName || !uploadPreset) {
+      console.error("[WIDGET] Cloudinary cloud_name or upload_preset is missing from environment variables.");
       return;
     }
 
-    const paramsToSign = {
-        cropping: true,
-        folder: 'stricthome',
-        source: 'uw', // Important for signed uploads with the widget
-        upload_preset: uploadPreset,
+    const options = {
+      cloudName: cloudName,
+      uploadPreset: uploadPreset,
+      cropping: true,
+      folder: 'stricthome',
+      sources: ['local', 'url', 'camera'],
+      multiple: false,
     };
-    
-    console.log('[WIDGET] Paramètres à envoyer au serveur pour signature:', paramsToSign);
-
-    const { timestamp, signature } = await getCloudinarySignature(paramsToSign);
-
-    console.log('[WIDGET] Réponse reçue du serveur:', { timestamp, signature });
-
-    const widgetOptions = {
-        cloudName: cloudName,
-        apiKey: apiKey,
-        uploadSignature: signature,
-        uploadSignatureTimestamp: timestamp,
-        ...paramsToSign,
-    };
-
-    console.log('[WIDGET] Options finales passées à createUploadWidget:', widgetOptions);
 
     const myWidget = (window as any).cloudinary.createUploadWidget(
-      widgetOptions,
+      options,
       (error: any, result: any) => {
         if (error) {
             console.error('[WIDGET] Erreur Cloudinary:', error);
         }
         if (result && result.event === 'success') {
-          console.log('[WIDGET] Upload réussi:', result);
           onUpload(result);
-        } else if (result) {
-            console.log('[WIDGET] Événement Cloudinary:', result.event, result);
         }
       }
     );
