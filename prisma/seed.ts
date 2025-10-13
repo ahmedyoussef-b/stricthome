@@ -1,8 +1,14 @@
 
 // prisma/seed.ts
-import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory, ValidationType } from '@prisma/client';
+import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
 
+
+enum ValidationType {
+  AUTOMATIC = "AUTOMATIC",
+  PROFESSOR = "PROFESSOR", 
+  PARENT = "PARENT"
+}
 const prisma = new PrismaClient();
 
 async function main() {

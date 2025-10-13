@@ -1,3 +1,4 @@
+
 // src/lib/actions/activity.actions.ts
 'use server';
 
@@ -60,7 +61,7 @@ export async function trackStudentActivity(elapsedSeconds: number) {
         studentId: userId,
         taskId: task.id,
         // Check for progress started today
-        createdAt: {
+        startedAt: {
           gte: today,
         },
       },

@@ -6,10 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  directUrl         = env("DIRECT_URL")
-  shadowDatabaseUrl = env("POSTGRES_PRISMA_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -37,11 +36,16 @@ model User {
   etat                    EtatEleve?
   messages                Message[]
   reactions               Reaction[]
-  achievements            StudentAchievement[]
-  finalRounds             FinalRoundParticipant[]
+  achievements            StudentAchievement[]    @relation("UserAchievements")
+  finalRounds             FinalRoundParticipant[] @relation("UserFinalRounds") // AJOUT: relation inverse
   leaderboardEntry        Leaderboard?
   progress                StudentProgress[]
   parentFeedback          ParentFeedback[]
+  // Relations Conversation
+  initiatedConversations  Conversation[]          @relation("ConversationInitiator")
+  receivedConversations   Conversation[]          @relation("ConversationReceiver")
+  // Relation Classroom (professeur)
+  classesEnseignees       Classroom[]             @relation("ClassTeacher") // AJOUT: relation inverse
 }
 
 model Classroom {
@@ -96,7 +100,7 @@ model Task {
   category       TaskCategory
   difficulty     TaskDifficulty
   requiresProof  Boolean        @default(false)
-  validationType ValidationType @default("PROFESSOR")
+  validationType ValidationType @default(PROFESSOR)
   attachmentUrl  String?
   duration       Int? // Duration in minutes for continuous tasks
   startTime      String? // e.g., "08:00"
@@ -203,7 +207,7 @@ model Conversation {
   id          String    @id @default(cuid())
   initiator   User      @relation("ConversationInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
   initiatorId String
-  receiver    User      @relation("ConversationReceiver", fields: [receiverId], references: [id], onDelete Cascade)
+  receiver    User      @relation("ConversationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
   receiverId  String
   messages    Message[]
   createdAt   DateTime  @default(now())
@@ -247,14 +251,14 @@ model Achievement {
   icon        String
   points      Int
   criteria    Json // e.g., { "type": "streak", "days": 7 } or { "type": "total_tasks", "count": 50 }
-  students    StudentAchievement[]
+  students    StudentAchievement[] @relation("AchievementStudents")
 }
 
 model StudentAchievement {
   id            String      @id @default(cuid())
-  student       User        @relation("StudentAchievements", fields: [studentId], references: [id], onDelete: Cascade)
+  student       User        @relation("UserAchievements", fields: [studentId], references: [id], onDelete: Cascade)
   studentId     String
-  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation("AchievementStudents", fields: [achievementId], references: [id], onDelete: Cascade)
   achievementId String
   unlockedAt    DateTime    @default(now())
 
@@ -276,28 +280,10 @@ model FinalRoundParticipant {
   id           String     @id @default(cuid())
   finalRound   FinalRound @relation(fields: [finalRoundId], references: [id])
   finalRoundId String
-  student      User       @relation("FinalRoundParticipants", fields: [studentId], references: [id])
+  student      User       @relation("UserFinalRounds", fields: [studentId], references: [id]) // CORRIGÉ: nom de relation
   studentId    String
   score        Int?
   rank         Int?
 
   @@unique([finalRoundId, studentId])
-}
-
-// Prisma requires relation fields to be defined on both sides.
-// Here we define the opposite side of the Conversation relations
-relation ConversationInitiator on User {
-  fields: [id]
-  references: [initiatorId]
-}
-
-relation ConversationReceiver on User {
-  fields: [id]
-  references: [receiverId]
-}
-
-// Define the opposite side for the Classroom teacher relation
-relation ClassTeacher on User {
-  fields: [id]
-  references: [professeurId]
 }
