@@ -45,7 +45,10 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
     }
 }>;
 
-export type AppTask = Prisma.TaskGetPayload<{}>;
+export type AppTask = Omit<Prisma.TaskGetPayload<{
+    include: { studentProgress: true }
+}>, 'studentProgress'>;
+
 
 export type FullConversation = Prisma.ConversationGetPayload<{
     include: {
