@@ -13,23 +13,28 @@ cloudinary.config({
 });
 
 export async function getCloudinarySignature(paramsToSign: Record<string, unknown>) {
+  console.log('[SERVER ACTION] getCloudinarySignature: Reçu paramsToSign:', paramsToSign);
+  
   const timestamp = Math.round(new Date().getTime() / 1000);
 
   if (!process.env.CLOUDINARY_API_SECRET) {
+      console.error('[SERVER ACTION] ERREUR: CLOUDINARY_API_SECRET non défini.');
       throw new Error('Cloudinary API secret is not defined.');
   }
 
-  // The upload_preset should not be part of the signature if it's a non-signed preset.
-  // We sign other parameters for security.
+  // Crée un nouvel objet pour la signature en excluant upload_preset
+  const signatureParams = { ...paramsToSign, timestamp };
+  delete (signatureParams as any).upload_preset;
+
+  console.log('[SERVER ACTION] Paramètres réellement utilisés pour la signature:', signatureParams);
+
   const signature = cloudinary.utils.api_sign_request(
-    {
-      timestamp: timestamp,
-      source: 'uw',
-      folder: 'stricthome', // Signing the folder is a good practice
-      ...paramsToSign
-    },
+    signatureParams,
     process.env.CLOUDINARY_API_SECRET
   );
+  
+  console.log('[SERVER ACTION] Signature générée:', signature);
+  console.log('[SERVER ACTION] Timestamp renvoyé:', timestamp);
 
   return { timestamp, signature };
 }
