@@ -1,3 +1,4 @@
+
 // src/components/StudentPageClient.tsx
 'use client';
 
@@ -5,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileUp, Sparkles, Trophy, Gift, Video, Target, Users, KeyRound } from 'lucide-react';
-import { AnnouncementWithAuthor, StudentWithStateAndCareer } from '@/lib/types';
+import { AnnouncementWithAuthor, AppTask, StudentWithStateAndCareer } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +15,13 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TeacherCareerSelector } from '@/components/TeacherCareerSelector';
 import { AnnouncementsList } from '@/components/AnnouncementsList';
 import { StudentHeaderContent } from '@/components/StudentHeaderContent';
-import { Metier, CoursSession } from '@prisma/client';
+import { Metier, CoursSession, StudentProgress } from '@prisma/client';
 import { pusherClient } from '@/lib/pusher/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
+import { TaskList } from './TaskList';
 
 
 interface StudentPageClientProps {
@@ -27,6 +29,7 @@ interface StudentPageClientProps {
   announcements: AnnouncementWithAuthor[];
   allCareers: Metier[];
   isTeacherView: boolean;
+  tasks: AppTask[];
 }
 
 export default function StudentPageClient({
@@ -34,6 +37,7 @@ export default function StudentPageClient({
   announcements,
   allCareers,
   isTeacherView,
+  tasks,
 }: StudentPageClientProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -200,7 +204,20 @@ export default function StudentPageClient({
             </Card>
           )}
            
-          <AnnouncementsList announcements={announcements} />
+          <Card className="bg-background/80 backdrop-blur-sm">
+            <CardHeader>
+                <CardTitle className='text-xl'>Mes Tâches</CardTitle>
+                <CardDescription>Validez vos tâches pour gagner des points et progresser.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <TaskList
+                    tasks={tasks}
+                    studentProgress={student.progress as StudentProgress[]}
+                    studentId={student.id}
+                    isTeacherView={isTeacherView}
+                />
+            </CardContent>
+          </Card>
 
         </div>
 
@@ -218,6 +235,7 @@ export default function StudentPageClient({
             </CardContent>
           </Card>
           
+          <AnnouncementsList announcements={announcements} />
         </div>
       </div>
     </main>

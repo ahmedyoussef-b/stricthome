@@ -9,7 +9,9 @@ import { getAuthSession } from '@/lib/session';
 import { ChatSheet } from '@/components/ChatSheet';
 import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import StudentPageClient from '@/components/StudentPageClient';
-import { Metier, CoursSession } from '@prisma/client';
+import { Metier, CoursSession, Task } from '@prisma/client';
+import { AppTask } from '@/lib/types';
+
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
     const student = await prisma.user.findUnique({
@@ -79,6 +81,10 @@ export default async function StudentPage({
   
   const classeId = student.classe?.id;
   const announcements = await getStudentAnnouncements(student.id);
+  
+  const tasks = await prisma.task.findMany({
+    where: { isActive: true },
+  }) as AppTask[];
 
   return (
     <CareerThemeWrapper career={metier ?? undefined}>
@@ -93,6 +99,7 @@ export default async function StudentPage({
             announcements={announcements}
             allCareers={allCareers}
             isTeacherView={isTeacherView}
+            tasks={tasks}
         />
       </div>
     </CareerThemeWrapper>
