@@ -15,14 +15,15 @@ cloudinary.config({
 export async function getCloudinarySignature() {
   const timestamp = Math.round(new Date().getTime() / 1000);
 
-  if (!process.env.CLOUDINARY_API_SECRET || !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET) {
-      throw new Error('Cloudinary API secret or upload preset is not defined.');
+  if (!process.env.CLOUDINARY_API_SECRET) {
+      throw new Error('Cloudinary API secret is not defined.');
   }
 
   const signature = cloudinary.utils.api_sign_request(
     {
       timestamp: timestamp,
-      upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
+      source: 'uw',
+      folder: 'stricthome'
     },
     process.env.CLOUDINARY_API_SECRET
   );

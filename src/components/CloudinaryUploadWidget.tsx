@@ -54,6 +54,8 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
         uploadSignatureTimestamp: timestamp,
         cropping: true,
         multiple: false,
+        folder: 'stricthome',
+        source: 'uw'
       },
       (error: any, result: any) => {
         if (!error && result && result.event === 'success') {
