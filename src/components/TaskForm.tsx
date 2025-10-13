@@ -26,7 +26,7 @@ import { Loader2, Trash2, Upload, Link as LinkIcon, XCircle } from "lucide-react
 import { useFormStatus } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 import { createTask, updateTask, deleteTask } from "@/lib/actions/task.actions";
-import { Task, TaskType, TaskCategory, TaskDifficulty, ValidationType } from "@prisma/client";
+import { Task, TaskType, TaskCategory, TaskDifficulty } from "@prisma/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +41,11 @@ import {
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
 import { Switch } from "./ui/switch";
+
+// Define ValidationType values locally to avoid dependency on Prisma Client generation
+const validationTypes = ["AUTOMATIC", "PROFESSOR", "PARENT"];
+type ValidationType = "AUTOMATIC" | "PROFESSOR" | "PARENT";
+
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -207,10 +212,10 @@ export function TaskForm({
            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="validationType">Mode de validation</Label>
-              <Select name="validationType" required defaultValue={task?.validationType}>
+              <Select name="validationType" required defaultValue={(task as any)?.validationType ?? 'PROFESSOR'}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.values(ValidationType).map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  {validationTypes.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
