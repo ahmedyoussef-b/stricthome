@@ -34,16 +34,21 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
 
   const openWidget = async () => {
     if (
-        !loaded || 
-        !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 
-        !process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || 
+        !loaded ||
+        !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
         !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
     ) {
       console.error("Cloudinary configuration is missing from environment variables.");
       return;
     }
     
-    const { timestamp, signature } = await getCloudinarySignature();
+    const paramsToSign = {
+        source: 'uw',
+        cropping: true,
+        folder: 'stricthome'
+    };
+
+    const { timestamp, signature } = await getCloudinarySignature(paramsToSign);
 
     const myWidget = (window as any).cloudinary.createUploadWidget(
       {
@@ -52,10 +57,7 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
         uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
         uploadSignature: signature,
         uploadSignatureTimestamp: timestamp,
-        cropping: true,
-        multiple: false,
-        folder: 'stricthome',
-        source: 'uw'
+        ...paramsToSign
       },
       (error: any, result: any) => {
         if (!error && result && result.event === 'success') {
