@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { AnnouncementWithAuthor } from '../types';
+import { cache } from 'react';
 
 export async function createAnnouncement(formData: FormData) {
   const session = await getAuthSession();
@@ -39,7 +40,7 @@ export async function createAnnouncement(formData: FormData) {
   }
 }
 
-export async function getPublicAnnouncements(limit: number = 3): Promise<AnnouncementWithAuthor[]> {
+export const getPublicAnnouncements = cache(async (limit: number = 3): Promise<AnnouncementWithAuthor[]> => {
     console.log('🔍 [DB] Annonces publiques récupérées depuis la base de données.');
     const announcements = await prisma.announcement.findMany({
         where: { classeId: null },
@@ -49,7 +50,7 @@ export async function getPublicAnnouncements(limit: number = 3): Promise<Announc
     });
 
     return announcements as unknown as AnnouncementWithAuthor[];
-}
+});
 
 export async function getStudentAnnouncements(studentId: string): Promise<AnnouncementWithAuthor[]> {
     const student = await prisma.user.findUnique({
