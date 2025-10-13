@@ -14,6 +14,5 @@ export * from './actions/conversation.actions';
 export * from './actions/announcement.actions';
 export * from './actions/chat.actions';
 export * from './actions/teacher.actions';
-export * from './actions/cloudinary.actions';
 export * from './actions/activity.actions';
 export * from './actions/parent.actions';
