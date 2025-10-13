@@ -41,7 +41,6 @@ import {
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
 import { Switch } from "./ui/switch";
-import { ValidationType } from "@/lib/types";
 
 interface TaskFormProps {
   isOpen: boolean;

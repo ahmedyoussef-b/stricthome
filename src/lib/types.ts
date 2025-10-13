@@ -1,4 +1,5 @@
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard, Task } from '@prisma/client';
+import {  TaskType, TaskCategory, TaskDifficulty } from "@prisma/client";
 
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
@@ -45,8 +46,15 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
     }
 }>;
 
-export type AppTask = Task;
+export enum ValidationType {
+  AUTOMATIC = "AUTOMATIC",
+  PROFESSOR = "PROFESSOR",
+  PARENT = "PARENT"
+}
 
+export type AppTask = Task & {
+  validationType: ValidationType;
+};
 
 export type FullConversation = Prisma.ConversationGetPayload<{
     include: {
@@ -103,12 +111,7 @@ export type CoursSessionWithRelations = CoursSession & {
     classe: Classroom | null;
 };
 
-export enum ValidationType {
-  AUTOMATIC = "AUTOMATIC",
-  PROFESSOR = "PROFESSOR",
-  PARENT = "PARENT"
-}
 
 
 // Competition System Types
-export type { Task, StudentProgress, Leaderboard } from '@prisma/client';
+export type { StudentProgress, Leaderboard } from '@prisma/client';
