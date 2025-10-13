@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx prisma db push --accept-data-loss && next dev",
+    "dev": "npm run db:push && npm run db:seed && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
