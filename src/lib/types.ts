@@ -48,6 +48,7 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
 
 export type TaskWithProgress = Task & {
     progress: StudentProgress[];
+    attachmentUrl?: string | null;
 };
 
 export type FullConversation = Prisma.ConversationGetPayload<{

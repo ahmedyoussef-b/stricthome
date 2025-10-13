@@ -86,9 +86,9 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
                     {task.title}
                 </p>
                 <p className="text-xs text-muted-foreground">{task.description}</p>
-                {task.attachmentUrl && (
+                {(task as any).attachmentUrl && (
                     <Button variant="outline" size="sm" asChild className="mt-2">
-                        <Link href={task.attachmentUrl} target="_blank">
+                        <Link href={(task as any).attachmentUrl} target="_blank">
                             <Download className="mr-2 h-4 w-4" />
                             Télécharger la pièce jointe
                         </Link>
