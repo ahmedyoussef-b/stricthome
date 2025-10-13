@@ -292,6 +292,7 @@ export function ChatSheet({ classroomId, userId, userRole }: { classroomId: stri
         reactions: [],
         status: 'pending',
         classroomId: classroomId,
+        isQuestion: null, // Add the missing property
         conversationId: null,
     };
     
