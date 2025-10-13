@@ -1,3 +1,4 @@
+
 // prisma/seed.ts
 import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
@@ -9,7 +10,6 @@ async function main() {
 
   // Clean up existing data in the correct order to avoid foreign key constraints
   console.log('🧹 Nettoyage des anciennes données...');
-  // await prisma.parentFeedback.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.finalRoundParticipant.deleteMany();
   await prisma.finalRound.deleteMany();
@@ -96,32 +96,206 @@ async function main() {
   console.log('🎯 Création des tâches...');
   await prisma.task.createMany({
     data: [
-      // --- PERSONAL TASKS (AUTOMATED) ---
-      { title: 'Connexion du Soir', description: 'Connectez-vous entre 18h00 et 18h10.', points: 10, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '18:00', endTime: '18:10', isActive: true, difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
-      { title: 'Marathon de Concentration', description: 'Restez actif sur la plateforme pendant 60 minutes continues.', points: 100, type: TaskType.DAILY, category: 'PERSONAL', duration: 60, startTime: null, endTime: null, isActive: true, difficulty: TaskDifficulty.HARD, requiresProof: false, validationType: 'AUTOMATIC' },
-      { title: 'Connexion Matinale', description: 'Connectez-vous à la plateforme entre 05h00 et 06h00.', points: 25, type: TaskType.DAILY, category: 'PERSONAL', duration: 0, startTime: '05:00', endTime: '06:00', isActive: true, difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'AUTOMATIC' },
-      
-      // --- MANUAL TASKS ---
-      // Daily
-      { title: 'Bureau bien rangé', description: 'Prouvez que votre bureau est bien rangé aujourd\'hui.', points: 20, type: TaskType.DAILY, category: TaskCategory.CREATIVE, requiresProof: true, difficulty: TaskDifficulty.EASY, validationType: 'PROFESSOR' },
-      { title: 'Message quotidien', description: 'Envoyez un message dans le chat de la classe.', points: 10, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
-      { title: 'Réaction emoji', description: 'Réagissez à un message avec un emoji.', points: 3, type: TaskType.DAILY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.EASY, requiresProof: false, validationType: 'AUTOMATIC' },
-      { title: 'Question pertinente', description: 'Posez une question intelligente en classe.', points: 15, type: TaskType.DAILY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
-      { title: 'Prendre sa douche', description: "Prouvez que vous avez pris votre douche aujourd'hui.", points: 15, type: TaskType.DAILY, category: 'CREATIVE', requiresProof: true, difficulty: TaskDifficulty.EASY, validationType: 'PARENT' },
-      
-      // Weekly
-      { title: 'Mission hebdomadaire', description: 'Terminez tous vos devoirs de la semaine.', points: 50, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
-      { title: 'Apprentissage par cœur', description: 'Réciter un texte d\'une page appris par cœur.', points: 75, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: true, requiresAccuracy: true, validationType: 'PROFESSOR' },
-      { title: 'Collaboration de groupe', description: 'Participez à une session de groupe et contribuez activement.', points: 40, type: TaskType.WEEKLY, category: 'COLLABORATIVE', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'PROFESSOR' },
-      { title: 'Synthèse de la semaine', description: 'Postez un résumé de ce que vous avez appris cette semaine.', points: 30, type: TaskType.WEEKLY, category: 'ACADEMIC', difficulty: TaskDifficulty.EASY, requiresProof: true, validationType: 'PROFESSOR' },
-      { title: 'Défi créatif hebdomadaire', description: 'Réalisez un petit projet créatif lié au cours.', points: 60, type: TaskType.WEEKLY, category: 'CREATIVE', difficulty: TaskDifficulty.HARD, requiresProof: true, validationType: 'PROFESSOR' },
-      { title: 'Mémorisation Coranique', description: 'Apprenez par cœur une nouvelle page du Coran cette semaine.', points: 80, type: TaskType.WEEKLY, category: 'ACADEMIC', requiresProof: true, difficulty: TaskDifficulty.HARD, validationType: 'PROFESSOR' },
-      
-      // Monthly
-      { title: 'Objectif de sessions', description: 'Participez à au moins 3 sessions en direct ce mois-ci.', points: 100, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.MEDIUM, requiresProof: false, validationType: 'AUTOMATIC' },
-      { title: 'Projet créatif mensuel', description: 'Préparez un repas en autonomie et faites-le évaluer par vos parents.', points: 150, type: TaskType.MONTHLY, category: TaskCategory.CREATIVE, requiresProof: true, requiresAccuracy: true, difficulty: TaskDifficulty.HARD, validationType: 'PARENT' },
-      { title: 'Maître des points', description: 'Atteignez le top 3 du classement ce mois-ci.', points: 200, type: TaskType.MONTHLY, category: 'PERSONAL', difficulty: TaskDifficulty.HARD, requiresProof: false, validationType: 'AUTOMATIC' },
-      { title: 'Présentation Académique', description: 'Préparez et présentez un sujet de recherche à la classe.', points: 180, type: TaskType.MONTHLY, category: 'ACADEMIC', difficulty: TaskDifficulty.HARD, requiresProof: true, validationType: 'PROFESSOR' },
+      // --- DAILY TASKS ---
+      {
+        title: 'Tache dessin quotidien',
+        description: 'Copier manuellement le dessin et le téléverser.',
+        points: 20,
+        type: TaskType.DAILY,
+        category: TaskCategory.ACADEMIC,
+        difficulty: TaskDifficulty.MEDIUM,
+        requiresProof: true,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Prendre une douche au quotidien',
+        description: 'Tâche de propreté.',
+        points: 20,
+        type: TaskType.DAILY,
+        category: TaskCategory.PERSONAL,
+        difficulty: TaskDifficulty.EASY,
+        requiresProof: true,
+        validationType: 'PARENT',
+      },
+      {
+        title: 'Pièce bien rangée',
+        description: 'Prouvez que votre pièce est bien rangée aujourd\'hui.',
+        points: 20,
+        type: TaskType.DAILY,
+        category: TaskCategory.PERSONAL,
+        difficulty: TaskDifficulty.EASY,
+        requiresProof: true,
+        validationType: 'PARENT',
+      },
+      {
+        title: 'Apprendre une page Coran',
+        description: 'Apprendre et réciter une page du Coran.',
+        points: 100,
+        type: TaskType.DAILY,
+        category: TaskCategory.PERSONAL, // Or ACADEMIC
+        difficulty: TaskDifficulty.HARD,
+        requiresProof: true,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Connexion journalière',
+        description: 'Connectez-vous entre 05h00 et 06h00.',
+        points: 50,
+        type: TaskType.DAILY,
+        category: TaskCategory.PERSONAL,
+        difficulty: TaskDifficulty.EASY,
+        requiresProof: false,
+        validationType: 'AUTOMATIC',
+        startTime: '05:00',
+        endTime: '06:00',
+      },
+      {
+        title: 'Objectif prières',
+        description: 'Accomplir les 5 prières journalières.',
+        points: 100,
+        type: TaskType.DAILY,
+        category: TaskCategory.PERSONAL,
+        difficulty: TaskDifficulty.MEDIUM,
+        requiresProof: true,
+        validationType: 'PARENT',
+      },
+
+      // --- WEEKLY TASKS ---
+      {
+        title: 'Apprentissage par cœur',
+        description: 'Réciter un texte d\'une page appris par cœur.',
+        points: 100,
+        type: TaskType.WEEKLY,
+        category: TaskCategory.ACADEMIC,
+        difficulty: TaskDifficulty.MEDIUM,
+        requiresProof: true,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Pas d\'appareil portable',
+        description: 'S\'abstenir du portable 6j/7j sauf pour cause d\'études.',
+        points: 100,
+        type: TaskType.WEEKLY,
+        category: TaskCategory.PERSONAL,
+        difficulty: TaskDifficulty.EASY,
+        requiresProof: false, // Relies on trust or parent validation
+        validationType: 'PARENT',
+      },
+      {
+        title: 'Réaction emoji',
+        description: 'Réagissez à un message avec un emoji dans la session.',
+        points: 10,
+        type: TaskType.WEEKLY, // As per image
+        category: TaskCategory.PERSONAL, // As per image
+        difficulty: TaskDifficulty.EASY,
+        requiresProof: false,
+        validationType: 'AUTOMATIC',
+      },
+      {
+        title: 'Mission hebdomadaire 1',
+        description: 'Terminez tous vos devoirs de la semaine.',
+        points: 50,
+        type: TaskType.WEEKLY,
+        category: TaskCategory.ACADEMIC,
+        difficulty: TaskDifficulty.MEDIUM,
+        requiresProof: false,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Collaboration de groupe',
+        description: 'Participez à une session de groupe et contribuez activement.',
+        points: 40,
+        type: TaskType.WEEKLY,
+        category: TaskCategory.COLLABORATIVE,
+        difficulty: TaskDifficulty.MEDIUM,
+        requiresProof: false,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Synthèse de la semaine',
+        description: 'Postez un résumé de ce que vous avez appris cette semaine.',
+        points: 100,
+        type: TaskType.WEEKLY,
+        category: TaskCategory.ACADEMIC,
+        difficulty: TaskDifficulty.MEDIUM,
+        requiresProof: true,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Défi créatif hebdomadaire',
+        description: 'Réalisez une petite recette créative liée à la cuisine.',
+        points: 100,
+        type: TaskType.WEEKLY,
+        category: TaskCategory.CREATIVE,
+        difficulty: TaskDifficulty.HARD,
+        requiresProof: true,
+        validationType: 'PARENT',
+      },
+
+      // --- MONTHLY TASKS ---
+      {
+        title: 'Objectif Progression scolaire 1',
+        description: 'Présenter un devoir contrôle/synthèse avec 20/20.',
+        points: 200,
+        type: TaskType.MONTHLY,
+        category: TaskCategory.ACADEMIC,
+        difficulty: TaskDifficulty.HARD,
+        requiresProof: true,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Projet créatif mensuel',
+        description: 'Projet jardinage.',
+        points: 300,
+        type: TaskType.MONTHLY,
+        category: TaskCategory.CREATIVE,
+        difficulty: TaskDifficulty.HARD,
+        requiresProof: true,
+        validationType: 'PROFESSOR',
+      },
+      {
+        title: 'Maître des points',
+        description: 'Atteignez le top 3 du classement ce mois-ci.',
+        points: 200,
+        type: TaskType.MONTHLY,
+        category: TaskCategory.PERSONAL,
+        difficulty: TaskDifficulty.HARD,
+        requiresProof: false,
+        validationType: 'AUTOMATIC',
+      },
+      {
+        title: 'Objectif Progression scolaire 2',
+        description: 'Réaliser des points de progressions dans la moyenne générale.',
+        points: 200, // Points not specified, using a high value
+        type: TaskType.MONTHLY, // Assuming monthly
+        category: TaskCategory.ACADEMIC,
+        difficulty: TaskDifficulty.HARD, // Assuming hard
+        requiresProof: false,
+        validationType: 'PROFESSOR',
+      },
+       // Other tasks from previous seedings
+      { 
+        title: 'Marathon de Concentration', 
+        description: 'Restez actif sur la plateforme pendant 60 minutes continues.', 
+        points: 100, 
+        type: TaskType.DAILY, 
+        category: 'PERSONAL', 
+        duration: 60, 
+        isActive: true, 
+        difficulty: TaskDifficulty.HARD, 
+        requiresProof: false, 
+        validationType: 'AUTOMATIC' 
+      },
+      { 
+        title: 'Question pertinente', 
+        description: 'Posez une question intelligente en classe.', 
+        points: 15, 
+        type: TaskType.DAILY, 
+        category: 'ACADEMIC', 
+        difficulty: TaskDifficulty.MEDIUM, 
+        requiresProof: false, 
+        validationType: 'PROFESSOR' 
+      },
     ]
   });
   console.log('✅ Tâches créées.');
