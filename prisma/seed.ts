@@ -2,20 +2,10 @@
 // prisma/seed.ts
 import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory, ValidationType } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
-import { execSync } from 'child_process';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('⚡️ Forcing Prisma client generation...');
-  try {
-    execSync('npx prisma generate', { stdio: 'inherit' });
-    console.log('✅ Prisma client generated successfully.');
-  } catch (error) {
-    console.error('❌ Failed to generate Prisma client:', error);
-    process.exit(1);
-  }
-  
   console.log('🚀 Démarrage du seeding...');
 
   // Clean up existing data in the correct order to avoid foreign key constraints
