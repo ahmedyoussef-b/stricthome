@@ -33,36 +33,33 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
   }, []);
 
   const openWidget = async () => {
-    if (
-      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-      !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-    ) {
+    if (!loaded) {
+      console.error("Cloudinary script not loaded yet.");
+      return;
+    }
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
       console.error("Cloudinary configuration is missing from environment variables.");
       return;
     }
-    
-    if (!loaded) {
-        console.error("Cloudinary script not loaded yet.");
-        return;
-    }
 
     const paramsToSign = {
-        source: 'uw',
         cropping: true,
         folder: 'stricthome',
-        upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
+        upload_preset: uploadPreset,
     };
 
     const { timestamp, signature } = await getCloudinarySignature(paramsToSign);
 
     const myWidget = (window as any).cloudinary.createUploadWidget(
       {
-        cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+        cloudName: cloudName,
         apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-        uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
         uploadSignature: signature,
         uploadSignatureTimestamp: timestamp,
-        ...paramsToSign
+        ...paramsToSign,
       },
       (error: any, result: any) => {
         if (!error && result && result.event === 'success') {

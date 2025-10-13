@@ -22,6 +22,7 @@ export async function getCloudinarySignature(paramsToSign: Record<string, unknow
   const signature = cloudinary.utils.api_sign_request(
     {
       timestamp: timestamp,
+      source: 'uw',
       ...paramsToSign
     },
     process.env.CLOUDINARY_API_SECRET
