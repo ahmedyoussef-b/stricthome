@@ -1,5 +1,4 @@
 import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard, Task } from '@prisma/client';
-import {  TaskType, TaskCategory, TaskDifficulty } from "@prisma/client";
 
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
@@ -46,6 +45,7 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
     }
 }>;
 
+
 export enum ValidationType {
   AUTOMATIC = "AUTOMATIC",
   PROFESSOR = "PROFESSOR",
@@ -55,6 +55,7 @@ export enum ValidationType {
 export type AppTask = Task & {
   validationType: ValidationType;
 };
+
 
 export type FullConversation = Prisma.ConversationGetPayload<{
     include: {
