@@ -6,46 +6,55 @@ import GoogleProvider from 'next-auth/providers/google';
 import prisma from '@/lib/prisma';
 import { Role, User as PrismaUser } from '@prisma/client';
 
+const providers: NextAuthOptions['providers'] = [
+  CredentialsProvider({
+    name: 'Credentials',
+    credentials: {
+      email: { label: 'Email', type: 'email' },
+      password: { label: 'Password', type: 'password' },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials.password) {
+        return null;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email: credentials.email },
+      });
+
+      if (!user || !user.role) {
+        return null;
+      }
+      
+      // This is for demo purposes only. In a real application,
+      // you would hash and compare passwords.
+      const isValid = credentials.password === 'password';
+
+      if (isValid) {
+        return user;
+      }
+
+      return null;
+    },
+  }),
+];
+
+// Conditionally add Google provider only if the keys are present
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  );
+}
+
+
 export const authOptions: NextAuthOptions = {
   theme: {
     logo: "https://next-auth.js.org/img/logo/logo-sm.png",
   },
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      name: 'Credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) {
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-
-        if (!user || !user.role) {
-          return null;
-        }
-        
-        // This is for demo purposes only. In a real application,
-        // you would hash and compare passwords.
-        const isValid = credentials.password === 'password';
-
-        if (isValid) {
-          return user;
-        }
-
-        return null;
-      },
-    }),
-  ],
+  providers: providers,
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: 'jwt',
