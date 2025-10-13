@@ -266,7 +266,7 @@ export function TaskValidationClient({
              </AlertDescription>
            </Alert>
         )}
-        <h3 className="text-lg font-semibold mb-4">Tâches en attente de validation ({tasks.length})</h3>
+        <h3 className="text-lg font-semibold mb-4">Tâches en attente de validation pour {studentName} ({tasks.length})</h3>
         {tasks.length > 0 ? (
           <div className="divide-y">
             {tasks.map(task => (
@@ -288,7 +288,7 @@ export function TaskValidationClient({
   // Password form for authentication or setting a new password
   return (
     <form onSubmit={handleSetPassword} className="space-y-4 max-w-sm mx-auto">
-      <h3 className="font-semibold text-center">{hasPasswordSet ? 'Entrez le mot de passe' : 'Définir un mot de passe parental'}</h3>
+      <h3 className="font-semibold text-center">{hasPasswordSet ? `Entrez le mot de passe pour ${studentName}`: 'Définir un mot de passe parental'}</h3>
       <div className="space-y-2">
         <Label htmlFor="password">Mot de passe</Label>
         <Input
