@@ -105,7 +105,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Prendre une douche au quotidien',
@@ -135,7 +135,7 @@ async function main() {
         category: TaskCategory.PERSONAL, // Or ACADEMIC
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Connexion journalière',
@@ -169,7 +169,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Pas d\'appareil portable',
@@ -199,7 +199,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Collaboration de groupe',
@@ -209,7 +209,7 @@ async function main() {
         category: TaskCategory.COLLABORATIVE,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Synthèse de la semaine',
@@ -219,7 +219,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Défi créatif hebdomadaire',
@@ -241,7 +241,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Projet créatif mensuel',
@@ -251,7 +251,7 @@ async function main() {
         category: TaskCategory.CREATIVE,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
       {
         title: 'Maître des points',
@@ -271,7 +271,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD, // Assuming hard
         requiresProof: false,
-        validationType: 'PROFESSOR',
+        validationType: 'PROFESSEUR',
       },
        // Other tasks from previous seedings
       { 
@@ -294,7 +294,7 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
-        validationType: 'PROFESSOR' 
+        validationType: 'PROFESSEUR' 
       },
     ]
   });
