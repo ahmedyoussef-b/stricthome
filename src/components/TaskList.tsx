@@ -12,15 +12,16 @@ import { cn } from "@/lib/utils";
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
+import { AppTask } from "@/lib/types";
 
 interface TaskListProps {
-  tasks: Task[];
+  tasks: AppTask[];
   studentProgress: StudentProgress[];
   studentId: string;
   isTeacherView: boolean;
 }
 
-const isTaskCompletedInPeriod = (task: Task, progress: StudentProgress[]) => {
+const isTaskCompletedInPeriod = (task: AppTask, progress: StudentProgress[]) => {
     const now = new Date();
     let periodStart: Date;
 
@@ -42,7 +43,7 @@ const isTaskCompletedInPeriod = (task: Task, progress: StudentProgress[]) => {
 }
 
 
-function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task, studentId: string, isCompleted: boolean, isTeacherView: boolean }) {
+function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: AppTask, studentId: string, isCompleted: boolean, isTeacherView: boolean }) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
@@ -86,9 +87,9 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: Task,
                     {task.title}
                 </p>
                 <p className="text-xs text-muted-foreground">{task.description}</p>
-                {(task as any).attachmentUrl && (
+                {task.attachmentUrl && (
                     <Button variant="outline" size="sm" asChild className="mt-2">
-                        <Link href={(task as any).attachmentUrl} target="_blank">
+                        <Link href={task.attachmentUrl} target="_blank">
                             <Download className="mr-2 h-4 w-4" />
                             Télécharger la pièce jointe
                         </Link>
