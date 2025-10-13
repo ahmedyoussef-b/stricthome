@@ -9,7 +9,7 @@ async function main() {
 
   // Clean up existing data in the correct order to avoid foreign key constraints
   console.log('🧹 Nettoyage des anciennes données...');
-  // await prisma.parentFeedback.deleteMany();
+  await prisma.parentFeedback.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.finalRoundParticipant.deleteMany();
   await prisma.finalRound.deleteMany();
