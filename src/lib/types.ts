@@ -54,6 +54,7 @@ export enum ValidationType {
 
 export type AppTask = Task & {
   validationType: ValidationType;
+  attachmentUrl: string | null;
 };
 
 
