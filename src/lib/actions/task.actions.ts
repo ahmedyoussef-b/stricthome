@@ -99,9 +99,11 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
   if (!task) {
     throw new Error('Task not found');
   }
+  
+  const taskAsAny = task as any;
 
   // Check if task requires proof and if it was provided
-  if (task.requiresProof && !submissionUrl) {
+  if (taskAsAny.requiresProof && !submissionUrl) {
     throw new Error('Une preuve est requise pour cette tâche.');
   }
 
@@ -129,55 +131,55 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  const taskAsAny = task as any;
-  const validationRequired = 
-    taskAsAny.validationType === 'PROFESSOR' || 
-    taskAsAny.validationType === 'PARENT' || 
-    task.requiresProof;
+  const validationType = taskAsAny.validationType;
+  const isAutomaticValidation = validationType === 'AUTOMATIC' && !task.requiresProof;
+  
+  const finalStatus = isAutomaticValidation
+    ? ProgressStatus.COMPLETED
+    : ProgressStatus.PENDING_VALIDATION;
 
-  const finalStatus = validationRequired ? ProgressStatus.PENDING_VALIDATION : ProgressStatus.COMPLETED;
+  let pointsAwarded = 0;
 
-  if (!validationRequired) {
+  if (isAutomaticValidation) {
+      pointsAwarded = task.points;
       await prisma.$transaction([
         prisma.user.update({
           where: { id: userId },
-          data: { points: { increment: task.points } },
-        }),
-        prisma.studentProgress.create({
-          data: {
-            studentId: userId,
-            taskId,
-            status: finalStatus,
-            completionDate: new Date(),
-            pointsAwarded: task.points,
-          },
+          data: { points: { increment: pointsAwarded } },
         }),
         prisma.leaderboard.upsert({
           where: { studentId: userId },
           update: { 
-            totalPoints: { increment: task.points },
+            totalPoints: { increment: pointsAwarded },
             completedTasks: { increment: 1 },
           },
           create: {
             studentId: userId,
-            totalPoints: task.points,
+            totalPoints: pointsAwarded,
             completedTasks: 1,
             rank: 0,
           }
         })
       ]);
-  } else {
-    // For manual/proof tasks, just mark as pending validation
-    await prisma.studentProgress.create({
-      data: {
-        studentId: userId,
-        taskId,
-        status: finalStatus,
-        completionDate: new Date(),
-        submissionUrl,
-      },
-    });
   }
+  
+  // Create the progress entry regardless of validation type
+  const newProgress = await prisma.studentProgress.create({
+    data: {
+      studentId: userId,
+      taskId,
+      status: finalStatus,
+      completionDate: new Date(),
+      submissionUrl,
+      pointsAwarded, // Will be 0 for tasks needing validation
+    },
+    include: {
+      task: true,
+    }
+  });
+
 
   revalidatePath(`/student/${userId}`);
+
+  return newProgress;
 }

@@ -1,7 +1,4 @@
-
-
-
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, Task as PrismaTask, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard } from '@prisma/client';
 
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
@@ -48,9 +45,7 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
     }
 }>;
 
-export type AppTask = Task & {
-    attachmentUrl?: string | null;
-};
+export type AppTask = Prisma.TaskGetPayload<{}>;
 
 export type FullConversation = Prisma.ConversationGetPayload<{
     include: {

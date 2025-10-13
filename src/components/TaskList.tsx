@@ -1,10 +1,9 @@
-
 // src/components/TaskList.tsx
 "use client";
 
-import { Task, StudentProgress, TaskType } from "@prisma/client";
+import { Task, StudentProgress, TaskType, ProgressStatus } from "@prisma/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap, FileUp, Download } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap, FileUp, Download, ClockIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { completeTask } from "@/lib/actions/task.actions";
 import { useTransition, useState, useEffect } from "react";
@@ -22,45 +21,45 @@ interface TaskListProps {
   isTeacherView: boolean;
 }
 
-const isTaskCompletedInPeriod = (task: AppTask, progress: StudentProgress[]) => {
+const getTaskStatusInPeriod = (task: AppTask, progress: StudentProgress[]): ProgressStatus | null => {
     const now = new Date();
     let periodStart: Date;
 
     switch (task.type) {
-        case 'DAILY':
-            periodStart = startOfDay(now);
-            break;
-        case 'WEEKLY':
-            periodStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-            break;
-        case 'MONTHLY':
-            periodStart = startOfMonth(now);
-            break;
-        default:
-            return progress.some(p => p.taskId === task.id && (p.status === 'COMPLETED' || p.status === 'VERIFIED'));
+        case 'DAILY': periodStart = startOfDay(now); break;
+        case 'WEEKLY': periodStart = startOfWeek(now, { weekStartsOn: 1 }); break;
+        case 'MONTHLY': periodStart = startOfMonth(now); break;
+        default: periodStart = new Date(0); break; // For ONE_TIME tasks, any completion counts
     }
 
-    return progress.some(p => p.taskId === task.id && p.completionDate && isAfter(new Date(p.completionDate), periodStart));
+    const relevantProgress = progress.find(p => p.taskId === task.id && p.completionDate && isAfter(new Date(p.completionDate), periodStart));
+
+    return relevantProgress?.status ?? null;
 }
 
 
-function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: AppTask, studentId: string, isCompleted: boolean, isTeacherView: boolean }) {
+function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate }: { task: AppTask, studentId: string, initialStatus: ProgressStatus | null, isTeacherView: boolean, onTaskUpdate: (taskId: string, newProgress: StudentProgress) => void }) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
+    const [status, setStatus] = useState(initialStatus);
 
     const handleComplete = (submissionUrl?: string) => {
-        if (isTeacherView) return;
+        if (isTeacherView || isPending) return;
+
+        setStatus(ProgressStatus.PENDING_VALIDATION); // Optimistic update
 
         startTransition(async () => {
             try {
-                await completeTask(task.id, submissionUrl);
+                const newProgress = await completeTask(task.id, submissionUrl);
                 toast({
-                    title: task.requiresProof ? "Preuve soumise !" : "Tâche accomplie !",
-                    description: task.requiresProof 
-                        ? "Votre preuve est en attente de validation."
-                        : `Vous avez gagné ${task.points} points.`,
+                    title: newProgress.status === 'COMPLETED' ? "Tâche accomplie !" : "Preuve soumise !",
+                    description: newProgress.status === 'COMPLETED'
+                        ? `Vous avez gagné ${task.points} points.`
+                        : "Votre tâche est en attente de validation.",
                 });
+                onTaskUpdate(task.id, newProgress);
             } catch (error) {
+                setStatus(initialStatus); // Rollback on error
                 toast({
                     variant: "destructive",
                     title: "Erreur",
@@ -74,11 +73,16 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: AppTa
         handleComplete(result.info.secure_url);
     };
 
+    const isCompleted = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
+    const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
+
     return (
         <div className="flex items-start gap-4 py-3">
             <div className="flex-shrink-0 pt-1">
                 {isCompleted ? (
                     <CheckCircle2 className="h-6 w-6 text-green-500" />
+                ) : isPendingValidation ? (
+                    <ClockIcon className="h-6 w-6 text-amber-500" />
                 ) : (
                     <Circle className="h-6 w-6 text-muted-foreground" />
                 )}
@@ -103,23 +107,29 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: AppTa
                     <span>{task.points}</span>
                 </div>
                 {!isTeacherView && (
-                    task.requiresProof ? (
-                        <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
-                            {({ open }) => (
-                                <Button size="sm" onClick={open} disabled={isCompleted || isPending}>
-                                    {isPending ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
-                                    Soumettre
-                                </Button>
-                            )}
-                        </CloudinaryUploadWidget>
-                    ) : (
-                        <Button 
-                            size="sm" 
-                            onClick={() => handleComplete()} 
-                            disabled={isCompleted || isPending}
-                        >
-                            {isPending ? <Loader2 className="animate-spin" /> : 'Valider'}
+                    isPendingValidation ? (
+                        <Button size="sm" variant="secondary" disabled>
+                           <ClockIcon className="mr-2 h-4 w-4" /> En attente
                         </Button>
+                    ) : (
+                        task.requiresProof ? (
+                            <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
+                                {({ open }) => (
+                                    <Button size="sm" onClick={open} disabled={isCompleted || isPending}>
+                                        {isPending ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                                        Soumettre
+                                    </Button>
+                                )}
+                            </CloudinaryUploadWidget>
+                        ) : (
+                            <Button
+                                size="sm"
+                                onClick={() => handleComplete()}
+                                disabled={isCompleted || isPending}
+                            >
+                                {isPending ? <Loader2 className="animate-spin" /> : 'Valider'}
+                            </Button>
+                        )
                     )
                 )}
             </div>
@@ -129,10 +139,19 @@ function TaskItem({ task, studentId, isCompleted, isTeacherView }: { task: AppTa
 
 export function TaskList({ tasks, studentProgress, studentId, isTeacherView }: TaskListProps) {
   const [isClient, setIsClient] = useState(false);
+  const [progressMap, setProgressMap] = useState<Record<string, StudentProgress>>(() => {
+    const map: Record<string, StudentProgress> = {};
+    studentProgress.forEach(p => map[p.taskId] = p);
+    return map;
+  });
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const handleTaskUpdate = (taskId: string, newProgress: StudentProgress) => {
+    setProgressMap(prev => ({ ...prev, [taskId]: newProgress }));
+  };
 
   const dailyTasks = tasks.filter(t => t.type === TaskType.DAILY);
   const weeklyTasks = tasks.filter(t => t.type === TaskType.WEEKLY);
@@ -166,8 +185,9 @@ export function TaskList({ tasks, studentProgress, studentId, isTeacherView }: T
                               key={task.id}
                               task={task}
                               studentId={studentId}
-                              isCompleted={isTaskCompletedInPeriod(task, studentProgress)}
+                              initialStatus={getTaskStatusInPeriod(task, Object.values(progressMap))}
                               isTeacherView={isTeacherView}
+                              onTaskUpdate={handleTaskUpdate}
                           />
                       ))}
                    </div>
