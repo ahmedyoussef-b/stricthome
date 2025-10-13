@@ -23,8 +23,9 @@ async function main() {
   await prisma.announcement.deleteMany();
   await prisma.coursSession.deleteMany();
   await prisma.task.deleteMany();
-  await prisma.user.deleteMany();
+  // Classrooms must be deleted before users that teach them
   await prisma.classroom.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.metier.deleteMany();
   
   console.log('✅ Données nettoyées.');
