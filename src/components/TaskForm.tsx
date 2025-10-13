@@ -66,10 +66,10 @@ export function TaskForm({
 }: TaskFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
-  const [attachmentUrl, setAttachmentUrl] = useState(task?.attachmentUrl ?? '');
+  const [attachmentUrl, setAttachmentUrl] = useState((task as any)?.attachmentUrl ?? '');
 
   useEffect(() => {
-    setAttachmentUrl(task?.attachmentUrl ?? '');
+    setAttachmentUrl((task as any)?.attachmentUrl ?? '');
   }, [task]);
 
   const handleFormAction = async (formData: FormData) => {
