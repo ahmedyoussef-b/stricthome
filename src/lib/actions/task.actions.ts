@@ -100,11 +100,6 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
   }
   
   const validationType = task.validationType as ValidationType;
-
-  // **SECURITY FIX**: Prevent students from validating parent tasks
-  if (validationType === ValidationType.PARENT) {
-    throw new Error("Cette tâche doit être validée par un parent.");
-  }
   
   // **SECURITY FIX**: Prevent manual validation of time-based or system-action tasks
   if (task.startTime) {
