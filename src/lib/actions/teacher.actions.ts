@@ -117,7 +117,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
         },
     });
 
-    if (!progress || progress.task.validationType !== 'PROFESSOR') {
+    if (!progress || progress.task.validationType !== 'PROFESSOR' || progress.status !== 'PENDING_VALIDATION') {
         throw new Error('Tâche non trouvée ou validation incorrecte.');
     }
 
@@ -170,16 +170,12 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
     } else {
         await prisma.studentProgress.update({
             where: { id: payload.progressId },
-            data: { status: ProgressStatus.NOT_STARTED },
+            data: { status: ProgressStatus.NOT_STARTED }, // Student can retry
         });
-
-        // Optionally, notify the student via a notification system (e.g., Pusher)
-        if (progress.student.classroomId) {
-            // This is a placeholder for a real notification system
-            // You might trigger a Pusher event on a private student channel
-        }
         
+        revalidatePath(`/student/${progress.studentId}`);
         revalidatePath('/teacher/validations');
+
         return {
             studentName: progress.student.name ?? 'l\'élève',
             taskTitle: progress.task.title,
