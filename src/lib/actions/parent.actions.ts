@@ -117,11 +117,17 @@ export async function validateTaskByParent(
       where: { studentId: student.id },
       update: {
         totalPoints: { increment: pointsToAward },
+        dailyPoints: { increment: pointsToAward },
+        weeklyPoints: { increment: pointsToAward },
+        monthlyPoints: { increment: pointsToAward },
         completedTasks: { increment: 1 },
       },
       create: {
         studentId: student.id,
         totalPoints: pointsToAward,
+        dailyPoints: pointsToAward,
+        weeklyPoints: pointsToAward,
+        monthlyPoints: pointsToAward,
         completedTasks: 1,
         rank: 0, 
       },

@@ -48,7 +48,7 @@ export default function StudentPageClient({
   const metier = student.etat?.metier;
   
   // Start activity tracking if it's the student's view
-  useActivityTracker(!isTeacherView);
+  // useActivityTracker(!isTeacherView);
 
   useEffect(() => {
     if (isTeacherView || !student.classe?.id) return;

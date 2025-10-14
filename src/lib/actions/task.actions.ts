@@ -5,9 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
-import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus } from '@prisma/client';
-import { ValidationType } from '@/lib/types';
-
+import { Task, TaskCategory, TaskDifficulty, TaskType, ProgressStatus, ValidationType } from '@prisma/client';
 
 async function verifyTeacher() {
   const session = await getAuthSession();
@@ -37,7 +35,7 @@ export async function createTask(formData: FormData): Promise<Task[]> {
     throw new Error('Invalid data');
   }
 
-  await prisma.task.create({ data: data as any });
+  await prisma.task.create({ data });
   
   revalidatePath('/teacher/tasks');
   return prisma.task.findMany({ orderBy: { type: 'asc' } });
@@ -63,7 +61,7 @@ export async function updateTask(formData: FormData): Promise<Task[]> {
     throw new Error('Invalid data');
   }
   
-  await prisma.task.update({ where: { id }, data: data as any });
+  await prisma.task.update({ where: { id }, data });
 
   revalidatePath('/teacher/tasks');
   return prisma.task.findMany({ orderBy: { type: 'asc' } });
@@ -101,10 +99,8 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Task not found');
   }
   
-  const taskAsAny = task as any;
-
   // Check if task requires proof and if it was provided
-  if (taskAsAny.requiresProof && !submissionUrl) {
+  if (task.requiresProof && !submissionUrl) {
     throw new Error('Une preuve est requise pour cette tâche.');
   }
 
@@ -132,7 +128,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  const validationType = taskAsAny.validationType as ValidationType;
+  const validationType = task.validationType as ValidationType;
   const isAutomaticValidation = validationType === ValidationType.AUTOMATIC;
   
   const finalStatus = isAutomaticValidation
@@ -140,43 +136,63 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     : ProgressStatus.PENDING_VALIDATION;
 
   let pointsAwarded = 0;
-
-  if (isAutomaticValidation) {
-      pointsAwarded = task.points;
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: userId },
-          data: { points: { increment: pointsAwarded } },
-        }),
-        prisma.leaderboard.upsert({
-          where: { studentId: userId },
-          update: { 
-            totalPoints: { increment: pointsAwarded },
-            completedTasks: { increment: 1 },
-          },
-          create: {
-            studentId: userId,
-            totalPoints: pointsAwarded,
-            completedTasks: 1,
-            rank: 0,
-          }
-        })
-      ]);
-  }
   
-  // Create the progress entry regardless of validation type
-  const newProgress = await prisma.studentProgress.create({
-    data: {
-      studentId: userId,
-      taskId,
-      status: finalStatus,
-      completionDate: new Date(),
-      submissionUrl,
-      pointsAwarded, // Will be 0 for tasks needing validation
-    },
-    include: {
-      task: true,
-    }
+  const newProgress = await prisma.$transaction(async (tx) => {
+      // Create the progress entry first
+      const createdProgress = await tx.studentProgress.create({
+        data: {
+          studentId: userId,
+          taskId,
+          status: finalStatus,
+          completionDate: new Date(),
+          submissionUrl,
+          pointsAwarded: 0, // Points are awarded upon validation
+        },
+        include: {
+          task: true,
+        }
+      });
+      
+      // If validation is automatic, award points immediately.
+      if (isAutomaticValidation) {
+          pointsAwarded = task.points;
+          
+          // Update the user's total points
+          const updatedUser = await tx.user.update({
+            where: { id: userId },
+            data: { points: { increment: pointsAwarded } },
+          });
+
+          // Upsert the leaderboard entry
+          await tx.leaderboard.upsert({
+            where: { studentId: userId },
+            update: { 
+              totalPoints: { increment: pointsAwarded },
+              dailyPoints: { increment: pointsAwarded },
+              weeklyPoints: { increment: pointsAwarded },
+              monthlyPoints: { increment: pointsAwarded },
+              completedTasks: { increment: 1 },
+            },
+            create: {
+              studentId: userId,
+              totalPoints: pointsAwarded,
+              dailyPoints: pointsAwarded,
+              weeklyPoints: pointsAwarded,
+              monthlyPoints: pointsAwarded,
+              completedTasks: 1,
+              rank: 0,
+            }
+          });
+          
+          // Update the points on the progress entry itself
+          return tx.studentProgress.update({
+              where: { id: createdProgress.id },
+              data: { pointsAwarded },
+              include: { task: true }
+          });
+      }
+
+      return createdProgress;
   });
 
 
