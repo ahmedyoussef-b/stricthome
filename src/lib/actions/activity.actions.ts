@@ -4,9 +4,8 @@
 import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 
-// NOTE: The point awarding logic has been disabled from this action.
-// The sole source of points is now the completion of tasks via `task.actions.ts`.
-// This action is kept for potential future use (e.g., tracking pure online time without points).
+const POINTS_PER_INTERVAL = 20;
+const MAX_DAILY_POINTS = 200;
 
 export async function trackStudentActivity(activeSeconds: number) {
   try {
@@ -14,21 +13,72 @@ export async function trackStudentActivity(activeSeconds: number) {
     const userId = session?.user?.id;
     
     if (!userId || session.user.role !== 'ELEVE') {
-      // Do nothing if not an authenticated student
-      return { success: true, pointsAwarded: 0, reason: 'Not an authenticated student or point logic disabled' };
+      return { success: true, pointsAwarded: 0, reason: 'Not an authenticated student' };
     }
 
-    // Point logic is intentionally disabled here to avoid double-counting.
-    // The responsibility for awarding points is now centralized in `completeTask`.
-    
-    // We could still track raw activity time here if needed in the future,
-    // for example by updating a field like `activeSeconds` on the Leaderboard model.
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Récupérer l'état actuel du leaderboard
+      const currentLeaderboard = await tx.leaderboard.findUnique({
+        where: { studentId: userId }
+      });
 
-    return { success: true, pointsAwarded: 0, reason: 'Activity tracking is enabled, but point awarding is disabled.' };
+      // 2. Vérifier la limite quotidienne
+      if (currentLeaderboard && currentLeaderboard.dailyPoints >= MAX_DAILY_POINTS) {
+        return { success: true, pointsAwarded: 0, reason: 'Daily limit reached' };
+      }
 
+      // 3. Calculer les points à attribuer
+      const pointsToAward = Math.min(
+        POINTS_PER_INTERVAL,
+        MAX_DAILY_POINTS - (currentLeaderboard?.dailyPoints || 0)
+      );
+
+      if (pointsToAward <= 0) {
+        return { success: true, pointsAwarded: 0, reason: 'No points to award' };
+      }
+
+      // 4. Mettre à jour User et Leaderboard en parallèle
+      const [updatedUser, updatedLeaderboard] = await Promise.all([
+         tx.user.update({
+            where: { id: userId },
+            data: {
+              points: { increment: pointsToAward }
+            }
+         }),
+         tx.leaderboard.upsert({
+            where: { studentId: userId },
+            create: {
+              studentId: userId,
+              dailyPoints: pointsToAward,
+              weeklyPoints: pointsToAward,
+              monthlyPoints: pointsToAward,
+              totalPoints: pointsToAward, // Will be corrected after user update
+              completedTasks: 0,
+              currentStreak: 1,
+              bestStreak: 1,
+              rank: 0
+            },
+            update: {
+              dailyPoints: { increment: pointsToAward },
+              weeklyPoints: { increment: pointsToAward },
+              monthlyPoints: { increment: pointsToAward },
+              totalPoints: { increment: pointsToAward }, // Increment is safer in transactions
+              updatedAt: new Date()
+            }
+          })
+      ]);
+      
+      return { 
+        success: true, 
+        pointsAwarded: pointsToAward,
+        dailyPoints: updatedLeaderboard.dailyPoints
+      };
+    });
+
+    return result;
   } catch (error) {
     console.error('Error tracking student activity:', error);
-    // Return a generic error to avoid exposing implementation details
+    // Masquer les détails de l'erreur au client
     throw new Error('Failed to track activity.');
   }
 }
