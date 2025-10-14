@@ -1,55 +1,26 @@
 // src/ai/flows/is-question-flow.ts
 'use server';
 /**
- * @fileOverview Un agent IA pour déterminer si un texte est une question.
+ * @fileOverview Un agent pour déterminer si un texte est une question.
  *
  * - isQuestion - Une fonction qui analyse un message.
- * - IsQuestionInput - Le type d'entrée pour la fonction isQuestion.
- * - IsQuestionOutput - Le type de retour pour la fonction isQuestion.
  */
 
-import { ai } from '@/lib/genkit';
-import { z } from 'zod';
-
-const IsQuestionInputSchema = z.object({
-  message: z.string().describe('Le contenu du message à analyser.'),
-});
-export type IsQuestionInput = z.infer<typeof IsQuestionInputSchema>;
-
-const IsQuestionOutputSchema = z.object({
-  isQuestion: z
-    .boolean()
-    .describe(
-      'Vrai si le message est une question, faux dans le cas contraire.'
-    ),
-});
-export type IsQuestionOutput = z.infer<typeof IsQuestionOutputSchema>;
-
-export async function isQuestion(
-  input: IsQuestionInput
-): Promise<IsQuestionOutput> {
-  return isQuestionFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'isQuestionPrompt',
-  input: { schema: IsQuestionInputSchema },
-  output: { schema: IsQuestionOutputSchema },
-  prompt: `Vous êtes un expert en linguistique. Analysez le message suivant et déterminez s'il s'agit d'une question.
-
-Message: {{{message}}}
-
-Répondez uniquement par le format JSON demandé. Une question doit chercher à obtenir une information. Les salutations comme "ça va ?" ne sont pas considérées comme de vraies questions dans ce contexte.`,
-});
-
-const isQuestionFlow = ai.defineFlow(
-  {
-    name: 'isQuestionFlow',
-    inputSchema: IsQuestionInputSchema,
-    outputSchema: IsQuestionOutputSchema,
-  },
-  async (input: IsQuestionInput) => {
-    const { output } = await prompt(input);
-    return output!;
+/**
+ * Détermine si un texte est une question en se basant sur des mots-clés.
+ * @param text Le message à analyser.
+ * @returns Vrai si le message est probablement une question, faux sinon.
+ */
+export async function isQuestion(text: string): Promise<boolean> {
+  const questionWords = ['qui', 'que', 'quoi', 'quand', 'où', 'pourquoi', 'comment'];
+  const lowerCaseText = text.toLowerCase();
+  
+  if (text.trim().endsWith('?')) {
+    return true;
   }
-);
+  
+  return questionWords.some(word => {
+    // Check for whole words to avoid matching parts of words
+    return new RegExp(`\\b${word}\\b`).test(lowerCaseText);
+  });
+}

@@ -106,7 +106,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: ValidationType.PROFESSEUR
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Prendre une douche au quotidien',
@@ -170,7 +170,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: ValidationType.PROFESSEUR
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Pas d\'appareil portable',
@@ -190,7 +190,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
-        validationType: ValidationType.PROFESSEUR,
+        validationType: ValidationType.PROFESSOR,
       },
       {
         title: 'Mission hebdomadaire 1',
@@ -200,7 +200,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: ValidationType.PROFESSEUR
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Collaboration de groupe',
@@ -220,7 +220,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: ValidationType.PROFESSEUR
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Défi créatif hebdomadaire',
@@ -242,7 +242,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: ValidationType.PROFESSEUR
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Projet créatif mensuel',
@@ -272,7 +272,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: ValidationType.PROFESSEUR,
+        validationType: ValidationType.PROFESSOR,
       },
        // Other tasks from previous seedings
       { 
@@ -295,7 +295,7 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
-        validationType: ValidationType.PROFESSEUR,
+        validationType: ValidationType.PROFESSOR,
       },
     ]
   });

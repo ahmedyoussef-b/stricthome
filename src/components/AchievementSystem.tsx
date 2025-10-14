@@ -75,17 +75,8 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
   // Analyse des messages pour les questions
   const questionMessages = await Promise.all(
     (student.messages || []).map(async (message) => {
-      if (message.isQuestion === null) {
-        // AI call if not cached
-        const result = await isQuestion({ message: message.message });
-        // Cache the result
-        await prisma.message.update({
-          where: { id: message.id },
-          data: { isQuestion: result.isQuestion },
-        });
-        return result.isQuestion;
-      }
-      return message.isQuestion;
+      // Utilise la nouvelle fonction simple
+      return isQuestion(message.message);
     })
   );
 
