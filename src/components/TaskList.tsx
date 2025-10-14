@@ -85,7 +85,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
     const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
     const isParentValidation = task.validationType === ValidationType.PARENT;
-    const isTimeBasedAutomatic = task.validationType === ValidationType.AUTOMATIC && task.startTime && task.endTime;
+    const isSystemAction = task.validationType === ValidationType.AUTOMATIC && task.startTime;
 
 
     const renderActionButton = () => {
@@ -108,7 +108,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
             );
         }
         
-        if (isTimeBasedAutomatic) {
+        if (isSystemAction) {
              return (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium pr-2">
                     <ClockIcon className="h-4 w-4" />
@@ -151,7 +151,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
             }
             return <ClockIcon className="h-6 w-6 text-amber-500" />;
         }
-        if (isTimeBasedAutomatic) {
+        if (isSystemAction) {
             return <ClockIcon className="h-6 w-6 text-blue-500" />;
         }
         return <Circle className="h-6 w-6 text-muted-foreground" />;
@@ -253,3 +253,5 @@ export function TaskList({ tasks, studentProgress, studentId, isTeacherView }: T
     </Accordion>
   )
 }
+
+    

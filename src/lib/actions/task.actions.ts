@@ -106,9 +106,9 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error("Cette tâche doit être validée par un parent.");
   }
   
-  // **SECURITY FIX**: Prevent manual validation of time-based tasks
-  if (task.startTime && task.endTime) {
-    throw new Error("Cette tâche est validée automatiquement par le système.");
+  // **SECURITY FIX**: Prevent manual validation of time-based or system-action tasks
+  if (task.startTime) {
+    throw new Error("Cette tâche est validée automatiquement par le système et ne peut pas être complétée manuellement.");
   }
 
   // Check if task requires proof and if it was provided
@@ -214,3 +214,5 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
 
   return newProgress;
 }
+
+    

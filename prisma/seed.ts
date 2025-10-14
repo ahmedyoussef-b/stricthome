@@ -195,7 +195,8 @@ async function main() {
         category: TaskCategory.PERSONAL, // As per image
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.AUTOMATIC,
+        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       {
         title: 'Mission hebdomadaire 1',
@@ -215,7 +216,8 @@ async function main() {
         category: TaskCategory.COLLABORATIVE,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.AUTOMATIC,
+        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       {
         title: 'Synthèse de la semaine',
@@ -267,7 +269,8 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.HARD,
         requiresProof: false,
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.AUTOMATIC,
+        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       {
         title: 'Objectif Progression scolaire 2',
@@ -277,7 +280,8 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD, // Assuming hard
         requiresProof: false,
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.AUTOMATIC,
+        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
        // Other tasks from previous seedings
       { 
@@ -290,7 +294,8 @@ async function main() {
         isActive: true, 
         difficulty: TaskDifficulty.HARD, 
         requiresProof: false, 
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.AUTOMATIC,
+        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       { 
         title: 'Question pertinente', 
@@ -300,7 +305,8 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.AUTOMATIC,
+        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
     ]
   });
@@ -507,5 +513,7 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
 
     
