@@ -71,15 +71,10 @@ export async function getTasksForProfessorValidation(teacherId: string): Promise
             status: ProgressStatus.PENDING_VALIDATION,
             task: {
                 validationType: ValidationType.PROFESSOR,
-                // Ensure we only get tasks from students taught by this teacher
-                studentProgress: {
-                    some: {
-                        student: {
-                            classe: {
-                                professeurId: teacherId
-                            }
-                        }
-                    }
+            },
+            student: {
+                classe: {
+                    professeurId: teacherId
                 }
             }
         },
@@ -157,6 +152,8 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
                     monthlyPoints: pointsAwarded,
                     completedTasks: 1,
                     rank: 0,
+                    currentStreak: 1,
+                    bestStreak: 1,
                 },
             }),
         ]);
@@ -173,7 +170,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
     } else {
         await prisma.studentProgress.update({
             where: { id: payload.progressId },
-            data: { status: ProgressStatus.REJECTED },
+            data: { status: ProgressStatus.NOT_STARTED },
         });
 
         // Optionally, notify the student via a notification system (e.g., Pusher)
