@@ -22,24 +22,11 @@ export default async function TeacherPage() {
   }
   const user = session.user;
 
-  // Fetch teacher data directly, removing the caching layer
-  const teacher = await prisma.user.findFirst({
-    where: { id: user.id, role: 'PROFESSEUR' },
-    include: {
-      classesEnseignees: {
-        include: {
-          _count: {
-            select: { eleves: true },
-          },
-        },
-        orderBy: {
-          nom: 'asc',
-        },
-      },
-    },
+  // Fetch only the data needed for this page
+  const classrooms = await prisma.classroom.findMany({
+    where: { professeurId: user.id },
+    select: { id: true, nom: true }
   });
-
-  const classrooms = teacher?.classesEnseignees || [];
   const tasksToValidate = await getTasksForProfessorValidation(user.id);
   const validationCount = tasksToValidate.length;
 
@@ -86,38 +73,21 @@ export default async function TeacherPage() {
                    <ResetButton />
                 </div>
               </div>
-
-              {classrooms.length === 0 ? (
-                <Card className="text-center p-8">
+              
+              <div className="text-center p-8 border-dashed border-2 rounded-lg">
                   <CardHeader>
-                    <CardTitle>Aucune classe trouvée</CardTitle>
-                    <CardDescription>Commencez par ajouter votre première classe pour voir vos élèves.</CardDescription>
+                    <CardTitle className="text-2xl">Bienvenue !</CardTitle>
+                    <CardDescription>Utilisez les boutons ci-dessus pour commencer.</CardDescription>
                   </CardHeader>
+                   <CardContent>
+                    <Button size="lg" asChild>
+                      <Link href="/teacher/classes">
+                        <Users className="mr-2" />
+                        Voir mes classes
+                      </Link>
+                    </Button>
+                  </CardContent>
                 </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {classrooms.map(classroom => (
-                    <Link href={`/teacher/class/${classroom.id}`} className="group" key={classroom.id}>
-                      <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-                        <CardHeader>
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary/10 rounded-full">
-                              <Users className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                              <CardTitle>{classroom.nom}</CardTitle>
-                              <CardDescription>{(classroom as any)._count.eleves} élèves</CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground">Accéder à la liste des élèves et gérer leurs thèmes.</p>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-              )}
               
             </main>
           </SidebarInset>
