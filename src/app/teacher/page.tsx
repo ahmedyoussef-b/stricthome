@@ -25,7 +25,7 @@ export default async function TeacherPage() {
   const user = session.user;
 
   // Fetch teacher data directly, removing the caching layer
-  const teacher = await prisma.user.findUnique({
+  const teacher = await prisma.user.findFirst({
     where: { id: user.id, role: 'PROFESSEUR' },
     include: {
       classesEnseignees: {
