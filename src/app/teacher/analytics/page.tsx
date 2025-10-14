@@ -2,7 +2,7 @@
 import { SkillMatrix } from '@/components/SkillMatrix';
 import { AISkillAssessment } from '@/components/AISkillAssessment';
 import { AdaptiveLearningEngine } from '@/components/AdaptiveLearningEngine';
-import { AchievementSystem } from '@/components/AchievementSystem';
+// import { AchievementSystem } from '@/components/AchievementSystem';
 import { TeacherAnalyticsDashboard } from '@/components/TeacherAnalyticsDashboard';
 import { Header } from '@/components/Header';
 import { getAuthSession } from '@/lib/session';
@@ -53,7 +53,7 @@ export default async function AnalyticsPage() {
         
         <div className="space-y-8">
           <AISkillAssessment />
-          {studentId && <AchievementSystem studentId={studentId}/>}
+          {/*studentId && <AchievementSystem studentId={studentId}/>*/}
         </div>
       </div>
     </div>
