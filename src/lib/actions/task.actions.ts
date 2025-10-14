@@ -181,6 +181,8 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
               monthlyPoints: pointsAwarded,
               completedTasks: 1,
               rank: 0,
+              currentStreak: 1,
+              bestStreak: 1,
             }
           });
           
