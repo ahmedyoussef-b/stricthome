@@ -1,3 +1,4 @@
+
 // src/app/teacher/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
