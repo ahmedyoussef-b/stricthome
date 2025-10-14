@@ -9,12 +9,17 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
+    DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link"
-import { LogIn, LogOut } from "lucide-react"
+import { LogIn, LogOut, Sun, Moon, Monitor } from "lucide-react"
 import { signOut } from "next-auth/react";
+import { useTheme } from "next-themes";
 import { User } from "next-auth";
 
 interface UserNavProps {
@@ -22,6 +27,8 @@ interface UserNavProps {
 }
 
 export function UserNav({ user }: UserNavProps) {
+    const { setTheme } = useTheme();
+
     if (!user) {
         return (
             <Button asChild>
@@ -56,6 +63,27 @@ export function UserNav({ user }: UserNavProps) {
                     <DropdownMenuItem>
                         Profil
                     </DropdownMenuItem>
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            Thème
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                             <DropdownMenuItem onClick={() => setTheme("light")}>
+                                <Sun className="mr-2 h-4 w-4" />
+                                <span>Clair</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("dark")}>
+                                <Moon className="mr-2 h-4 w-4" />
+                                <span>Sombre</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("system")}>
+                                <Monitor className="mr-2 h-4 w-4" />
+                                <span>Système</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                    </DropdownMenuSub>
                     <DropdownMenuItem>
                         Paramètres
                     </DropdownMenuItem>
