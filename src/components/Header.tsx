@@ -6,6 +6,7 @@ import { School } from 'lucide-react';
 import { UserNav } from './UserNav';
 import { Button } from './ui/button';
 import { User } from 'next-auth';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   user?: User | null;
@@ -28,6 +29,7 @@ export function Header({ user, children }: HeaderProps) {
             <Link href="/librairie-metiers">Métiers</Link>
           </Button>
            {children}
+           <ThemeToggle />
           <UserNav user={user} />
         </nav>
       </div>
