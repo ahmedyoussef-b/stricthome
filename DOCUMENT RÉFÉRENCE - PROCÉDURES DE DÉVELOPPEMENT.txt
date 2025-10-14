@@ -233,6 +233,16 @@ ARTICLE 6 : DOCUMENTATION ET MAINTENANCE
 - Dernière review: [date]
 - Prochaine vérification: [date + 30j]
 
+ARTICLE 7 : GESTION DES SECRETS ET VARIABLES D'ENVIRONNEMENT
+
+7.1 Interdiction de Modification du Fichier .env
+L'assistant IA ne doit JAMAIS modifier le contenu du fichier `.env`. Ce fichier est sous le contrôle exclusif de l'utilisateur. En cas de nécessité (ex: ajout d'une `DATABASE_URL`), l'assistant doit guider l'utilisateur sur la procédure à suivre, mais ne doit en aucun cas générer de modification pour ce fichier.
+
+ARTICLE 8 : INTÉGRITÉ DE LA STRUCTURE DU PROJET
+
+8.1 Prohibition de Duplication
+Il est formellement interdit d'ajouter un fichier ou un dossier qui est une copie exacte ou quasi-exacte d'un élément existant. Si un fichier doit être modifié, il doit être modifié sur place. La création de doublons (ex: `file-copy.tsx`, `dossier_v2/`) est une violation de cette procédure.
+
 PROTOCOLE D'APPLICATION
 Tout développement DOIT suivre cette procédure :
 
