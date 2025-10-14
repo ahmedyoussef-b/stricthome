@@ -1,4 +1,5 @@
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard, Task } from '@prisma/client';
+
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard, Task, ProgressStatus } from '@prisma/client';
 
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
@@ -117,3 +118,13 @@ export type CoursSessionWithRelations = CoursSession & {
 
 // Competition System Types
 export type { StudentProgress, Leaderboard } from '@prisma/client';
+
+
+// Validation Types
+export type TaskForProfessorValidation = StudentProgress & {
+  task: Task;
+  student: {
+    id: string;
+    name: string | null;
+  };
+};

@@ -2,7 +2,7 @@
 // src/app/teacher/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Video, Brain, Edit } from 'lucide-react';
+import { Users, Video, Brain, Edit, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { AddClassForm } from '@/components/AddClassForm';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
 import { ToggleButton } from '@/components/ToggleButton';
 import { TeacherAnalyticsDashboard } from '@/components/TeacherAnalyticsDashboard';
+import { getTasksForProfessorValidation } from '@/lib/actions/teacher.actions';
 
 export default async function TeacherPage() {
   const session = await getAuthSession();
@@ -40,6 +41,8 @@ export default async function TeacherPage() {
   });
 
   const classrooms = teacher?.classesEnseignees || [];
+  const tasksToValidate = await getTasksForProfessorValidation(user.id);
+  const validationCount = tasksToValidate.length;
 
   return (
     <>
@@ -50,7 +53,7 @@ export default async function TeacherPage() {
             <h1 className="text-3xl font-bold tracking-tight">Tableau de bord du professeur</h1>
             <p className="text-muted-foreground">Gérez vos classes et démarrez des sessions interactives.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <Button asChild>
                 <Link href="/teacher/future-classroom">
                     Classe du Futur 🚀
@@ -67,6 +70,12 @@ export default async function TeacherPage() {
                 <Edit className="mr-2" />
                 Gérer les Tâches
               </Link>
+            </Button>
+            <Button asChild variant="secondary">
+                <Link href="/teacher/validations">
+                    <CheckCircle className="mr-2" />
+                    Validations en attente {validationCount > 0 && <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">{validationCount}</span>}
+                </Link>
             </Button>
             <ToggleButton />
             <CreateAnnouncementForm classrooms={classrooms} />
