@@ -26,7 +26,7 @@ import { Loader2, Trash2, Upload, Link as LinkIcon, XCircle } from "lucide-react
 import { useFormStatus } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 import { createTask, updateTask, deleteTask } from "@/lib/actions/task.actions";
-import { Task, TaskType, TaskCategory, TaskDifficulty } from "@prisma/client";
+import { Task, TaskType, TaskCategory, TaskDifficulty, ValidationType } from "@prisma/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +41,6 @@ import {
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
 import { Switch } from "./ui/switch";
-import { ValidationType } from "@/lib/types";
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -68,11 +67,11 @@ export function TaskForm({
 }: TaskFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
-  const [attachmentUrl, setAttachmentUrl] = useState((task as any)?.attachmentUrl ?? '');
+  const [attachmentUrl, setAttachmentUrl] = useState(task?.attachmentUrl ?? '');
   const [requiresProof, setRequiresProof] = useState(task?.requiresProof ?? false);
 
   useEffect(() => {
-    setAttachmentUrl((task as any)?.attachmentUrl ?? '');
+    setAttachmentUrl(task?.attachmentUrl ?? '');
     setRequiresProof(task?.requiresProof ?? false);
   }, [task]);
 
@@ -208,7 +207,7 @@ export function TaskForm({
            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="validationType">Mode de validation</Label>
-              <Select name="validationType" required defaultValue={(task as any)?.validationType ?? 'PROFESSOR'}>
+              <Select name="validationType" required defaultValue={task?.validationType ?? 'PROFESSOR'}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.keys(ValidationType).map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}

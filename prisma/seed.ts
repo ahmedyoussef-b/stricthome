@@ -1,14 +1,9 @@
 
 // prisma/seed.ts
-import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory } from '@prisma/client';
+import { PrismaClient, Role, TaskType, TaskDifficulty, TaskCategory, ValidationType } from '@prisma/client';
 import placeholderImages from '../src/lib/placeholder-images.json';
 
 
-enum ValidationType {
-  AUTOMATIC = "AUTOMATIC",
-  PROFESSOR = "PROFESSOR", 
-  PARENT = "PARENT"
-}
 const prisma = new PrismaClient();
 
 async function main() {
@@ -111,7 +106,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: ValidationType.PROFESSOR
+        validationType: ValidationType.PROFESSEUR
       },
       {
         title: 'Prendre une douche au quotidien',
@@ -175,7 +170,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: ValidationType.PROFESSOR
+        validationType: ValidationType.PROFESSEUR
       },
       {
         title: 'Pas d\'appareil portable',
@@ -195,7 +190,7 @@ async function main() {
         category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
-        validationType: ValidationType.PROFESSOR,
+        validationType: ValidationType.PROFESSEUR,
       },
       {
         title: 'Mission hebdomadaire 1',
@@ -205,7 +200,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: ValidationType.PROFESSOR
+        validationType: ValidationType.PROFESSEUR
       },
       {
         title: 'Collaboration de groupe',
@@ -225,7 +220,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: true,
-        validationType: ValidationType.PROFESSOR
+        validationType: ValidationType.PROFESSEUR
       },
       {
         title: 'Défi créatif hebdomadaire',
@@ -247,7 +242,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: ValidationType.PROFESSOR
+        validationType: ValidationType.PROFESSEUR
       },
       {
         title: 'Projet créatif mensuel',
@@ -277,7 +272,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.HARD,
         requiresProof: true,
-        validationType: ValidationType.PROFESSOR,
+        validationType: ValidationType.PROFESSEUR,
       },
        // Other tasks from previous seedings
       { 
@@ -300,7 +295,7 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
-        validationType: ValidationType.PROFESSOR,
+        validationType: ValidationType.PROFESSEUR,
       },
     ]
   });

@@ -99,7 +99,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Task not found');
   }
   
-  const validationType = task.validationType as ValidationType;
+  const validationType = task.validationType;
   
   // **SECURITY FIX**: Prevent manual validation of time-based or system-action tasks
   if (task.startTime) {
@@ -108,7 +108,10 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
 
   // Check if task requires proof and if it was provided
   if (task.requiresProof && !submissionUrl) {
-    throw new Error('Une preuve est requise pour cette tâche.');
+    // Exception for PARENT validation: they don't submit proof, they request validation
+    if (validationType !== ValidationType.PARENT) {
+      throw new Error('Une preuve est requise pour cette tâche.');
+    }
   }
 
   // Check if task is already completed or pending within the valid period
@@ -209,5 +212,3 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
 
   return newProgress;
 }
-
-    

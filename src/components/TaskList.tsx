@@ -1,7 +1,7 @@
 // src/components/TaskList.tsx
 "use client";
 
-import { Task, StudentProgress, TaskType, ProgressStatus } from "@prisma/client";
+import { Task, StudentProgress, TaskType, ProgressStatus, ValidationType } from "@prisma/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap, FileUp, Download, ClockIcon, KeyRound } from "lucide-react";
 import { Button } from "./ui/button";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
-import { AppTask, ValidationType } from "@/lib/types";
+import { AppTask } from "@/lib/types";
 
 interface TaskListProps {
   tasks: AppTask[];
@@ -85,7 +85,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
     const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
     const isParentValidation = task.validationType === ValidationType.PARENT;
-    const isProfessorValidation = task.validationType === ValidationType.PROFESSOR;
+    const isProfessorValidation = task.validationType === ValidationType.PROFESSEUR;
     const isAutomaticValidation = task.validationType === ValidationType.AUTOMATIC;
 
 
@@ -257,5 +257,3 @@ export function TaskList({ tasks, studentProgress, studentId, isTeacherView }: T
     </Accordion>
   )
 }
-
-    

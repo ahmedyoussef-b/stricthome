@@ -1,5 +1,7 @@
 
-import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard, Task, ProgressStatus } from '@prisma/client';
+import type { Prisma, Reaction as PrismaReaction, Message as PrismaMessage, StudentProgress, Announcement as PrismaAnnouncement, Classroom, User, Metier, CoursSession, Leaderboard, Task, ProgressStatus, ValidationType } from '@prisma/client';
+
+export type { ValidationType };
 
 export type ClassroomWithUsers = Prisma.ClassroomGetPayload<{
     include: { eleves: true, professeur: true }
@@ -47,16 +49,7 @@ export type MessageWithReactions = Prisma.MessageGetPayload<{
 }>;
 
 
-export enum ValidationType {
-  AUTOMATIC = "AUTOMATIC",
-  PROFESSOR = "PROFESSOR",
-  PARENT = "PARENT"
-}
-
-export type AppTask = Task & {
-  validationType: ValidationType;
-  attachmentUrl: string | null;
-};
+export type AppTask = Task;
 
 
 export type FullConversation = Prisma.ConversationGetPayload<{
