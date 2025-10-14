@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Video, Edit, CheckCircle, Rocket, Trash, PlusCircle, RefreshCw, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
-import { AddClassForm } from '@/components/AddClassForm';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -69,9 +68,6 @@ export default async function TeacherPage() {
                 
                 <SidebarMenuItem className="mt-4">
                     <CreateAnnouncementForm classrooms={classrooms} />
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <AddClassForm teacherId={user.id} />
                 </SidebarMenuItem>
 
                 <SidebarMenuItem className="mt-auto pt-4 border-t">

@@ -1,13 +1,15 @@
+
 // src/app/teacher/classes/page.tsx
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users } from 'lucide-react';
+import { Users, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { BackButton } from '@/components/BackButton';
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AddClassForm } from '@/components/AddClassForm';
 
 export default async function TeacherClassesPage() {
   const session = await getAuthSession();
@@ -50,12 +52,15 @@ export default async function TeacherClassesPage() {
           </Sidebar>
           <SidebarInset>
              <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex items-center gap-4 mb-8">
-                    <BackButton />
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Mes Classes</h1>
-                        <p className="text-muted-foreground">Cliquez sur une classe pour la gérer.</p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                    <div className="flex items-center gap-4">
+                        <BackButton />
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight">Mes Classes</h1>
+                            <p className="text-muted-foreground">Cliquez sur une classe pour la gérer.</p>
+                        </div>
                     </div>
+                    <AddClassForm teacherId={user.id} />
                 </div>
 
               {classrooms.length === 0 ? (
