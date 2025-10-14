@@ -60,12 +60,6 @@ export default async function TeacherPage() {
                 </Link>
             </Button>
             <Button asChild variant="outline">
-                <Link href="/teacher/analytics">
-                    <Brain className="mr-2" />
-                    Dashboard IA
-                </Link>
-            </Button>
-            <Button asChild variant="outline">
               <Link href="/teacher/tasks">
                 <Edit className="mr-2" />
                 Gérer les Tâches
