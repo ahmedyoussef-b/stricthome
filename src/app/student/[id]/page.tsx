@@ -1,4 +1,3 @@
-
 // src/app/student/[id]/page.tsx
 import { Header } from '@/components/Header';
 import prisma from '@/lib/prisma';
@@ -9,8 +8,8 @@ import { getAuthSession } from '@/lib/session';
 import { ChatSheet } from '@/components/ChatSheet';
 import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import StudentPageClient from '@/components/StudentPageClient';
-import { Metier, CoursSession, Task } from '@prisma/client';
 import { AppTask } from '@/lib/types';
+import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
@@ -89,20 +88,34 @@ export default async function StudentPage({
 
   return (
     <CareerThemeWrapper career={metier ?? undefined}>
-      <div className="flex flex-col min-h-screen">
-        <Header user={session.user}>
-            {classeId && !isTeacherView && session.user.role && (
-                <ChatSheet classroomId={classeId} userId={session.user.id} userRole={session.user.role} />
+      <SidebarProvider>
+        <div className="flex flex-col min-h-screen">
+          <Header user={session.user}>
+              {!isTeacherView && <SidebarTrigger />}
+              {classeId && !isTeacherView && session.user.role && (
+                  <ChatSheet classroomId={classeId} userId={session.user.id} userRole={session.user.role} />
+              )}
+          </Header>
+          <div className="flex flex-1">
+            {!isTeacherView && (
+              <Sidebar>
+                <SidebarContent>
+                  {/* Le contenu de la barre latérale sera ajouté ici */}
+                </SidebarContent>
+              </Sidebar>
             )}
-        </Header>
-        <StudentPageClient
-            student={student}
-            announcements={announcements}
-            allCareers={allCareers}
-            isTeacherView={isTeacherView}
-            tasks={tasks}
-        />
-      </div>
+            <SidebarInset>
+              <StudentPageClient
+                  student={student}
+                  announcements={announcements}
+                  allCareers={allCareers}
+                  isTeacherView={isTeacherView}
+                  tasks={tasks}
+              />
+            </SidebarInset>
+          </div>
+        </div>
+      </SidebarProvider>
     </CareerThemeWrapper>
   );
 }
