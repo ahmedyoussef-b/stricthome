@@ -14,6 +14,7 @@ import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
 import { ToggleButton } from '@/components/ToggleButton';
 import { TeacherAnalyticsDashboard } from '@/components/TeacherAnalyticsDashboard';
 import { getTasksForProfessorValidation } from '@/lib/actions/teacher.actions';
+import { ResetButton } from '@/components/ResetButton';
 
 export default async function TeacherPage() {
   const session = await getAuthSession();
@@ -80,6 +81,7 @@ export default async function TeacherPage() {
             <ToggleButton />
             <CreateAnnouncementForm classrooms={classrooms} />
             <AddClassForm teacherId={user.id} />
+             <ResetButton />
           </div>
         </div>
 

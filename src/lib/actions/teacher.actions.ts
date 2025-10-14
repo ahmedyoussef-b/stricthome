@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '../session';
 import { pusherServer } from '../pusher/server';
 import { revalidatePath } from 'next/cache';
-import { ProgressStatus, ValidationType } from '@prisma/client';
+import { ProgressStatus, ValidationType, Role } from '@prisma/client';
 import type { TaskForProfessorValidation } from '../types';
 
 export async function endAllActiveSessionsForTeacher() {
@@ -182,4 +182,41 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
             pointsAwarded: 0,
         };
     }
+}
+
+export async function resetAllStudentData() {
+  const session = await getAuthSession();
+  if (session?.user.role !== Role.PROFESSEUR) {
+    throw new Error("Seuls les professeurs peuvent réinitialiser les données.");
+  }
+
+  try {
+    await prisma.$transaction([
+      // 1. Supprimer toutes les entrées de progression
+      prisma.studentProgress.deleteMany(),
+      // 2. Supprimer toutes les entrées de classement
+      prisma.leaderboard.deleteMany(),
+      // 3. Réinitialiser les points de tous les élèves à 0
+      prisma.user.updateMany({
+        where: { role: Role.ELEVE },
+        data: { points: 0 },
+      }),
+      // Ajoutez ici d'autres suppressions si nécessaire (ex: achievements, messages, etc.)
+       prisma.studentAchievement.deleteMany(),
+       prisma.message.deleteMany(),
+    ]);
+
+    // Revalider les chemins pour que les changements soient visibles
+    revalidatePath('/teacher');
+    // On pourrait aussi revalider toutes les pages élèves, mais cela peut être lourd.
+    // Un rechargement côté client suffira souvent.
+
+    return { success: true, message: "Toutes les données des élèves ont été réinitialisées." };
+  } catch (error) {
+    console.error("Erreur lors de la réinitialisation des données :", error);
+    if (error instanceof Error) {
+        throw new Error(`Échec de la réinitialisation : ${error.message}`);
+    }
+    throw new Error("Une erreur inconnue est survenue lors de la réinitialisation.");
+  }
 }
