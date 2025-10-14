@@ -8,6 +8,7 @@ import { pusherServer } from '../pusher/server';
 import { revalidatePath } from 'next/cache';
 import { ProgressStatus, ValidationType, Role } from '@prisma/client';
 import type { TaskForProfessorValidation } from '../types';
+import { startOfDay, startOfWeek, isMonday, isFirstDayOfMonth } from 'date-fns';
 
 export async function endAllActiveSessionsForTeacher() {
   const session = await getAuthSession();
@@ -219,4 +220,64 @@ export async function resetAllStudentData() {
     }
     throw new Error("Une erreur inconnue est survenue lors de la réinitialisation.");
   }
+}
+
+export async function resetPeriodicData() {
+  const session = await getAuthSession();
+  if (session?.user.role !== Role.PROFESSEUR) {
+      throw new Error("Seuls les professeurs peuvent lancer cette action.");
+  }
+
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const startOfYesterday = startOfDay(yesterday);
+  const startOfToday = startOfDay(today);
+
+  // Logique pour la mise à jour des classements
+  const leaderboardUpdateData: any = {
+      dailyPoints: 0,
+  };
+
+  if (isMonday(today)) {
+      leaderboardUpdateData.weeklyPoints = 0;
+  }
+  if (isFirstDayOfMonth(today)) {
+      leaderboardUpdateData.monthlyPoints = 0;
+  }
+  
+  await prisma.leaderboard.updateMany({
+      data: leaderboardUpdateData,
+  });
+
+  // Logique pour la mise à jour des séries (streaks)
+  const students = await prisma.user.findMany({
+      where: { role: 'ELEVE' },
+      select: { id: true }
+  });
+
+  for (const student of students) {
+      const lastCompletedTask = await prisma.studentProgress.findFirst({
+          where: {
+              studentId: student.id,
+              status: { in: [ProgressStatus.COMPLETED, ProgressStatus.VERIFIED] },
+              completionDate: {
+                  gte: startOfYesterday,
+                  lt: startOfToday,
+              }
+          }
+      });
+      
+      if (!lastCompletedTask) {
+          // Si aucune tâche n'a été complétée hier, réinitialiser la série
+          await prisma.leaderboard.updateMany({
+              where: { studentId: student.id },
+              data: { currentStreak: 0 }
+          });
+      }
+  }
+  
+  revalidatePath('/teacher');
+
+  return { success: true, message: "La maintenance périodique a été effectuée." };
 }
