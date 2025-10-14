@@ -80,6 +80,71 @@ async function main() {
       },
     },
   });
+  
+  const devJeux = await prisma.metier.create({
+    data: {
+      nom: 'Développeur de Jeux',
+      description: 'Crée des mondes virtuels et des expériences interactives.',
+      icon: 'Gamepad2',
+      theme: {
+        backgroundColor: 'from-purple-600 to-indigo-800',
+        textColor: 'text-white',
+        primaryColor: '262 84% 58%', // indigo-500
+        accentColor: '271 76% 53%', // purple-600
+        cursor: 'cursor-pointer',
+        imageUrl: placeholderImages.devjeux.url,
+      },
+    },
+  });
+
+  const chefCuisinier = await prisma.metier.create({
+    data: {
+      nom: 'Chef Cuisinier',
+      description: 'Invente des plats délicieux et gère une cuisine.',
+      icon: 'ChefHat',
+      theme: {
+        backgroundColor: 'from-orange-400 to-amber-600',
+        textColor: 'text-gray-800',
+        primaryColor: '34 91% 60%', // amber-500
+        accentColor: '24 96% 59%', // orange-500
+        cursor: 'cursor-grab',
+        imageUrl: placeholderImages.chef.url,
+      },
+    },
+  });
+
+  const artisteDigital = await prisma.metier.create({
+    data: {
+      nom: 'Artiste Digital',
+      description: 'Peint et dessine avec des outils numériques.',
+      icon: 'Palette',
+      theme: {
+        backgroundColor: 'from-pink-500 to-rose-500',
+        textColor: 'text-white',
+        primaryColor: '346 84% 61%', // rose-500
+        accentColor: '336 78% 57%', // pink-500
+        cursor: 'cursor-crosshair',
+        imageUrl: placeholderImages.artiste.url,
+      },
+    },
+  });
+
+  const ecologiste = await prisma.metier.create({
+    data: {
+      nom: 'Écologiste',
+      description: 'Protège la nature et étudie les écosystèmes.',
+      icon: 'Leaf',
+      theme: {
+        backgroundColor: 'from-lime-500 to-green-600',
+        textColor: 'text-white',
+        primaryColor: '142 76% 36%', // green-600
+        accentColor: '84 90% 50%', // lime-500
+        cursor: 'cursor-help',
+        imageUrl: placeholderImages.ecologiste.url,
+      },
+    },
+  });
+
   console.log('✅ Métiers créés.');
 
   // Create a teacher FIRST
@@ -488,7 +553,7 @@ async function main() {
   console.log(`   - 1 professeur créé`);
   console.log(`   - 3 classes créées`);
   console.log(`   - ${students.length} élèves créés`);
-  console.log(`   - 3 métiers créés`);
+  console.log(`   - ${await prisma.metier.count()} métiers créés`);
   console.log(`   - ${await prisma.task.count()} tâches créées`);
   console.log(`   - 5 succès créés`);
   console.log(`   - Classement initialisé`);
@@ -506,3 +571,4 @@ main()
     
 
     
+
