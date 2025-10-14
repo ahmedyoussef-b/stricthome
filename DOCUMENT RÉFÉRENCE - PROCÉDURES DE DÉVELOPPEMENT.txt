@@ -243,17 +243,28 @@ ARTICLE 8 : INTÉGRITÉ DE LA STRUCTURE DU PROJET
 8.1 Prohibition de Duplication
 Il est formellement interdit d'ajouter un fichier ou un dossier qui est une copie exacte ou quasi-exacte d'un élément existant. Si un fichier doit être modifié, il doit être modifié sur place. La création de doublons (ex: `file-copy.tsx`, `dossier_v2/`) est une violation de cette procédure.
 
+ARTICLE 9 : INTÉGRITÉ DE L'EN-TÊTE DU SCHÉMA PRISMA
+
+9.1 Interdiction de Modification de l'En-tête de `schema.prisma`
+L'assistant IA ne doit JAMAIS modifier les blocs `datasource` et `generator` situés en en-tête du fichier `prisma/schema.prisma`. Ces blocs sont considérés comme des configurations critiques sous le contrôle de l'utilisateur.
+
+// BLOC PROTÉGÉ - NE PAS MODIFIER
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
 PROTOCOLE D'APPLICATION
 Tout développement DOIT suivre cette procédure :
 
-Référencer l'article applicable avant codage
-
-Utiliser les templates imposés
-
-Exécuter les validations automatiques
-
-Documenter selon le format standard
-
-Archiver la conformité technique
+1. Référencer l'article applicable avant codage
+2. Utiliser les templates imposés
+3. Exécuter les validations automatiques
+4. Documenter selon le format standard
+5. Archiver la conformité technique
 
 Ce document est exécutoire pour toute assistance au développement. Non-conformité = rejet automatique.
