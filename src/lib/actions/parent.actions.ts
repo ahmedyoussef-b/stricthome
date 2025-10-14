@@ -129,7 +129,9 @@ export async function validateTaskByParent(
         weeklyPoints: pointsToAward,
         monthlyPoints: pointsToAward,
         completedTasks: 1,
-        rank: 0, 
+        rank: 0,
+        currentStreak: 1,
+        bestStreak: 1,
       },
     }),
   ]);

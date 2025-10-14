@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
