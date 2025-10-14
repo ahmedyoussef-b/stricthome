@@ -8,10 +8,8 @@ import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { getTasksForProfessorValidation } from '@/lib/actions/teacher.actions';
-import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { ResetButton } from '@/components/ResetButton';
-import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
-import { Edit, Rocket } from 'lucide-react';
+import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import Menu from '@/components/Menu'; // Import the new Menu component
 
 export default async function TeacherPage() {
   const session = await getAuthSession();
@@ -38,50 +36,7 @@ export default async function TeacherPage() {
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <Link href="/teacher/classes">
-                      <Users />
-                      Gérer les Classes
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                   <SidebarMenuButton asChild>
-                     <Link href="/teacher/validations">
-                        <CheckCircle />
-                        Validations
-                        {validationCount > 0 && <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">{validationCount}</span>}
-                      </Link>
-                   </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <Link href="/teacher/tasks">
-                      <Edit />
-                      Gérer les Tâches
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <Link href="/teacher/future-classroom">
-                      <Rocket />
-                      Classe du Futur
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem className="mt-4">
-                    <CreateAnnouncementForm classrooms={classrooms} />
-                </SidebarMenuItem>
-
-                <SidebarMenuItem className="mt-auto pt-4 border-t">
-                     <ResetButton />
-                </SidebarMenuItem>
-
-              </SidebarMenu>
+              <Menu user={user} classrooms={classrooms} validationCount={validationCount} />
             </SidebarContent>
           </Sidebar>
           <SidebarInset>
@@ -157,9 +112,6 @@ export default async function TeacherPage() {
                     <CardContent className="flex-grow flex items-center">
                       <p className="text-sm text-muted-foreground">Publiez des annonces pour une classe spécifique ou pour tous les élèves.</p>
                     </CardContent>
-                    <div className="p-6 pt-0">
-                       <CreateAnnouncementForm classrooms={classrooms} />
-                    </div>
                   </Card>
               </div>
               

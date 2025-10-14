@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { BackButton } from '@/components/BackButton';
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AddClassForm } from '@/components/AddClassForm';
+import Menu from '@/components/Menu'; // Import the new Menu component
 
 export default async function TeacherClassesPage() {
   const session = await getAuthSession();
@@ -47,7 +48,7 @@ export default async function TeacherClassesPage() {
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
-              {/* Le contenu de la barre latérale sera ajouté ici */}
+              <Menu user={user} classrooms={classrooms} />
             </SidebarContent>
           </Sidebar>
           <SidebarInset>
