@@ -88,7 +88,7 @@ export default async function TeacherPage() {
                       </Link>
                     </Button>
                   </CardContent>
-                </Card>
+                </div>
               
             </main>
           </SidebarInset>
