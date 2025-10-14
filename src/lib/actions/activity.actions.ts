@@ -1,174 +1,88 @@
-
 // src/lib/actions/activity.actions.ts
 'use server';
 
 import prisma from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
-import { revalidatePath } from 'next/cache';
-import { differenceInMinutes, parseISO } from 'date-fns';
-import type { Task } from '@prisma/client';
 
-const MAX_INACTIVITY_MINUTES = 5;
+const POINTS_PER_INTERVAL = 20;
+const MAX_DAILY_POINTS_FROM_ACTIVITY = 200; // Limite quotidienne pour l'activité de base
 
-// This action is called periodically by the client to track activity
-export async function trackStudentActivity(elapsedSeconds: number) {
-  const session = await getAuthSession();
-  if (session?.user.role !== 'ELEVE') {
-    return;
-  }
-
-  const userId = session.user.id;
-  const now = new Date();
-
-  // Find active "personal" tasks
-  const activeTasks = await prisma.task.findMany({
-    where: {
-      isActive: true,
-      category: 'PERSONAL',
-    },
-  });
-
-  if (activeTasks.length === 0) {
-    return;
-  }
-
-  for (const task of activeTasks) {
-    let isInTimeWindow = true;
-    if (task.startTime && task.endTime) {
-      const nowTime = now.getHours() * 60 + now.getMinutes();
-      // We need to parse the time considering the local timezone of the server.
-      // The time is stored as HH:mm. We create a date object for today with that time.
-      const startHours = parseInt(task.startTime.split(':')[0], 10);
-      const startMinutes = parseInt(task.startTime.split(':')[1], 10);
-      const endHours = parseInt(task.endTime.split(':')[0], 10);
-      const endMinutes = parseInt(task.endTime.split(':')[1], 10);
-      
-      const startTimeInMinutes = startHours * 60 + startMinutes;
-      const endTimeInMinutes = endHours * 60 + endMinutes;
-      
-      isInTimeWindow = nowTime >= startTimeInMinutes && nowTime <= endTimeInMinutes;
-    }
+export async function trackStudentActivity(activeSeconds: number) {
+  try {
+    const session = await getAuthSession();
+    const userId = session?.user?.id;
     
-    if (!isInTimeWindow) {
-      continue; // Skip this task if we're outside its time window
+    if (!userId || session.user.role !== 'ELEVE') {
+      // Ne rien faire si ce n'est pas un élève authentifié
+      return { success: true, pointsAwarded: 0, reason: 'Not an authenticated student' };
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Récupérer l'état actuel du leaderboard
+      let leaderboard = await tx.leaderboard.findUnique({
+        where: { studentId: userId }
+      });
 
-    let progress = await prisma.studentProgress.findFirst({
-      where: {
-        studentId: userId,
-        taskId: task.id,
-        // Check for progress started today
-        startedAt: {
-          gte: today,
-        },
-      },
-    });
+      // Si l'entrée de classement n'existe pas, nous la créerons plus tard avec upsert.
+      const currentDailyPoints = leaderboard?.dailyPoints || 0;
 
-    if (progress?.status === 'COMPLETED' || progress?.status === 'VERIFIED') {
-      continue; // Already completed or verified today
-    }
-
-    // Logic for instant "connection" tasks (duration is 0 or null)
-    if (task.duration === 0 || task.duration === null) {
-      if (!progress) {
-        // Complete instantly on first valid ping
-        await completeProgress(userId, task, now);
+      // 2. Vérifier la limite quotidienne
+      if (currentDailyPoints >= MAX_DAILY_POINTS_FROM_ACTIVITY) {
+        return { success: true, pointsAwarded: 0, reason: 'Daily limit reached' };
       }
-      continue;
-    }
 
-    // Logic for "continuous activity" tasks (duration > 0)
-    if (!progress) {
-      progress = await prisma.studentProgress.create({
+      // 3. Calculer les points à attribuer (respecter la limite)
+      const pointsToAward = Math.min(
+        POINTS_PER_INTERVAL,
+        MAX_DAILY_POINTS_FROM_ACTIVITY - currentDailyPoints
+      );
+
+      if (pointsToAward <= 0) {
+        return { success: true, pointsAwarded: 0, reason: 'No points to award' };
+      }
+
+      // 4. Mettre à jour les points totaux de l'utilisateur
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
         data: {
-          studentId: userId,
-          taskId: task.id,
-          status: 'IN_PROGRESS',
-          startedAt: now,
-          lastActivityAt: now,
-          activeSeconds: 0,
-        },
-      });
-    }
-
-    // Check for inactivity
-    const minutesSinceLastActivity = differenceInMinutes(now, progress.lastActivityAt || now);
-    if (minutesSinceLastActivity > MAX_INACTIVITY_MINUTES) {
-      // User was inactive for too long, reset progress for continuous tasks
-      await prisma.studentProgress.update({
-        where: { id: progress.id },
-        // Reset active seconds and restart the tracking from now
-        data: { activeSeconds: 0, lastActivityAt: now, startedAt: now },
-      });
-      // Don't add elapsed time, just restart the counter
-      continue;
-    }
-
-    const newActiveSeconds = (progress.activeSeconds || 0) + elapsedSeconds;
-    const requiredSeconds = task.duration * 60;
-
-    if (newActiveSeconds >= requiredSeconds) {
-      await completeProgress(userId, task, now, progress.id, requiredSeconds);
-    } else {
-      await prisma.studentProgress.update({
-        where: { id: progress.id },
-        data: {
-          lastActivityAt: now,
-          activeSeconds: newActiveSeconds,
-        },
-      });
-    }
-  }
-
-  revalidatePath(`/student/${userId}`);
-}
-
-async function completeProgress(userId: string, task: Task, completionTime: Date, progressId?: string, finalSeconds?: number) {
-  const data: any = {
-    status: 'COMPLETED' as const,
-    completionDate: completionTime,
-    lastActivityAt: completionTime,
-    pointsAwarded: task.points,
-  };
-
-  if (finalSeconds !== undefined) {
-    data.activeSeconds = finalSeconds;
-  }
-  
-  if (progressId) {
-     // Update existing progress
-     await prisma.studentProgress.update({
-        where: { id: progressId },
-        data: data,
-     });
-  } else {
-    // Create new progress for instant tasks
-    await prisma.studentProgress.create({
-        data: {
-            ...data,
-            studentId: userId,
-            taskId: task.id,
-            startedAt: completionTime,
+          points: { increment: pointsToAward }
         }
-    });
-  }
+      });
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { points: { increment: task.points } },
-    }),
-    prisma.leaderboard.upsert({
-      where: { studentId: userId },
-      update: { totalPoints: { increment: task.points } },
-      create: {
+      // 5. Mettre à jour ou créer l'entrée Leaderboard
+      const updatedLeaderboard = await tx.leaderboard.upsert({
+        where: { studentId: userId },
+        create: {
           studentId: userId,
-          totalPoints: task.points,
-          rank: 0, // Rank will be recalculated by a separate job or trigger
-      }
-    })
-  ]);
+          dailyPoints: pointsToAward,
+          weeklyPoints: pointsToAward,
+          monthlyPoints: pointsToAward,
+          totalPoints: updatedUser.points,
+          completedTasks: 0,
+          currentStreak: 1,
+          bestStreak: 1,
+          rank: 0 // Le rang sera calculé par un autre processus si nécessaire
+        },
+        update: {
+          dailyPoints: { increment: pointsToAward },
+          weeklyPoints: { increment: pointsToAward },
+          monthlyPoints: { increment: pointsToAward },
+          totalPoints: updatedUser.points,
+          updatedAt: new Date()
+        }
+      });
+
+      return { 
+        success: true, 
+        pointsAwarded: pointsToAward,
+        dailyPoints: updatedLeaderboard.dailyPoints
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error tracking student activity:', error);
+    // Renvoyer une erreur générique pour ne pas exposer les détails de l'implémentation
+    throw new Error('Failed to track activity.');
+  }
 }

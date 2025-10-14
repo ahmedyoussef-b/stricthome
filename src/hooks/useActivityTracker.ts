@@ -6,6 +6,7 @@ import { trackStudentActivity } from '@/lib/actions/activity.actions';
 
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
 const PING_INTERVAL = 30 * 1000; // 30 seconds
+const INACTIVITY_THRESHOLD = 60 * 1000; // 1 minute
 
 export function useActivityTracker(enabled: boolean) {
   const lastActivityTimeRef = useRef<number>(Date.now());
@@ -17,19 +18,20 @@ export function useActivityTracker(enabled: boolean) {
 
   const pingServer = useCallback(async () => {
     const now = Date.now();
-    const elapsedSeconds = (now - lastActivityTimeRef.current) / 1000;
-    
-    // Only track if document is visible
-    if (document.visibilityState === 'visible') {
-        // Send the actual time since last activity. The server will handle inactivity logic.
-        try {
-            await trackStudentActivity(PING_INTERVAL / 1000);
-        } catch (error) {
-            console.error('[ActivityTracker] Failed to ping server:', error);
-        }
+    const isInactive = now - lastActivityTimeRef.current > INACTIVITY_THRESHOLD;
+
+    // Ne rien envoyer si l'onglet n'est pas visible ou si l'utilisateur est inactif
+    if (document.visibilityState !== 'visible' || isInactive) {
+      return;
     }
-    // Update last activity time after pinging to measure next interval correctly
-    lastActivityTimeRef.current = now;
+    
+    try {
+      // Envoyer le temps écoulé depuis le dernier ping réussi.
+      // Le serveur s'attend à recevoir une valeur numérique.
+      await trackStudentActivity(PING_INTERVAL / 1000);
+    } catch (error) {
+      console.error('[ActivityTracker] Failed to ping server:', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -42,31 +44,33 @@ export function useActivityTracker(enabled: boolean) {
       return;
     }
 
-    // Set initial activity time
+    // Initialisation
     lastActivityTimeRef.current = Date.now();
 
-    // Add event listeners for user activity
+    // Écouteurs d'événements
     ACTIVITY_EVENTS.forEach(event => window.addEventListener(event, handleActivity));
     
-    // Add visibility change listener
     const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-            lastActivityTimeRef.current = Date.now();
-        }
+      if (document.visibilityState === 'visible') {
+        lastActivityTimeRef.current = Date.now();
+      }
     };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Set up the interval to ping the server
+    // Intervalle
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(pingServer, PING_INTERVAL);
 
-    // Cleanup function
+    // Nettoyage
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
       ACTIVITY_EVENTS.forEach(event => window.removeEventListener(event, handleActivity));
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [enabled, handleActivity, pingServer]);
+
 }
