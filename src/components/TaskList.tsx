@@ -85,38 +85,42 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
     const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
     const isParentValidation = task.validationType === ValidationType.PARENT;
-    const isSystemAction = task.validationType === ValidationType.AUTOMATIC && task.startTime;
+    const isProfessorValidation = task.validationType === ValidationType.PROFESSOR;
+    const isAutomaticValidation = task.validationType === ValidationType.AUTOMATIC;
 
 
     const renderActionButton = () => {
-        if (isTeacherView || isCompletedOrVerified) return null;
+        if (isTeacherView || isCompletedOrVerified || isAutomaticValidation) {
+            if (isAutomaticValidation) {
+                return (
+                     <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium pr-2">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Auto</span>
+                    </div>
+                )
+            }
+            return null;
+        };
+
+        if (isPendingValidation) {
+            const icon = isParentValidation ? <KeyRound className="mr-2 h-4 w-4" /> : <ClockIcon className="mr-2 h-4 w-4" />;
+            const text = isParentValidation ? "Parent" : "En attente";
+            return (
+                <Button size="sm" variant="secondary" disabled>
+                   {icon} {text}
+                </Button>
+            );
+        }
 
         if (isParentValidation) {
             return (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium pr-2">
-                    <KeyRound className="h-4 w-4" />
-                    <span>Parent</span>
-                </div>
-            );
-        }
-        
-        if (isPendingValidation) {
-            return (
-                <Button size="sm" variant="secondary" disabled>
-                   <ClockIcon className="mr-2 h-4 w-4" /> En attente
+                <Button size="sm" onClick={() => handleComplete()} disabled={isPending}>
+                    {isPending ? <Loader2 className="animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                    Demander validation
                 </Button>
             );
         }
         
-        if (isSystemAction) {
-             return (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium pr-2">
-                    <ClockIcon className="h-4 w-4" />
-                    <span>Auto</span>
-                </div>
-            );
-        }
-
         if (task.requiresProof) {
             return (
                  <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
@@ -151,7 +155,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
             }
             return <ClockIcon className="h-6 w-6 text-amber-500" />;
         }
-        if (isSystemAction) {
+        if (isAutomaticValidation) {
             return <ClockIcon className="h-6 w-6 text-blue-500" />;
         }
         return <Circle className="h-6 w-6 text-muted-foreground" />;

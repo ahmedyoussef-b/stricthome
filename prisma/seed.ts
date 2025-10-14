@@ -191,12 +191,11 @@ async function main() {
         title: 'Réaction emoji',
         description: 'Réagissez à un message avec un emoji dans la session.',
         points: 10,
-        type: TaskType.WEEKLY, // As per image
-        category: TaskCategory.PERSONAL, // As per image
+        type: TaskType.WEEKLY,
+        category: TaskCategory.PERSONAL,
         difficulty: TaskDifficulty.EASY,
         requiresProof: false,
-        validationType: ValidationType.AUTOMATIC,
-        startTime: 'ACTION_NEEDED', // System action, not clickable
+        validationType: ValidationType.PROFESSOR,
       },
       {
         title: 'Mission hebdomadaire 1',
@@ -206,7 +205,7 @@ async function main() {
         category: TaskCategory.ACADEMIC,
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
-        validationType: ValidationType.AUTOMATIC
+        validationType: ValidationType.PROFESSOR
       },
       {
         title: 'Collaboration de groupe',
@@ -217,7 +216,6 @@ async function main() {
         difficulty: TaskDifficulty.MEDIUM,
         requiresProof: false,
         validationType: ValidationType.AUTOMATIC,
-        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       {
         title: 'Synthèse de la semaine',
@@ -270,18 +268,16 @@ async function main() {
         difficulty: TaskDifficulty.HARD,
         requiresProof: false,
         validationType: ValidationType.AUTOMATIC,
-        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       {
         title: 'Objectif Progression scolaire 2',
         description: 'Réaliser des points de progressions dans la moyenne générale.',
-        points: 200, // Points not specified, using a high value
-        type: TaskType.MONTHLY, // Assuming monthly
+        points: 200,
+        type: TaskType.MONTHLY,
         category: TaskCategory.ACADEMIC,
-        difficulty: TaskDifficulty.HARD, // Assuming hard
-        requiresProof: false,
-        validationType: ValidationType.AUTOMATIC,
-        startTime: 'ACTION_NEEDED', // System action, not clickable
+        difficulty: TaskDifficulty.HARD,
+        requiresProof: true,
+        validationType: ValidationType.PROFESSOR,
       },
        // Other tasks from previous seedings
       { 
@@ -295,7 +291,6 @@ async function main() {
         difficulty: TaskDifficulty.HARD, 
         requiresProof: false, 
         validationType: ValidationType.AUTOMATIC,
-        startTime: 'ACTION_NEEDED', // System action, not clickable
       },
       { 
         title: 'Question pertinente', 
@@ -305,8 +300,7 @@ async function main() {
         category: 'ACADEMIC', 
         difficulty: TaskDifficulty.MEDIUM, 
         requiresProof: false, 
-        validationType: ValidationType.AUTOMATIC,
-        startTime: 'ACTION_NEEDED', // System action, not clickable
+        validationType: ValidationType.PROFESSOR,
       },
     ]
   });
