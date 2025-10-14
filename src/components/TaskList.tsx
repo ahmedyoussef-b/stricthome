@@ -1,4 +1,3 @@
-
 // src/components/TaskList.tsx
 "use client";
 
@@ -86,6 +85,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
     const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
     const isParentValidation = task.validationType === ValidationType.PARENT;
+    const isTimeBasedAutomatic = task.validationType === ValidationType.AUTOMATIC && task.startTime && task.endTime;
 
 
     const renderActionButton = () => {
@@ -105,6 +105,15 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
                 <Button size="sm" variant="secondary" disabled>
                    <ClockIcon className="mr-2 h-4 w-4" /> En attente
                 </Button>
+            );
+        }
+        
+        if (isTimeBasedAutomatic) {
+             return (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium pr-2">
+                    <ClockIcon className="h-4 w-4" />
+                    <span>Auto</span>
+                </div>
             );
         }
 
@@ -141,6 +150,9 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
                 return <KeyRound className="h-6 w-6 text-amber-500" />;
             }
             return <ClockIcon className="h-6 w-6 text-amber-500" />;
+        }
+        if (isTimeBasedAutomatic) {
+            return <ClockIcon className="h-6 w-6 text-blue-500" />;
         }
         return <Circle className="h-6 w-6 text-muted-foreground" />;
     };

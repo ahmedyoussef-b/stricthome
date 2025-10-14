@@ -106,6 +106,11 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error("Cette tâche doit être validée par un parent.");
   }
   
+  // **SECURITY FIX**: Prevent manual validation of time-based tasks
+  if (task.startTime && task.endTime) {
+    throw new Error("Cette tâche est validée automatiquement par le système.");
+  }
+
   // Check if task requires proof and if it was provided
   if (task.requiresProof && !submissionUrl) {
     throw new Error('Une preuve est requise pour cette tâche.');
