@@ -1,3 +1,4 @@
+
 // src/components/TaskList.tsx
 "use client";
 
@@ -85,7 +86,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
     const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
     const isParentValidation = task.validationType === ValidationType.PARENT;
-    const isProfessorValidation = task.validationType === ValidationType.PROFESSEUR;
+    const isProfessorValidation = task.validationType === ValidationType.PROFESSOR;
     const isAutomaticValidation = task.validationType === ValidationType.AUTOMATIC;
 
 
