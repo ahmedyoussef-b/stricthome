@@ -35,8 +35,11 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
       </svg>
       
       {menuItems.map((group) => {
-        // Filter items based on user role
-        const visibleItems = group.items.filter(item => item.roles.includes(user.role as Role));
+        // Filter items based on user role and conditions
+        const visibleItems = group.items.filter(item => 
+          item.roles.includes(user.role as Role) &&
+          (!item.condition || item.condition(user))
+        );
         if (visibleItems.length === 0) return null;
         
         return (
@@ -61,13 +64,14 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
                  )
               }
               
-              if(item.href) {
-                const isActive = pathname === item.href;
+              if (item.href) {
+                const href = typeof item.href === 'function' ? item.href(user) : item.href;
+                const isActive = pathname === href;
                 const Icon = item.icon;
                 
                 return (
                   <Link
-                    href={item.href}
+                    href={href}
                     key={item.label}
                     className={cn(styles.button, colorClass, isActive && "ring-2 ring-accent")}
                   >

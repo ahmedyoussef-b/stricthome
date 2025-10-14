@@ -8,7 +8,10 @@ import {
     Megaphone,
     UserCircle,
     Settings,
-    RefreshCw
+    RefreshCw,
+    Shield,
+    KeyRound,
+    Target
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
@@ -67,19 +70,48 @@ export const menuItems = [
         ]
     },
     {
+        title: "Mon Espace",
+        items: [
+            {
+                label: "Ma Classe",
+                href: (user) => `/student/class/${user.classeId}`,
+                icon: Users,
+                roles: ['ELEVE'] as Role[],
+                condition: (user) => !!user.classeId,
+            },
+            {
+                label: "Mon Profil de Compétences",
+                href: (user) => `/student/${user.id}/skills`,
+                icon: Target,
+                roles: ['ELEVE'] as Role[],
+            },
+        ],
+    },
+    {
+        title: "Accès Rapide",
+        items: [
+            {
+                label: "Espace Parental",
+                href: (user) => `/student/${user.id}/parent`,
+                icon: KeyRound,
+                roles: ['ELEVE'] as Role[],
+            },
+        ]
+    },
+    {
         title: "Utilisateur",
         items: [
             { 
                 label: "Profil", 
-                href: "/profile", // Lien générique pour le profil
+                href: (user) => user.role === 'PROFESSEUR' ? '/teacher' : `/student/${user.id}`, 
                 icon: UserCircle,
-                roles: ['PROFESSEUR'] as Role[],
+                roles: ['PROFESSEUR', 'ELEVE'] as Role[],
             },
             { 
                 label: "Paramètres", 
                 href: "/settings", // Lien générique pour les paramètres
                 icon: Settings,
-                roles: ['PROFESSEUR'] as Role[],
+                roles: ['PROFESSEUR', 'ELEVE'] as Role[],
             },
         ],
     },
