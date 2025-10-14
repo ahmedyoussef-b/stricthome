@@ -1,9 +1,9 @@
 // src/components/TaskList.tsx
 "use client";
 
-import { Task, StudentProgress, TaskType, ProgressStatus } from "@prisma/client";
+import { Task, StudentProgress, TaskType, ProgressStatus, ValidationType as PrismaValidationType } from "@prisma/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap, FileUp, Download, ClockIcon } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Award, Calendar, Zap, FileUp, Download, ClockIcon, KeyRound } from "lucide-react";
 import { Button } from "./ui/button";
 import { completeTask } from "@/lib/actions/task.actions";
 import { useTransition, useState, useEffect } from "react";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { CloudinaryUploadWidget } from "./CloudinaryUploadWidget";
 import Link from "next/link";
-import { AppTask } from "@/lib/types";
+import { AppTask, ValidationType } from "@/lib/types";
 
 interface TaskListProps {
   tasks: AppTask[];
@@ -75,6 +75,53 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
 
     const isCompleted = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
+    const isParentValidation = task.validationType === ValidationType.PARENT;
+
+
+    const renderActionButton = () => {
+        if (isTeacherView) return null;
+
+        // **LOGIC FIX**: Don't show any button for PARENT tasks on student dashboard
+        if (isParentValidation) {
+            return (
+                <Button size="sm" variant="outline" disabled>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Parent
+                </Button>
+            );
+        }
+
+        if (isPendingValidation) {
+            return (
+                <Button size="sm" variant="secondary" disabled>
+                   <ClockIcon className="mr-2 h-4 w-4" /> En attente
+                </Button>
+            );
+        }
+
+        if (task.requiresProof) {
+            return (
+                 <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
+                    {({ open }) => (
+                        <Button size="sm" onClick={open} disabled={isCompleted || isPending}>
+                            {isPending ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                            Soumettre
+                        </Button>
+                    )}
+                </CloudinaryUploadWidget>
+            );
+        }
+
+        return (
+            <Button
+                size="sm"
+                onClick={() => handleComplete()}
+                disabled={isCompleted || isPending}
+            >
+                {isPending ? <Loader2 className="animate-spin" /> : 'Valider'}
+            </Button>
+        );
+    }
 
     return (
         <div className="flex items-start gap-4 py-3">
@@ -106,32 +153,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
                     <Award className="h-4 w-4" />
                     <span>{task.points}</span>
                 </div>
-                {!isTeacherView && (
-                    isPendingValidation ? (
-                        <Button size="sm" variant="secondary" disabled>
-                           <ClockIcon className="mr-2 h-4 w-4" /> En attente
-                        </Button>
-                    ) : (
-                        task.requiresProof ? (
-                            <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
-                                {({ open }) => (
-                                    <Button size="sm" onClick={open} disabled={isCompleted || isPending}>
-                                        {isPending ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
-                                        Soumettre
-                                    </Button>
-                                )}
-                            </CloudinaryUploadWidget>
-                        ) : (
-                            <Button
-                                size="sm"
-                                onClick={() => handleComplete()}
-                                disabled={isCompleted || isPending}
-                            >
-                                {isPending ? <Loader2 className="animate-spin" /> : 'Valider'}
-                            </Button>
-                        )
-                    )
-                )}
+                {renderActionButton()}
             </div>
         </div>
     )

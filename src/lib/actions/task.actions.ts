@@ -99,6 +99,13 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Task not found');
   }
   
+  const validationType = task.validationType as ValidationType;
+
+  // **SECURITY FIX**: Prevent students from validating parent tasks
+  if (validationType === ValidationType.PARENT) {
+    throw new Error("Cette tâche doit être validée par un parent.");
+  }
+  
   // Check if task requires proof and if it was provided
   if (task.requiresProof && !submissionUrl) {
     throw new Error('Une preuve est requise pour cette tâche.');
@@ -128,7 +135,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     throw new Error('Tâche déjà accomplie ou en attente de validation pour cette période.');
   }
 
-  const validationType = task.validationType as ValidationType;
+  
   const isAutomaticValidation = validationType === ValidationType.AUTOMATIC;
   
   const finalStatus = isAutomaticValidation
