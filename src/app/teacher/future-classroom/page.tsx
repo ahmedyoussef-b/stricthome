@@ -1,5 +1,5 @@
 // app/teacher/future-classroom/page.tsx
-import { EmotionalAITutor } from '@/components/EmotionalAITutor';
+// import { EmotionalAITutor } from '@/components/EmotionalAITutor';
 import { VirtualClassroom } from '@/components/VirtualClassroom';
 import { NeuroFeedback } from '@/components/NeuroFeedback';
 import { CareerPredictor } from '@/components/CareerPredictor';
@@ -39,7 +39,7 @@ export default async function FutureClassroomPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Colonne Gauche */}
           <div className="space-y-8">
-            <EmotionalAITutor />
+            {/* <EmotionalAITutor /> */}
             <NeuroFeedback />
           </div>
 

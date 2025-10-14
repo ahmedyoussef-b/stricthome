@@ -8,7 +8,7 @@ import { BackButton } from '@/components/BackButton';
 import { SkillMatrix } from '@/components/SkillMatrix';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AdaptiveLearningEngine } from '@/components/AdaptiveLearningEngine';
+// import { AdaptiveLearningEngine } from '@/components/AdaptiveLearningEngine';
 import { Separator } from '@/components/ui/separator';
 import { AchievementSystem } from '@/components/AchievementSystem';
 
@@ -64,8 +64,10 @@ export default async function StudentSkillsPage({ params }: { params: { id: stri
           <SkillMatrix studentId={student.id} classId={student.classroomId} />
           <Separator />
           <AchievementSystem studentId={student.id} />
+          {/* 
           <Separator />
           <AdaptiveLearningEngine />
+          */}
         </div>
 
       </main>
