@@ -16,6 +16,7 @@ import {
 import type { Role } from '@prisma/client';
 import { CreateAnnouncementForm } from '@/components/CreateAnnouncementForm';
 import { ResetButton } from '@/components/ResetButton';
+import type { User } from 'next-auth';
 
 // Définition des éléments de menu pour une configuration centralisée
 export const menuItems = [
@@ -74,14 +75,14 @@ export const menuItems = [
         items: [
             {
                 label: "Ma Classe",
-                href: (user) => `/student/class/${user.classeId}`,
+                href: (user: User) => `/student/class/${user.classeId}`,
                 icon: Users,
                 roles: ['ELEVE'] as Role[],
-                condition: (user) => !!user.classeId,
+                condition: (user: User) => !!user.classeId,
             },
             {
                 label: "Mon Profil de Compétences",
-                href: (user) => `/student/${user.id}/skills`,
+                href: (user: User) => `/student/${user.id}/skills`,
                 icon: Target,
                 roles: ['ELEVE'] as Role[],
             },
@@ -92,7 +93,7 @@ export const menuItems = [
         items: [
             {
                 label: "Espace Parental",
-                href: (user) => `/student/${user.id}/parent`,
+                href: (user: User) => `/student/${user.id}/parent`,
                 icon: KeyRound,
                 roles: ['ELEVE'] as Role[],
             },
@@ -103,7 +104,7 @@ export const menuItems = [
         items: [
             { 
                 label: "Profil", 
-                href: (user) => user.role === 'PROFESSEUR' ? '/teacher/profile' : `/student/${user.id}`, 
+                href: (user: User) => user.role === 'PROFESSEUR' ? '/teacher/profile' : `/student/${user.id}`, 
                 icon: UserCircle,
                 roles: ['PROFESSEUR', 'ELEVE'] as Role[],
             },
