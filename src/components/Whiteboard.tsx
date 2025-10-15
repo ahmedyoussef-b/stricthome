@@ -497,31 +497,43 @@ export function Whiteboard({ sessionId, isControlledByCurrentUser, controllerNam
   useEffect(() => {
     if (!sessionId) return;
     const channelName = `presence-session-${sessionId}`;
-    const channel = pusherClient.subscribe(channelName);
-    
-    const newActionHandler = (newEntry: HistoryEntry) => {
-        setHistory(prev => [...prev.slice(0, historyIndex + 1), newEntry]);
-        setHistoryIndex(prev => prev + 1);
-    };
+    let channel: any;
 
-    const clearHistoryHandler = () => {
-        setHistory([]);
-        setHistoryIndex(-1);
-    };
-    
-    const indexUpdateHandler = (data: { index: number }) => {
-        setHistoryIndex(data.index);
-    };
+    try {
+        channel = pusherClient.subscribe(channelName);
+        
+        const newActionHandler = (newEntry: HistoryEntry) => {
+            setHistory(prev => [...prev.slice(0, historyIndex + 1), newEntry]);
+            setHistoryIndex(prev => prev + 1);
+        };
 
-    channel.bind('new-action', newActionHandler);
-    channel.bind('clear-history', clearHistoryHandler);
-    channel.bind('index-update', indexUpdateHandler);
+        const clearHistoryHandler = () => {
+            setHistory([]);
+            setHistoryIndex(-1);
+        };
+        
+        const indexUpdateHandler = (data: { index: number }) => {
+            setHistoryIndex(data.index);
+        };
+
+        channel.bind('new-action', newActionHandler);
+        channel.bind('clear-history', clearHistoryHandler);
+        channel.bind('index-update', indexUpdateHandler);
+
+        console.log(`✅ [Whiteboard] Souscrit à ${channelName}`);
+        
+    } catch (error) {
+        console.error('❌ [Whiteboard] Échec de la souscription Pusher:', error);
+    }
 
     return () => {
-      channel.unbind_all();
-      pusherClient.unsubscribe(channelName);
+      if (channel) {
+          channel.unbind_all();
+          pusherClient.unsubscribe(channelName);
+          console.log(`🔌 [Whiteboard] Désouscrit de ${channelName}`);
+      }
     };
-  }, [sessionId, historyIndex]);
+}, [sessionId, historyIndex]);
 
   useEffect(() => {
     const canvas = previewCanvasRef.current;
