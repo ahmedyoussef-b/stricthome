@@ -357,11 +357,8 @@ export default function SessionPage() {
     }, [handleSignal]);
 
     const cleanup = useCallback(() => {
-        if (isCleanedUpRef.current) {
-            console.log("🧹 [NETTOYAGE] Nettoyage déjà effectué, ignoré.");
-            return;
-        }
-        console.log("🧹 [NETTOYAGE] Nettoyage complet de la session.");
+        if (isCleanedUpRef.current) return;
+        console.log("🧹 [CLEANUP] Nettoyage complet de la session.");
         isCleanedUpRef.current = true;
         
         if (timerIntervalRef.current) {
@@ -371,42 +368,35 @@ export default function SessionPage() {
 
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
-        console.log("🛑 [NETTOYAGE] Flux média local arrêté.");
+        console.log("🛑 [CLEANUP] Flux média local arrêté.");
         
         peerConnectionsRef.current.forEach((pc, peerId) => {
             pc.connection.close();
             clearNegotiationTimeout(peerId);
         });
         peerConnectionsRef.current.clear();
-        console.log("🛑 [NETTOYAGE] Toutes les connexions pair-à-pair sont fermées.");
+        console.log("🛑 [CLEANUP] Toutes les connexions pair-à-pair sont fermées.");
         
         if (presenceChannelRef.current) {
-            console.log(`🔌 [NETTOYAGE] Désabonnement du canal Pusher: ${presenceChannelRef.current.name}`);
+            console.log(`🔌 [CLEANUP] Désabonnement du canal Pusher: ${presenceChannelRef.current.name}`);
             pusherClient.unsubscribe(presenceChannelRef.current.name);
             presenceChannelRef.current = null;
         }
 
         setRemoteStreams(new Map());
         setOnlineUsers([]);
-        console.log("🗑️ [NETTOYAGE] États locaux réinitialisés.");
+        console.log("🗑️ [CLEANUP] États locaux réinitialisés.");
     }, []);
     
     const handleEndSession = useCallback(() => {
         console.log("🏁 [SESSION] La session a été marquée comme terminée. Nettoyage et redirection...");
         cleanup();
-    
         toast({
             title: "Session terminée",
             description: "La session a pris fin.",
         });
-    
         router.back();
     }, [cleanup, router, toast]);
-
-    const handleLeaveSession = useCallback(() => {
-        console.log("🚪 [SESSION] L'utilisateur quitte la session.");
-        handleEndSession();
-    }, [handleEndSession]);
 
     const removePeerConnection = (peerId: string) => {
         console.log(`👋 [CONNEXION] Suppression de la connexion avec ${peerId}.`);
@@ -496,6 +486,7 @@ export default function SessionPage() {
      useEffect(() => {
         if (!sessionId || !userId) return;
         console.log("🚀 [INITIALISATION] Démarrage de l'initialisation de la session.");
+        isCleanedUpRef.current = false;
 
         const initialize = async () => {
             try {
@@ -670,11 +661,7 @@ const handleEndSessionForEveryone = useCallback(async () => {
     
     try {
         await endCoursSession(sessionId);
-        toast({
-            title: "Session terminée",
-            description: "La session a été clôturée pour tous les participants.",
-        });
-        // L'événement Pusher `session-ended` déclenchera le cleanup et la redirection
+        // L'événement Pusher `session-ended` déclenchera le cleanup et la redirection pour tout le monde.
     } catch (error) {
         console.error("❌ [ACTION] Erreur lors de l'appel à endCoursSession:", error);
         toast({
@@ -760,7 +747,7 @@ const handleEndSessionForEveryone = useCallback(async () => {
                 sessionId={sessionId}
                 isTeacher={isTeacher}
                 onEndSession={handleEndSessionForEveryone}
-                onLeaveSession={handleLeaveSession}
+                onLeaveSession={handleEndSession} // Les élèves quittent via la même logique de fin
                 isEndingSession={isEndingSession}
                 timeLeft={timeLeft}
                 isTimerRunning={isTimerRunning}
