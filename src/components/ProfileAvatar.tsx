@@ -25,16 +25,33 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
   const { update } = useSession();
 
   const handleUploadSuccess = (result: any) => {
+    console.log('👤 [AVATAR] handleUploadSuccess déclenché avec le résultat :', result);
     const imageUrl = result.info.secure_url;
+    if (!imageUrl) {
+        console.error('❌ [AVATAR] Aucune URL sécurisée trouvée dans le résultat de l\'upload.');
+        toast({
+            variant: 'destructive',
+            title: 'Erreur',
+            description: 'Aucune URL d\'image n\'a été reçue.'
+        });
+        return;
+    }
+
     startTransition(async () => {
       try {
-        await updateUserProfileImage(imageUrl);
-        // Force a session update on the client to get the new image
+        console.log(`🚀 [AVATAR] Appel de l'action serveur updateUserProfileImage avec l'URL: ${imageUrl}`);
+        const updatedUser = await updateUserProfileImage(imageUrl);
+        console.log('✅ [AVATAR] Action serveur terminée. Utilisateur mis à jour reçu :', updatedUser);
+        
+        console.log('🔄 [AVATAR] Déclenchement de la mise à jour de la session client...');
         await update(); 
+        console.log('✅ [AVATAR] Mise à jour de la session client terminée.');
+
         toast({
           title: 'Photo de profil mise à jour!',
         });
       } catch (error) {
+        console.error('❌ [AVATAR] Erreur lors de la transition :', error);
         toast({
           variant: 'destructive',
           title: 'Erreur',

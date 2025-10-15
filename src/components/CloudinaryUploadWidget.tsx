@@ -23,14 +23,17 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
   useEffect(() => {
+    console.log('🖼️ [WIDGET] Initialisation du widget Cloudinary...');
     // Vérifier les variables d'environnement au chargement
     if (!cloudName || !uploadPreset) {
+      console.error('❌ [WIDGET] Erreur: Configuration Cloudinary manquante (cloudName ou uploadPreset).');
       setError('Configuration Cloudinary manquante');
       return;
     }
 
     // Vérifier si le script est déjà chargé
     if ((window as any).cloudinary) {
+      console.log('✅ [WIDGET] Script Cloudinary déjà chargé.');
       setLoaded(true);
       return;
     }
@@ -41,13 +44,13 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
     script.src = 'https://upload-widget.cloudinary.com/global/all.js';
     
     const handleLoad = () => {
-      console.log('[WIDGET] Cloudinary script loaded successfully');
+      console.log('✅ [WIDGET] Script Cloudinary chargé avec succès.');
       setLoaded(true);
       setError(null);
     };
 
     const handleError = () => {
-      console.error('[WIDGET] Failed to load Cloudinary script');
+      console.error('❌ [WIDGET] Échec du chargement du script Cloudinary.');
       setError('Erreur de chargement du script Cloudinary');
     };
 
@@ -65,14 +68,15 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
   }, [cloudName, uploadPreset]);
 
   const openWidget = useCallback(() => {
+    console.log('🚀 [WIDGET] Tentative d\'ouverture du widget...');
     if (!loaded) {
-      console.error("[WIDGET] Cloudinary script not loaded yet.");
+      console.error("❌ [WIDGET] Script Cloudinary pas encore chargé.");
       setError('Script Cloudinary non chargé');
       return;
     }
 
     if (!cloudName || !uploadPreset) {
-      console.error("[WIDGET] Cloudinary configuration missing");
+      console.error("❌ [WIDGET] Configuration Cloudinary manquante.");
       setError('Configuration Cloudinary manquante');
       return;
     }
@@ -82,7 +86,7 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
         cloudName: cloudName,
         uploadPreset: uploadPreset,
         cropping: true,
-        croppingAspectRatio: 1, // Optionnel: ratio carré
+        croppingAspectRatio: 1,
         croppingDefaultSelectionRatio: 0.9,
         folder: 'stricthome',
         sources: ['local', 'url', 'camera'],
@@ -111,47 +115,34 @@ function CloudinaryUploadWidget({ onUpload, children }: CloudinaryUploadWidgetPr
         options,
         (error: any, result: any) => {
           if (error) {
-            console.error('[WIDGET] Cloudinary upload error:', error);
+            console.error('❌ [WIDGET] Erreur d\'upload Cloudinary:', error);
             setError(`Erreur d'upload: ${error.message || 'Erreur inconnue'}`);
           }
           if (result && result.event === 'success') {
-            console.log('[WIDGET] Upload successful:', result.info);
+            console.log('✅ [WIDGET] Upload réussi:', result.info);
             setError(null);
             onUpload(result);
           }
           
-          // Gérer d'autres événements si nécessaire
           if (result && result.event === 'close') {
-            console.log('[WIDGET] Widget closed');
+            console.log('🚪 [WIDGET] Widget fermé.');
           }
         }
       );
 
       myWidget.open();
     } catch (err) {
-      console.error('[WIDGET] Error opening widget:', err);
+      console.error('❌ [WIDGET] Erreur à l\'ouverture du widget:', err);
       setError('Erreur lors de l\'ouverture du widget');
     }
   }, [loaded, cloudName, uploadPreset, onUpload]);
-
-  // Debug: afficher l'état du chargement
-  useEffect(() => {
-    console.log('[WIDGET] Status:', { loaded, cloudName: !!cloudName, uploadPreset: !!uploadPreset, error });
-  }, [loaded, cloudName, uploadPreset, error]);
-
+  
   return (
     <CloudinaryScriptContext.Provider value={{ loaded }}>
       {children({ open: openWidget, loaded })}
       {error && (
-        <div style={{ 
-          color: 'red', 
-          fontSize: '14px', 
-          marginTop: '10px',
-          padding: '10px',
-          border: '1px solid red',
-          borderRadius: '4px'
-        }}>
-          Erreur: {error}
+        <div style={{ color: 'red', fontSize: '12px', marginTop: '8px' }}>
+          Erreur Widget: {error}
         </div>
       )}
     </CloudinaryScriptContext.Provider>
