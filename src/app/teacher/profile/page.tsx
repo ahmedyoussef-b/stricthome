@@ -8,7 +8,7 @@ import prisma from "@/lib/prisma";
 import { BackButton } from "@/components/BackButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Users, Book } from "lucide-react";
+import { Users, Book, Video, Clock } from "lucide-react";
 
 export default async function TeacherProfilePage() {
   const session = await getAuthSession();
@@ -56,7 +56,7 @@ export default async function TeacherProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-4">
@@ -94,6 +94,35 @@ export default async function TeacherProfilePage() {
                                 <div>
                                     <p className="text-2xl font-bold">{totalStudents}</p>
                                     <p className="text-sm text-muted-foreground">Élève(s) au total</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Rapport de Session</CardTitle>
+                        <CardDescription>Analyse de vos sessions d'enseignement.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex items-center p-4 bg-muted rounded-lg">
+                                <div className="p-3 bg-blue-500/10 rounded-full mr-4">
+                                    <Video className="h-6 w-6 text-blue-500" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">12</p>
+                                    <p className="text-sm text-muted-foreground">Sessions totales</p>
+                                </div>
+                            </div>
+                             <div className="flex items-center p-4 bg-muted rounded-lg">
+                                <div className="p-3 bg-green-500/10 rounded-full mr-4">
+                                    <Clock className="h-6 w-6 text-green-500" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">28m</p>
+                                    <p className="text-sm text-muted-foreground">Durée moyenne</p>
                                 </div>
                             </div>
                         </div>
