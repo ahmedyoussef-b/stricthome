@@ -14,7 +14,6 @@ import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
 import { useWebRTCNegotiation, WebRTCSignal, PendingSignal } from '@/hooks/useWebRTCNegotiation';
-import { VideoControls } from '@/components/VideoControls';
 
 
 // Configuration des serveurs STUN de Google
@@ -446,25 +445,25 @@ export default function SessionPage() {
     }, [checkAndRepairConnections]);
 
 
-    const handleStartTimer = useCallback(() => {
+    const handleStartTimer = () => {
         if (!isTeacher) return;
         setIsTimerRunning(true);
         broadcastTimerEvent(sessionId, 'timer-started');
-    }, [isTeacher, sessionId]);
+    };
 
-    const handlePauseTimer = useCallback(() => {
+    const handlePauseTimer = () => {
         if (!isTeacher) return;
         setIsTimerRunning(false);
         broadcastTimerEvent(sessionId, 'timer-paused');
-    }, [isTeacher, sessionId]);
+    };
 
-    const handleResetTimer = useCallback(() => {
+    const handleResetTimer = () => {
         if (!isTeacher) return;
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         setIsTimerRunning(false);
         setTimeLeft(duration);
         broadcastTimerEvent(sessionId, 'timer-reset', { duration });
-    }, [isTeacher, duration, sessionId]);
+    };
 
 
     useEffect(() => {
@@ -809,6 +808,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
                 onStartTimer={handleStartTimer}
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
+                isSharingScreen={isSharingScreen}
+                onToggleScreenShare={handleToggleScreenShare}
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0 relative">
                 <PermissionPrompt />
@@ -838,12 +839,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
                         teacherStream={teacher ? remoteStreams.get(teacher.id) : null}
-                    />
-                )}
-                 {isTeacher && (
-                    <VideoControls 
-                        isSharingScreen={isSharingScreen} 
-                        onToggleScreenShare={handleToggleScreenShare} 
                     />
                 )}
             </main>

@@ -1,15 +1,14 @@
 // src/components/VideoControls.tsx
 "use client";
 
-import { Mic, MicOff, ScreenShare, ScreenShareOff, Video, VideoOff, PhoneOff } from 'lucide-react';
+import { Mic, MicOff, ScreenShare, ScreenShareOff, Video, VideoOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { Separator } from './ui/separator';
 
 interface VideoControlsProps {
   isSharingScreen: boolean;
   onToggleScreenShare: () => void;
-  // TODO: Add props for mute/unmute, video on/off, disconnect
+  // TODO: Add props for mute/unmute, video on/off
 }
 
 export function VideoControls({ isSharingScreen, onToggleScreenShare }: VideoControlsProps) {
@@ -18,11 +17,11 @@ export function VideoControls({ isSharingScreen, onToggleScreenShare }: VideoCon
   const isVideoOff = false;
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-background/70 backdrop-blur-sm p-2 rounded-lg flex gap-2 border">
+    <div className="flex gap-2 p-1 rounded-lg bg-muted border">
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button variant={isMuted ? "destructive" : "outline"} size="icon">
+                    <Button variant={isMuted ? "destructive" : "outline"} size="icon" className="h-8 w-8">
                         {isMuted ? <MicOff /> : <Mic />}
                     </Button>
                 </TooltipTrigger>
@@ -32,7 +31,7 @@ export function VideoControls({ isSharingScreen, onToggleScreenShare }: VideoCon
             </Tooltip>
              <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button variant={isVideoOff ? "destructive" : "outline"} size="icon">
+                    <Button variant={isVideoOff ? "destructive" : "outline"} size="icon" className="h-8 w-8">
                         {isVideoOff ? <VideoOff /> : <Video />}
                     </Button>
                 </TooltipTrigger>
@@ -46,24 +45,13 @@ export function VideoControls({ isSharingScreen, onToggleScreenShare }: VideoCon
                         variant="outline"
                         size="icon"
                         onClick={onToggleScreenShare}
-                        className={isSharingScreen ? 'text-primary' : ''}
+                        className={isSharingScreen ? 'text-primary h-8 w-8' : 'h-8 w-8'}
                     >
                         {isSharingScreen ? <ScreenShareOff /> : <ScreenShare />}
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                     <p>{isSharingScreen ? "Arrêter le partage" : "Partager l'écran"}</p>
-                </TooltipContent>
-            </Tooltip>
-            <Separator orientation="vertical" className="h-auto" />
-             <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button variant="destructive" size="icon">
-                        <PhoneOff />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>Quitter la session</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
