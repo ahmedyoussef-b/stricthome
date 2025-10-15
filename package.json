@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "rm -rf .next && next dev --port 9002 --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate && prisma db push --accept-data-loss",
+    "postinstall": "prisma db push --accept-data-loss",
     "typecheck": "tsc --noEmit --strict",
     "validate:stack": "node scripts/validate-stack.js",
     "validate:security": "npm audit --audit-level high",
