@@ -4,7 +4,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getAuthSession } from '../session';
-import { pusherServer } from '../pusher/server';
+import { pusherServer } from '../pusher';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
     console.log(`🚀 [Action Server] Démarrage de la création de session pour ${studentIds.length} élève(s).`);
@@ -34,7 +34,7 @@ export async function createCoursSession(professeurId: string, studentIds: strin
             classroom: {
                 connect: { id: firstStudent.classroomId }
             },
-            spotlightedParticipantSid: professeurId, // Teacher is in spotlight by default
+            spotlightedParticipantId: professeurId, // Teacher is in spotlight by default
         },
     });
 
@@ -99,7 +99,7 @@ export async function spotlightParticipant(sessionId: string, participantId: str
     await prisma.coursSession.update({
         where: { id: sessionId },
         data: { 
-            spotlightedParticipantSid: participantId,
+            spotlightedParticipantId: participantId,
         }
     });
 

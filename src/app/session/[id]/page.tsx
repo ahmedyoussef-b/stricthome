@@ -506,8 +506,8 @@ export default function SessionPage() {
                 setAllSessionUsers(allUsers);
                 console.log(`👥 [INITIALISATION] ${allUsers.length} utilisateurs chargés.`);
                 
-                if (sessionData.spotlightedParticipantSid) {
-                  setSpotlightedParticipantId(sessionData.spotlightedParticipantSid)
+                if (sessionData.spotlightedParticipantId) {
+                  setSpotlightedParticipantId(sessionData.spotlightedParticipantId)
                 } else if(teacher) {
                   setSpotlightedParticipantId(teacher.id)
                 }
