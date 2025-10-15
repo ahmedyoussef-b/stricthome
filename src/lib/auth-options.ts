@@ -95,35 +95,44 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    jwt({ token, user, trigger, session }) {
-        if (user) {
-            token.id = user.id;
-            token.role = user.role;
-            token.classeId = (user as any).classeId;
-            token.picture = user.image; // IMPORTANT
-        }
-        // Handle session updates, like changing profile picture
-        if (trigger === "update" && session?.image) {
-            token.picture = session.image;
-        }
-        return token;
-    },
-    session({ session, token }) {
+    async jwt({ token, user, trigger, session }) {
+      console.log('🔐 [AUTH] JWT callback - trigger:', trigger, 'user:', user);
+      
+      // Initial sign in
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.picture = user.image; // ← CRITIQUE
+        token.classeId = (user as any).classeId;
+      }
+      
+      // Update session (when `update()` is called)
+      if (trigger === "update" && session) {
+        console.log('🔐 [AUTH] JWT update - session:', session);
+        // Handle full user object update
         if (session.user) {
-            if (token.id) {
-            session.user.id = token.id as string;
-            }
-            if (token.role) {
-            session.user.role = token.role as Role;
-            }
-            if (token.classeId) {
-                session.user.classeId = token.classeId as string;
-            }
-            if (token.picture) {
-                session.user.image = token.picture as string; // IMPORTANT
-            }
+          token.name = session.user.name;
+          token.email = session.user.email;
+          if (session.user.image) {
+            token.picture = session.user.image;
+          }
         }
-        return session;
+        // Handle simple image update
+        else if (session.image) {
+          token.picture = session.image;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      console.log('🔐 [AUTH] Session callback - token:', token);
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+        session.user.classeId = token.classeId as string | undefined;
+        session.user.image = token.picture as string | undefined; // ← CRITIQUE
+      }
+      return session;
     },
   },
   pages: {
