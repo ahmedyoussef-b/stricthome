@@ -71,66 +71,68 @@ export function StudentSessionView({
     };
     
     return (
-        <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 py-6">
-            {/* Left side: Main video content (spotlight or screen share) */}
-            <div className="lg:w-1/2 flex flex-col gap-4">
-                <div className='flex-1 min-h-0'>
+        <div className="flex flex-1 min-h-0 py-6 gap-4">
+             {/* Left side: Main video content (spotlight or screen share) */}
+            <div className="flex-1 h-full flex flex-col gap-4">
+                 <div className='flex-1 min-h-0'>
                     {renderMainContent()}
                 </div>
             </div>
 
-             {/* Right side: Whiteboard and student controls */}
-            <div className="lg:w-1/2 flex flex-col gap-4">
+             {/* Center: Whiteboard */}
+            <div className="flex-1 h-full flex flex-col gap-4">
                 <div className='flex-1 min-h-0'>
                     <Whiteboard />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                     <Card>
-                        <CardHeader className="p-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                               Niveau de compréhension
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-3 pt-0">
-                            <TooltipProvider>
-                                <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value: string) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <ToggleGroupItem value="understood" aria-label="J'ai compris" className='data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600'>
-                                                <Smile className="h-5 w-5" />
-                                            </ToggleGroupItem>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>J'ai compris</p></TooltipContent>
-                                    </Tooltip>
-                                     <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <ToggleGroupItem value="confused" aria-label="Je suis un peu perdu" className='data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-600'>
-                                                <Meh className="h-5 w-5" />
-                                            </ToggleGroupItem>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Je suis un peu perdu</p></TooltipContent>
-                                    </Tooltip>
-                                     <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <ToggleGroupItem value="lost" aria-label="Je n'ai pas compris" className='data-[state=on]:bg-red-500/20 data-[state=on]:text-red-600'>
-                                                <Frown className="h-5 w-5" />
-                                            </ToggleGroupItem>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Je n'ai pas compris</p></TooltipContent>
-                                    </Tooltip>
-                                </ToggleGroup>
-                            </TooltipProvider>
-                        </CardContent>
-                    </Card>
-                    <Button 
-                        onClick={onToggleHandRaise} 
-                        size="lg"
-                        className={cn("w-full h-full", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
-                    >
-                       <Hand className="mr-2 h-5 w-5" />
-                       {isHandRaised ? 'Baisser la main' : 'Lever la main'}
-                    </Button>
-                </div>
+            </div>
+            
+            {/* Right sidebar: student controls */}
+            <div className="w-1/5 flex flex-col gap-4 min-h-0">
+                 <Card>
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                           Niveau de compréhension
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                        <TooltipProvider>
+                            <ToggleGroup type="single" value={currentUnderstanding} onValueChange={(value: string) => onUnderstandingChange(value as UnderstandingStatus || 'none')} className="w-full justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="understood" aria-label="J'ai compris" className='data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600'>
+                                            <Smile className="h-5 w-5" />
+                                        </ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>J'ai compris</p></TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="confused" aria-label="Je suis un peu perdu" className='data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-600'>
+                                            <Meh className="h-5 w-5" />
+                                        </ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Je suis un peu perdu</p></TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ToggleGroupItem value="lost" aria-label="Je n'ai pas compris" className='data-[state=on]:bg-red-500/20 data-[state=on]:text-red-600'>
+                                            <Frown className="h-5 w-5" />
+                                        </ToggleGroupItem>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Je n'ai pas compris</p></TooltipContent>
+                                </Tooltip>
+                            </ToggleGroup>
+                        </TooltipProvider>
+                    </CardContent>
+                </Card>
+                <Button 
+                    onClick={onToggleHandRaise} 
+                    size="lg"
+                    className={cn("w-full h-full flex-1", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                >
+                   <Hand className="mr-2 h-5 w-5" />
+                   {isHandRaised ? 'Baisser la main' : 'Lever la main'}
+                </Button>
             </div>
         </div>
     );
