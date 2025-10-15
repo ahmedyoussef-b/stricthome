@@ -11,12 +11,15 @@ import { UnderstandingStatus } from '@/app/session/[id]/page';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
 import { Whiteboard } from '../Whiteboard';
+import { Card } from '../ui/card';
+import { ScreenShare } from 'lucide-react';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
 export function TeacherSessionView({
     sessionId,
     localStream,
+    screenStream,
     remoteParticipants,
     spotlightedUser,
     allSessionUsers,
@@ -27,6 +30,7 @@ export function TeacherSessionView({
 }: {
     sessionId: string;
     localStream: MediaStream | null;
+    screenStream: MediaStream | null;
     remoteParticipants: { id: string, stream: MediaStream }[];
     spotlightedUser: SessionParticipant | undefined | null;
     allSessionUsers: SessionParticipant[];
@@ -99,9 +103,25 @@ export function TeacherSessionView({
                 </div>
             </ScrollArea>
 
-            {/* Zone centrale : Tableau blanc */}
-            <div className="flex-1 h-full">
-                <Whiteboard />
+            {/* Zone centrale : Tableau blanc et Partage d'écran */}
+            <div className="flex-1 h-full flex flex-col gap-4">
+                <div className='flex-1 h-2/3'>
+                    <Whiteboard />
+                </div>
+                {screenStream && (
+                    <div className='flex-1 h-1/3'>
+                        <Card className="w-full h-full p-2 bg-black">
+                            <Participant
+                                stream={screenStream}
+                                isLocal={true}
+                                isSpotlighted={false}
+                                isTeacher={true}
+                                participantUserId={localUserId ?? ''}
+                                displayName="Votre partage d'écran"
+                             />
+                        </Card>
+                    </div>
+                )}
             </div>
 
             {/* Colonne de droite : Outils interactifs */}

@@ -14,6 +14,7 @@ import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
 import { useWebRTCNegotiation, WebRTCSignal, PendingSignal } from '@/hooks/useWebRTCNegotiation';
+import { VideoControls } from '@/components/VideoControls';
 
 
 // Configuration des serveurs STUN de Google
@@ -57,6 +58,7 @@ export default function SessionPage() {
     const isTeacher = role === 'teacher';
 
     const localStreamRef = useRef<MediaStream | null>(null);
+    const screenStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
     const pendingIceCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>());
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
@@ -81,6 +83,8 @@ export default function SessionPage() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    const [isSharingScreen, setIsSharingScreen] = useState(false);
+
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
@@ -96,7 +100,7 @@ export default function SessionPage() {
 
     const { negotiationQueue } = useWebRTCNegotiation();
 
-    const cleanup = useCallback(() => {
+     const cleanup = useCallback(() => {
         if (isCleanedUpRef.current) return;
         console.log("🧹 [CLEANUP] Nettoyage complet de la session.");
         isCleanedUpRef.current = true;
@@ -108,7 +112,9 @@ export default function SessionPage() {
 
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
-        console.log("🛑 [CLEANUP] Flux média local arrêté.");
+        screenStreamRef.current?.getTracks().forEach(track => track.stop());
+        screenStreamRef.current = null;
+        console.log("🛑 [CLEANUP] Flux média local et de partage d'écran arrêtés.");
         
         peerConnectionsRef.current.forEach((pc, peerId) => {
             pc.connection.close();
@@ -287,19 +293,20 @@ export default function SessionPage() {
             }
         };
       
-        if (localStreamRef.current) {
-          localStreamRef.current.getTracks().forEach(track => {
+        const currentStream = screenStreamRef.current || localStreamRef.current;
+        if (currentStream) {
+          currentStream.getTracks().forEach(track => {
             try {
-              pc.addTrack(track, localStreamRef.current!);
+              pc.addTrack(track, currentStream);
             } catch (e) {
                 console.error(`❌ [TRACK] Échec de l'ajout de la piste pour ${peerId}:`, e);
             }
           });
-          console.log(`🎥 [TRACK] Flux local ajouté à la connexion de ${peerId}.`);
+          console.log(`🎥 [TRACK] Flux ${isSharingScreen ? 'd\'écran' : 'local'} ajouté à la connexion de ${peerId}.`);
         }
               
         return pc;
-      }, [broadcastSignal, spotlightedParticipantId, restartConnection, negotiationQueue]);
+    }, [broadcastSignal, spotlightedParticipantId, restartConnection, negotiationQueue, isSharingScreen]);
 
     const handleSignal = useCallback(async (fromUserId: string, signal: WebRTCSignal) => {
       console.log(`📥 [SIGNAL] Signal '${signal.type}' reçu de ${fromUserId}.`);
@@ -440,19 +447,22 @@ export default function SessionPage() {
 
 
     const handleStartTimer = useCallback(async () => {
-        if (!isTeacher || isTimerRunning) return;
+        if (!isTeacher) return;
+        // Optimistic update
         setIsTimerRunning(true);
         await broadcastTimerEvent(sessionId, 'timer-started');
-    }, [isTeacher, isTimerRunning, sessionId]);
+    }, [isTeacher, sessionId]);
 
     const handlePauseTimer = useCallback(async () => {
-        if (!isTeacher || !isTimerRunning) return;
+        if (!isTeacher) return;
+        // Optimistic update
         setIsTimerRunning(false);
         await broadcastTimerEvent(sessionId, 'timer-paused');
-    }, [isTeacher, isTimerRunning, sessionId]);
+    }, [isTeacher, sessionId]);
 
     const handleResetTimer = useCallback(async () => {
         if (!isTeacher) return;
+        // Optimistic update
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         setIsTimerRunning(false);
         setTimeLeft(duration);
@@ -508,11 +518,8 @@ export default function SessionPage() {
                 setAllSessionUsers(allUsers);
                 console.log(`👥 [INITIALISATION] ${allUsers.length} utilisateurs chargés.`);
                 
-                if (sessionData.spotlightedParticipantId) {
-                  setSpotlightedParticipantId(sessionData.spotlightedParticipantId);
-                } else if(teacher) {
-                  setSpotlightedParticipantId(teacher.id);
-                }
+                setSpotlightedParticipantId(sessionData.spotlightedParticipantId);
+
 
                 // 2. Obtenir le flux média local
                 try {
@@ -641,8 +648,9 @@ export default function SessionPage() {
         console.log(`🔦 [SPOTLIGHT] Mise à jour du participant en vedette: ${spotlightedParticipantId}`);
 
         if (spotlightedParticipantId === userId) {
-            console.log("🔦 [SPOTLIGHT] C'est nous ! Utilisation du flux local.");
-            setSpotlightedStream(localStreamRef.current);
+            console.log("🔦 [SPOTLIGHT] C'est nous ! Utilisation du flux approprié.");
+            const currentActiveStream = isSharingScreen ? screenStreamRef.current : localStreamRef.current;
+            setSpotlightedStream(currentActiveStream);
         } else {
             const peer = peerConnectionsRef.current.get(spotlightedParticipantId);
             if (peer && peer.stream) {
@@ -653,7 +661,7 @@ export default function SessionPage() {
                  setSpotlightedStream(remoteStreams.get(spotlightedParticipantId) || null);
             }
         }
-    }, [spotlightedParticipantId, remoteStreams, userId]);
+    }, [spotlightedParticipantId, remoteStreams, userId, isSharingScreen]);
     
 const handleEndSessionForEveryone = useCallback(async () => {
     if (isEndingSession) {
@@ -730,6 +738,54 @@ const handleEndSessionForEveryone = useCallback(async () => {
         }
     }, [isTeacher, sessionId, toast, userId]);
 
+    const handleToggleScreenShare = useCallback(async () => {
+        if (!isTeacher) return;
+
+        if (isSharingScreen) {
+            // Stop sharing
+            console.log("🖥️ [SHARE] Arrêt du partage d'écran.");
+            screenStreamRef.current?.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
+            setIsSharingScreen(false);
+
+            // Replace screen track with camera track for all peers
+            const videoTrack = localStreamRef.current?.getVideoTracks()[0];
+            if (videoTrack) {
+                peerConnectionsRef.current.forEach(peer => {
+                    const sender = peer.connection.getSenders().find(s => s.track?.kind === 'video');
+                    sender?.replaceTrack(videoTrack);
+                });
+            }
+        } else {
+            // Start sharing
+            try {
+                console.log("🖥️ [SHARE] Démarrage du partage d'écran.");
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                
+                // When user stops sharing via browser UI
+                stream.getVideoTracks()[0].onended = () => {
+                    console.log("🖥️ [SHARE] Partage d'écran arrêté par l'utilisateur via l'UI du navigateur.");
+                    handleToggleScreenShare();
+                };
+                
+                screenStreamRef.current = stream;
+                setIsSharingScreen(true);
+                
+                // Replace camera track with screen track for all peers
+                const screenTrack = stream.getVideoTracks()[0];
+                if (screenTrack) {
+                    peerConnectionsRef.current.forEach(peer => {
+                        const sender = peer.connection.getSenders().find(s => s.track?.kind === 'video');
+                        sender?.replaceTrack(screenTrack);
+                    });
+                }
+            } catch (error) {
+                console.error("❌ [SHARE] Échec du démarrage du partage d'écran:", error);
+                toast({ variant: 'destructive', title: "Erreur de Partage", description: "Impossible de démarrer le partage d'écran." });
+            }
+        }
+    }, [isSharingScreen, isTeacher, toast]);
+
 
     const spotlightedUser = allSessionUsers.find(u => u.id === spotlightedParticipantId);
     const remoteParticipantsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({ id, stream }));
@@ -757,12 +813,13 @@ const handleEndSessionForEveryone = useCallback(async () => {
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
             />
-            <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0">
+            <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0 relative">
                 <PermissionPrompt />
                  {isTeacher ? (
                     <TeacherSessionView
                         sessionId={sessionId}
                         localStream={localStreamRef.current}
+                        screenStream={screenStreamRef.current}
                         remoteParticipants={remoteParticipantsArray}
                         spotlightedUser={spotlightedUser}
                         allSessionUsers={allSessionUsers}
@@ -783,6 +840,13 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onToggleHandRaise={handleToggleHandRaise}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
+                        teacherStream={teacher ? remoteStreams.get(teacher.id) : null}
+                    />
+                )}
+                 {isTeacher && (
+                    <VideoControls 
+                        isSharingScreen={isSharingScreen} 
+                        onToggleScreenShare={handleToggleScreenShare} 
                     />
                 )}
             </main>

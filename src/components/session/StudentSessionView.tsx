@@ -1,7 +1,7 @@
 // src/components/session/StudentSessionView.tsx
 'use client';
 
-import { Hand, Smile, Meh, Frown } from 'lucide-react';
+import { Hand, Smile, Meh, Frown, ScreenShare } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
@@ -23,6 +23,7 @@ interface StudentSessionViewProps {
     remoteStreams: Map<string, MediaStream>;
     spotlightedStream: MediaStream | null;
     spotlightedUser: SessionParticipant | null | undefined;
+    teacherStream: MediaStream | null;
     allSessionUsers: SessionParticipant[];
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
@@ -35,42 +36,79 @@ export function StudentSessionView({
     localStream,
     spotlightedStream,
     spotlightedUser,
+    teacherStream,
     isHandRaised,
     onToggleHandRaise,
     onUnderstandingChange,
     currentUnderstanding,
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
-    
+
+    const isTeacherInSpotlight = spotlightedUser?.role === 'PROFESSEUR';
+    const isScreenShareInSpotlight = spotlightedStream?.getVideoTracks()[0]?.label.includes('screen');
+
     const renderSpotlight = () => {
-        if (spotlightedStream) {
+        if (!spotlightedUser || !spotlightedStream) {
             return (
-                <Participant 
-                    stream={spotlightedStream}
-                    isLocal={localStream === spotlightedStream}
-                    isSpotlighted={true}
-                    isTeacher={false}
-                    participantUserId={spotlightedUser?.id ?? ''}
-                    displayName={spotlightedUser?.name ?? undefined}
-                />
+                <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
+                    <div className="text-center text-muted-foreground">
+                        <Loader2 className="animate-spin h-8 w-8 mx-auto" />
+                        <p className="mt-2">En attente de la connexion...</p>
+                    </div>
+                </Card>
             );
         }
+        
         return (
-            <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
-                <div className="text-center text-muted-foreground">
-                    <Loader2 className="animate-spin h-8 w-8 mx-auto" />
-                    <p className="mt-2">En attente de la connexion...</p>
-                </div>
-            </Card>
+            <Participant 
+                stream={spotlightedStream}
+                isLocal={localStream === spotlightedStream}
+                isSpotlighted={true}
+                isTeacher={false}
+                participantUserId={spotlightedUser?.id ?? ''}
+                displayName={spotlightedUser?.name ?? undefined}
+            />
         );
     };
     
     return (
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 py-6">
+            {/* Main content: Spotlight and Teacher Cam */}
             <div className="lg:w-2/3 flex flex-col gap-4">
-                {renderSpotlight()}
+                <div className='flex-1'>{renderSpotlight()}</div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Your Camera */}
+                    <Participant
+                      stream={localStream}
+                      isLocal={true}
+                      isSpotlighted={false}
+                      isTeacher={false}
+                      participantUserId={session?.user.id ?? ''}
+                      displayName="Vous"
+                      isHandRaised={isHandRaised}
+                    />
+
+                    {/* Teacher Camera (if not in spotlight) */}
+                    {teacherStream && !isTeacherInSpotlight && (
+                        <Participant
+                            stream={teacherStream}
+                            isLocal={false}
+                            isSpotlighted={false}
+                            isTeacher={true}
+                            participantUserId={spotlightedUser?.id ?? ''}
+                            displayName={spotlightedUser?.name ?? 'Professeur'}
+                        />
+                    )}
+                </div>
+            </div>
+
+             {/* Right sidebar: Whiteboard and controls */}
+            <div className="lg:w-1/3 flex flex-col gap-4">
+                <div className='flex-1 min-h-0'>
+                    <Whiteboard />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <Card>
+                     <Card>
                         <CardHeader className="p-3">
                             <CardTitle className="text-sm flex items-center gap-2">
                                Niveau de compréhension
@@ -116,9 +154,6 @@ export function StudentSessionView({
                        {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                     </Button>
                 </div>
-            </div>
-            <div className="lg:w-1/3 flex flex-col">
-                <Whiteboard />
             </div>
         </div>
     );
