@@ -446,27 +446,24 @@ export default function SessionPage() {
     }, [checkAndRepairConnections]);
 
 
-    const handleStartTimer = useCallback(async () => {
+    const handleStartTimer = useCallback(() => {
         if (!isTeacher) return;
-        // Optimistic update
         setIsTimerRunning(true);
-        await broadcastTimerEvent(sessionId, 'timer-started');
+        broadcastTimerEvent(sessionId, 'timer-started');
     }, [isTeacher, sessionId]);
 
-    const handlePauseTimer = useCallback(async () => {
+    const handlePauseTimer = useCallback(() => {
         if (!isTeacher) return;
-        // Optimistic update
         setIsTimerRunning(false);
-        await broadcastTimerEvent(sessionId, 'timer-paused');
+        broadcastTimerEvent(sessionId, 'timer-paused');
     }, [isTeacher, sessionId]);
 
-    const handleResetTimer = useCallback(async () => {
+    const handleResetTimer = useCallback(() => {
         if (!isTeacher) return;
-        // Optimistic update
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         setIsTimerRunning(false);
         setTimeLeft(duration);
-        await broadcastTimerEvent(sessionId, 'timer-reset', { duration });
+        broadcastTimerEvent(sessionId, 'timer-reset', { duration });
     }, [isTeacher, duration, sessionId]);
 
 
