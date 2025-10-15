@@ -20,11 +20,8 @@ type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role:
 interface StudentSessionViewProps {
     sessionId: string;
     localStream: MediaStream | null;
-    remoteStreams: Map<string, MediaStream>;
     spotlightedStream: MediaStream | null;
     spotlightedUser: SessionParticipant | null | undefined;
-    teacherStream: MediaStream | null;
-    allSessionUsers: SessionParticipant[];
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
     onUnderstandingChange: (status: UnderstandingStatus) => void;
@@ -36,16 +33,12 @@ export function StudentSessionView({
     localStream,
     spotlightedStream,
     spotlightedUser,
-    teacherStream,
     isHandRaised,
     onToggleHandRaise,
     onUnderstandingChange,
     currentUnderstanding,
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
-
-    const isTeacherInSpotlight = spotlightedUser?.role === 'PROFESSEUR';
-    const isScreenShareInSpotlight = spotlightedStream?.getVideoTracks()[0]?.label.includes('screen');
 
     const renderSpotlight = () => {
         if (!spotlightedUser || !spotlightedStream) {
@@ -73,33 +66,9 @@ export function StudentSessionView({
     
     return (
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 py-6">
-            {/* Main content: Spotlight and Teacher Cam */}
+            {/* Main content: Spotlight video */}
             <div className="lg:w-2/3 flex flex-col gap-4">
                 <div className='flex-1'>{renderSpotlight()}</div>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Your Camera */}
-                    <Participant
-                      stream={localStream}
-                      isLocal={true}
-                      isSpotlighted={false}
-                      isTeacher={false}
-                      participantUserId={session?.user.id ?? ''}
-                      displayName="Vous"
-                      isHandRaised={isHandRaised}
-                    />
-
-                    {/* Teacher Camera (if not in spotlight) */}
-                    {teacherStream && !isTeacherInSpotlight && (
-                        <Participant
-                            stream={teacherStream}
-                            isLocal={false}
-                            isSpotlighted={false}
-                            isTeacher={true}
-                            participantUserId={spotlightedUser?.id ?? ''}
-                            displayName={spotlightedUser?.name ?? 'Professeur'}
-                        />
-                    )}
-                </div>
             </div>
 
              {/* Right sidebar: Whiteboard and controls */}

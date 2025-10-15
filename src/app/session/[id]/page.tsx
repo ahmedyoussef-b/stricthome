@@ -734,7 +734,7 @@ const handleEndSessionForEveryone = useCallback(async () => {
         }
     }, [isTeacher, sessionId, toast, userId]);
 
-    const handleToggleScreenShare = useCallback(async () => {
+    const handleToggleScreenShare = useCallback(() => {
         if (!isTeacher) return;
 
         if (isSharingScreen) {
@@ -754,9 +754,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
             }
         } else {
             // Start sharing
-            try {
+            navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }).then(stream => {
                 console.log("🖥️ [SHARE] Démarrage du partage d'écran.");
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
                 
                 // When user stops sharing via browser UI
                 stream.getVideoTracks()[0].onended = () => {
@@ -775,10 +774,10 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         sender?.replaceTrack(screenTrack);
                     });
                 }
-            } catch (error) {
+            }).catch(error => {
                 console.error("❌ [SHARE] Échec du démarrage du partage d'écran:", error);
                 toast({ variant: 'destructive', title: "Erreur de Partage", description: "Impossible de démarrer le partage d'écran." });
-            }
+            });
         }
     }, [isSharingScreen, isTeacher, toast]);
 
@@ -830,15 +829,12 @@ const handleEndSessionForEveryone = useCallback(async () => {
                     <StudentSessionView
                         sessionId={sessionId}
                         localStream={localStreamRef.current}
-                        remoteStreams={remoteStreams}
                         spotlightedStream={spotlightedStream}
                         spotlightedUser={spotlightedUser}
-                        allSessionUsers={allSessionUsers}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
-                        teacherStream={teacher ? remoteStreams.get(teacher.id) : null}
                     />
                 )}
             </main>
