@@ -391,14 +391,8 @@ export default function SessionPage() {
             description: "La session a pris fin.",
         });
     
-        if (isTeacher) {
-            router.push('/teacher');
-        } else if (userId) {
-            router.push(`/student/${userId}`);
-        } else {
-            router.push('/');
-        }
-    }, [cleanup, isTeacher, router, toast, userId]);
+        router.back();
+    }, [cleanup, router, toast]);
 
     const handleLeaveSession = useCallback(() => {
         console.log("🚪 [SESSION] L'utilisateur quitte la session.");
