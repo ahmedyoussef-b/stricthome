@@ -15,12 +15,13 @@ import {
     DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar } from "@/components/ui/avatar"
 import Link from "next/link"
-import { LogIn, LogOut, Sun, Moon, Monitor } from "lucide-react"
+import { LogIn, LogOut, Sun, Moon, Monitor, Camera } from "lucide-react"
 import { signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { User } from "next-auth";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 interface UserNavProps {
     user?: User | null;
@@ -44,9 +45,7 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                        <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                     <ProfileAvatar user={user} isInteractive={false} />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -60,9 +59,17 @@ export function UserNav({ user }: UserNavProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                    <DropdownMenuItem>
-                        Profil
+                    <DropdownMenuItem asChild>
+                        <Link href={user.role === 'PROFESSEUR' ? '/teacher/profile' : `/student/${user.id}`}>
+                            Profil
+                        </Link>
                     </DropdownMenuItem>
+                    <ProfileAvatar user={user} isInteractive={true}>
+                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <Camera className="mr-2" />
+                            Changer la photo
+                        </DropdownMenuItem>
+                    </ProfileAvatar>
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                             Thème

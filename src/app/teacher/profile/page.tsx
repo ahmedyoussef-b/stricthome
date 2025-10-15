@@ -7,8 +7,9 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { BackButton } from "@/components/BackButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, Book, Video, Clock } from "lucide-react";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+
 
 export default async function TeacherProfilePage() {
   const session = await getAuthSession();
@@ -56,17 +57,15 @@ export default async function TeacherProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <Card className="lg:col-span-1">
                   <CardHeader>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-20 w-20">
-                        <AvatarFallback className="text-3xl">{user.name?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-3xl">{user.name}</CardTitle>
-                        <CardDescription>{user.email}</CardDescription>
-                      </div>
+                     <div className="flex flex-col items-center gap-4">
+                        <ProfileAvatar user={user} isInteractive={true} className="h-24 w-24 text-4xl" />
+                        <div>
+                            <CardTitle className="text-3xl text-center">{user.name}</CardTitle>
+                            <CardDescription className="text-center">{user.email}</CardDescription>
+                        </div>
                     </div>
                   </CardHeader>
                 </Card>
