@@ -42,15 +42,23 @@ export default function StudentPageClient({
   const router = useRouter();
   const { toast } = useToast();
   const [showCard, setShowCard] = useState(false);
+  
   const [activeSession, setActiveSession] = useState<CoursSession | null>(
     student.sessionsParticipees && student.sessionsParticipees.length > 0 ? student.sessionsParticipees[0] : null
   );
+
   const metier = student.etat?.metier;
   
-  // Start activity tracking if it's the student's view
+  // Correction: Le hook doit être appelé au niveau supérieur.
   useActivityTracker(!isTeacherView);
 
   useEffect(() => {
+    // S'assurer que l'état local est synchronisé avec les props serveur à chaque rendu.
+    const currentActiveSession = student.sessionsParticipees && student.sessionsParticipees.length > 0
+      ? student.sessionsParticipees[0]
+      : null;
+    setActiveSession(currentActiveSession);
+
     if (isTeacherView || !student.classe?.id) return;
 
     const channelName = `presence-classe-${student.classe.id}`;
@@ -91,7 +99,6 @@ export default function StudentPageClient({
         }
       });
 
-
       return () => {
         channel.unbind_all();
         pusherClient.unsubscribe(channelName);
@@ -99,7 +106,7 @@ export default function StudentPageClient({
     } catch (error) {
       console.error("Pusher subscription failed:", error);
     }
-  }, [student.id, student.classe, isTeacherView, router]);
+  }, [student, isTeacherView, router]);
 
   const handleUploadSuccess = (result: any) => {
     console.log('Upload successful:', result);
@@ -107,7 +114,6 @@ export default function StudentPageClient({
       title: "Téléversement réussi !",
       description: `Le fichier ${result.info.original_filename} a été envoyé.`,
     });
-    // Here you would typically save the file URL (result.info.secure_url) to your database
   };
 
   return (
