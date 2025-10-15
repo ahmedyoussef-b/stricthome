@@ -658,19 +658,38 @@ export default function SessionPage() {
         }
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
-    const handleEndSessionForEveryone = useCallback(() => {
-        console.log(`🛑 [ACTION] Clic sur "Terminer la session". State: isTeacher=${isTeacher}, isEndingSession=${isEndingSession}`);
-        if (!isTeacher || isEndingSession) {
-            console.log(`🟡 [ACTION] Action ignorée. isTeacher: ${isTeacher}, isEndingSession: ${isEndingSession}`);
-            return;
-        }
-        console.log("⏳ [ACTION] Début de la transition pour terminer la session.");
-        setIsEndingSession(true);
-        endCoursSession(sessionId).finally(() => {
-            console.log("✅ [ACTION] Transition terminée. Réinitialisation de isEndingSession à false.");
-            setIsEndingSession(false);
+const handleEndSessionForEveryone = useCallback(async () => {
+    console.log(`🛑 [ACTION] Clic sur "Terminer la session". State: isTeacher=${isTeacher}, isEndingSession=${isEndingSession}`);
+
+    // Protection contre les clics multiples ou les appels non autorisés
+    if (!isTeacher || isEndingSession) {
+        console.warn(`⚠️ [ACTION] Action de fin de session ignorée. isTeacher=${isTeacher}, isEndingSession=${isEndingSession}`);
+        return;
+    }
+    
+    setIsEndingSession(true);
+    console.log("⏳ [ACTION] État de fin de session activé.");
+
+    try {
+        await endCoursSession(sessionId);
+        // Si l'action réussit, le `useEffect` avec l'événement 'session-ended' s'occupera du nettoyage et de la redirection.
+        // On peut afficher un toast de succès ici pour une rétroaction immédiate.
+        toast({
+            title: "Session terminée",
+            description: "La session a été clôturée pour tous les participants.",
         });
-    }, [isTeacher, isEndingSession, sessionId]);
+    } catch (error) {
+        console.error("❌ [ACTION] Erreur lors de l'appel à endCoursSession:", error);
+        toast({
+            variant: "destructive",
+            title: "Erreur",
+            description: "Impossible de terminer la session. Veuillez réessayer.",
+        });
+        // En cas d'erreur, on réinitialise l'état pour permettre une nouvelle tentative
+        setIsEndingSession(false);
+        console.log("🏁 [ACTION] État de fin de session réinitialisé après erreur.");
+    }
+}, [isTeacher, isEndingSession, sessionId, toast]);
     
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         console.log(`🔦 [ACTION] Le professeur met en vedette: ${participantId}.`);

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, PhoneOff } from "lucide-react";
 import { SessionTimer } from "./SessionTimer";
+import { useCallback } from "react";
 
 interface SessionHeaderProps {
     sessionId: string;
@@ -32,6 +33,20 @@ export function SessionHeader({
     isEndingSession = false
 }: SessionHeaderProps) {
     
+    // CORRECTION : Gestionnaire de clic direct et sécurisé
+    const handleEndSessionClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onEndSession();
+    }, [onEndSession]);
+
+    const handleLeaveSessionClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("🚪 [SESSION HEADER] Clic sur 'Quitter la session'");
+        onLeaveSession();
+    }, [onLeaveSession]);
+    
     return (
         <header className="border-b bg-background/95 backdrop-blur-sm z-10 sticky top-0">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
@@ -52,12 +67,30 @@ export function SessionHeader({
                 
                 <div className='w-48 flex justify-end'>
                     {isTeacher ? (
-                        <Button variant="destructive" onClick={onEndSession} disabled={isEndingSession}>
-                            {isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />}
-                            Terminer la session
+                        <Button 
+                            variant="destructive" 
+                            onClick={handleEndSessionClick} 
+                            disabled={isEndingSession}
+                            data-session-action="end-session"
+                        >
+                            {isEndingSession ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Fermeture...
+                                </>
+                            ) : (
+                                <>
+                                    <PhoneOff className="mr-2 h-4 w-4" />
+                                    Terminer la session
+                                </>
+                            )}
                         </Button>
                     ) : (
-                         <Button variant="destructive" onClick={onLeaveSession}>
+                         <Button 
+                            variant="destructive" 
+                            onClick={handleLeaveSessionClick}
+                            data-session-action="leave-session"
+                         >
                             <PhoneOff className="mr-2 h-4 w-4" />
                             Quitter la session
                         </Button>

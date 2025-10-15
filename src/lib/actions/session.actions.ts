@@ -154,6 +154,7 @@ export async function spotlightParticipant(sessionId: string, participantId: str
 }
 
 export async function endCoursSession(sessionId: string) {
+  console.log(`🎯 [SERVER ACTION] endCoursSession EXÉCUTÉ pour ${sessionId}`);
   console.log(`🏁 [ACTION SERVER] Début de la tentative de fin de session ${sessionId}`);
   const session = await getAuthSession();
   if (session?.user.role !== 'PROFESSEUR') {
