@@ -1,7 +1,7 @@
 // src/components/ProfileAvatar.tsx
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { User } from 'next-auth';
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Camera, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { ImageDebugger } from './ImageDebugger';
 
 interface ProfileAvatarProps {
   user: User;
@@ -23,10 +24,15 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const { update } = useSession();
+  const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
 
   const handleUploadSuccess = (result: any) => {
     console.log('👤 [AVATAR] handleUploadSuccess déclenché avec le résultat :', result);
     const imageUrl = result.info.secure_url;
+    
+    // Use the debugger
+    setDebugImageUrl(imageUrl);
+
     if (!imageUrl) {
         console.error('❌ [AVATAR] Aucune URL sécurisée trouvée dans le résultat de l\'upload.');
         toast({
@@ -50,6 +56,10 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
         toast({
           title: 'Photo de profil mise à jour!',
         });
+        
+        // Hide debugger after a delay
+        setTimeout(() => setDebugImageUrl(null), 5000);
+
       } catch (error) {
         console.error('❌ [AVATAR] Erreur lors de la transition :', error);
         toast({
@@ -83,6 +93,11 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
                     )}
                 </div>
             </>
+           )}
+           {debugImageUrl && (
+              <div className="absolute top-full mt-2 w-96 z-50">
+                <ImageDebugger imageUrl={debugImageUrl} />
+              </div>
            )}
         </div>
       )}
