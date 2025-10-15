@@ -659,10 +659,17 @@ export default function SessionPage() {
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
     const handleEndSessionForEveryone = useCallback(() => {
-        console.log("🛑 [ACTION] Le professeur termine la session pour tout le monde.");
-        if (!isTeacher || isEndingSession) return;
+        console.log(`🛑 [ACTION] Clic sur "Terminer la session". State: isTeacher=${isTeacher}, isEndingSession=${isEndingSession}`);
+        if (!isTeacher || isEndingSession) {
+            console.log(`🟡 [ACTION] Action ignorée. isTeacher: ${isTeacher}, isEndingSession: ${isEndingSession}`);
+            return;
+        }
+        console.log("⏳ [ACTION] Début de la transition pour terminer la session.");
         setIsEndingSession(true);
-        endCoursSession(sessionId).finally(() => setIsEndingSession(false));
+        endCoursSession(sessionId).finally(() => {
+            console.log("✅ [ACTION] Transition terminée. Réinitialisation de isEndingSession à false.");
+            setIsEndingSession(false);
+        });
     }, [isTeacher, isEndingSession, sessionId]);
     
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
@@ -783,7 +790,7 @@ export default function SessionPage() {
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                        onUnderstandingChange={handleUnderstandingChange}
+                        onUnderstandingChange={onUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
                     />
                 )}

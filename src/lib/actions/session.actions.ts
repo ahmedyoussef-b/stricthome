@@ -154,10 +154,13 @@ export async function spotlightParticipant(sessionId: string, participantId: str
 }
 
 export async function endCoursSession(sessionId: string) {
+  console.log(`🏁 [ACTION SERVER] Début de la tentative de fin de session ${sessionId}`);
   const session = await getAuthSession();
   if (session?.user.role !== 'PROFESSEUR') {
+    console.log(`🔴 [ACTION SERVER] Erreur: Non autorisé. Rôle de l'utilisateur: ${session?.user.role}`);
     throw new Error('Unauthorized: Only teachers can end sessions.');
   }
+   console.log(`👤 [ACTION SERVER] Professeur authentifié: ${session.user.id}`);
 
   const coursSession = await prisma.coursSession.findFirst({
     where: { 
@@ -169,27 +172,29 @@ export async function endCoursSession(sessionId: string) {
   });
 
   if (!coursSession) {
-    console.log(`ℹ️ [Action Server] Tentative de fin pour la session ${sessionId}, mais elle est déjà terminée ou n'existe pas.`);
+    console.log(`🟡 [ACTION SERVER] Tentative de fin pour la session ${sessionId}, mais elle est déjà terminée, n'existe pas, ou n'appartient pas à ce professeur.`);
     return null;
   }
+   console.log(`✅ [ACTION SERVER] Session ${sessionId} trouvée et active. Procédure de fin en cours.`);
+
 
   const updatedSession = await prisma.coursSession.update({
     where: { id: sessionId },
     data: { endedAt: new Date() },
   });
-  console.log(`✅ [DB] Session ${sessionId} marquée comme terminée en base de données.`);
+  console.log(`💾 [DB] Session ${sessionId} marquée comme terminée dans la base de données.`);
 
   const firstParticipant = coursSession.participants[0];
   if (firstParticipant?.classroomId) {
       const channelName = `presence-classe-${firstParticipant.classroomId}`;
       await pusherServer.trigger(channelName, 'session-ended', { sessionId: updatedSession.id });
-      console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de classe ${channelName}.`);
+      console.log(`📡 [PUSHER] Événement 'session-ended' envoyé sur le canal de classe ${channelName}.`);
   }
 
   // Diffuser l'événement sur le canal de la session pour notifier les participants actifs
   const sessionChannelName = `presence-session-${sessionId}`;
   await pusherServer.trigger(sessionChannelName, 'session-ended', { sessionId: updatedSession.id });
-  console.log(`✅ [Pusher] Événement 'session-ended' envoyé sur le canal de session ${sessionChannelName}.`);
+  console.log(`📡 [PUSHER] Événement 'session-ended' envoyé sur le canal de session ${sessionChannelName}.`);
 
 
   for (const participant of coursSession.participants) {
@@ -197,7 +202,7 @@ export async function endCoursSession(sessionId: string) {
   }
   revalidatePath(`/teacher`);
 
-  console.log(`🏁 [Action Server] Session ${sessionId} terminée avec succès par le professeur ${session.user.id}.`);
+  console.log(`🎉 [ACTION SERVER] Session ${sessionId} terminée avec succès par le professeur ${session.user.id}.`);
 
   return updatedSession;
 }

@@ -28,14 +28,14 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
 
   const handleUploadSuccess = (result: any) => {
-    console.log('=== DÉBUT UPLOAD AVATAR ===');
+   // console.log('=== DÉBUT UPLOAD AVATAR ===');
     
     if (result.event === 'success') {
       const imageUrl = result.info.secure_url || result.info.url;
-      console.log('🖼️ [AVATAR] URL image extraite:', imageUrl);
+     // console.log('🖼️ [AVATAR] URL image extraite:', imageUrl);
       
       if (!imageUrl) {
-        console.error('❌ [AVATAR] Aucune URL valide trouvée');
+       // console.error('❌ [AVATAR] Aucune URL valide trouvée');
         toast({
           variant: 'destructive',
           title: 'Erreur',
@@ -49,24 +49,24 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
 
       startTransition(async () => {
         try {
-          console.log('🚀 [AVATAR] Début transition - appel action serveur...');
+         // console.log('🚀 [AVATAR] Début transition - appel action serveur...');
           
           await updateUserProfileImage(imageUrl);
-          console.log('✅ [AVATAR] Action serveur terminée.');
+         // console.log('✅ [AVATAR] Action serveur terminée.');
 
-          console.log('🔄 [AVATAR] Mise à jour session NextAuth...');
+         // console.log('🔄 [AVATAR] Mise à jour session NextAuth...');
           await update({ image: imageUrl });
-          console.log('✅ [AVATAR] Session mise à jour.');
+         // console.log('✅ [AVATAR] Session mise à jour.');
 
           toast({
             title: '✅ Photo mise à jour!',
             description: 'Votre photo de profil a été changée avec succès.',
           });
 
-          console.log('=== UPLOAD AVATAR RÉUSSI ===');
+         // console.log('=== UPLOAD AVATAR RÉUSSI ===');
 
         } catch (error) {
-          console.error('❌ [AVATAR] Erreur lors de la mise à jour:', error);
+         // console.error('❌ [AVATAR] Erreur lors de la mise à jour:', error);
           toast({
             variant: 'destructive',
             title: 'Erreur',
@@ -82,7 +82,7 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
   };
 
   const currentImageUrl = session?.user?.image ?? user.image ?? null;
-  console.log('🖼️ [AVATAR] Image actuelle à afficher:', currentImageUrl);
+ // console.log('🖼️ [AVATAR] Image actuelle à afficher:', currentImageUrl);
 
   const interactiveAvatar = (
     <>
@@ -95,7 +95,7 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
               if (!loaded || isUploading) return;
               e.preventDefault();
               e.stopPropagation();
-              console.log('📸 [AVATAR] Ouverture widget...');
+             // console.log('📸 [AVATAR] Ouverture widget...');
               open();
             }} 
             className={cn(
