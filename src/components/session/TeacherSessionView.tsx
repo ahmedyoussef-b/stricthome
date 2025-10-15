@@ -105,11 +105,11 @@ export function TeacherSessionView({
 
             {/* Zone centrale : Tableau blanc et Partage d'écran */}
             <div className="flex-1 h-full flex flex-col gap-4">
-                <div className='flex-1 h-2/3'>
+                <div className="flex-1 min-h-0 h-2/3">
                     <Whiteboard />
                 </div>
                 {screenStream && (
-                    <div className='flex-1 h-1/3'>
+                    <div className="flex-1 h-1/3">
                         <Card className="w-full h-full p-2 bg-black">
                             <Participant
                                 stream={screenStream}
