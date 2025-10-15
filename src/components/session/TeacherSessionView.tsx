@@ -12,11 +12,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Users } from 'lucide-react';
 import { HandRaiseController } from '../HandRaiseController';
 import { UnderstandingStatus } from '@/app/session/[id]/page';
-import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
+
+function WhiteboardWrapper({ sessionId, isControlled, controllerName }: { sessionId: string; isControlled: boolean; controllerName: string | null | undefined; }) {
+  return (
+    <Whiteboard
+      sessionId={sessionId}
+      isControlledByCurrentUser={isControlled}
+      controllerName={controllerName}
+    />
+  );
+}
+
 
 export function TeacherSessionView({
     sessionId,
@@ -29,6 +39,8 @@ export function TeacherSessionView({
     onGiveWhiteboardControl,
     raisedHands,
     understandingStatus,
+    isWhiteboardActive,
+    whiteboardControllerId,
 }: {
     sessionId: string;
     localStream: MediaStream | null;
@@ -40,27 +52,11 @@ export function TeacherSessionView({
     onGiveWhiteboardControl: (userId: string | null) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
+    isWhiteboardActive: boolean;
+    whiteboardControllerId: string | null;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(localUserId || null);
-
-    useEffect(() => {
-        if (!sessionId) return;
-        const channelName = `presence-session-${sessionId}`;
-        const channel = pusherClient.subscribe(channelName);
-
-        const handleControlChange = (data: { controllerId: string | null }) => {
-            setWhiteboardControllerId(data.controllerId);
-        };
-
-        channel.bind('whiteboard-control-changed', handleControlChange);
-
-        return () => {
-            channel.unbind('whiteboard-control-changed', handleControlChange);
-            pusherClient.unsubscribe(channelName);
-        };
-    }, [sessionId]);
     
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
@@ -75,11 +71,13 @@ export function TeacherSessionView({
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 py-6">
             <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-                 <Whiteboard
-                    sessionId={sessionId}
-                    isControlledByCurrentUser={localUserId === whiteboardControllerId}
-                    controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
-                />
+                 {isWhiteboardActive && localUserId && (
+                    <WhiteboardWrapper 
+                        sessionId={sessionId}
+                        isControlled={localUserId === whiteboardControllerId}
+                        controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
+                    />
+                 )}
             </div>
             
             <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">

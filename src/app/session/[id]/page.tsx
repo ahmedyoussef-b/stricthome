@@ -14,6 +14,8 @@ import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
 import { useWebRTCNegotiation, WebRTCSignal, PendingSignal } from '@/hooks/useWebRTCNegotiation';
+import { Whiteboard } from '@/components/Whiteboard';
+
 
 // Configuration des serveurs STUN de Google
 const ICE_SERVERS = {
@@ -42,6 +44,17 @@ export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
 
 const OFFER_COOLDOWN = 2000; // 2 secondes entre les offres
+
+function WhiteboardWrapper({ sessionId, isControlled, controllerName }: { sessionId: string; isControlled: boolean; controllerName: string | null | undefined; }) {
+  return (
+    <Whiteboard
+      sessionId={sessionId}
+      isControlledByCurrentUser={isControlled}
+      controllerName={controllerName}
+    />
+  );
+}
+
 
 export default function SessionPage() {
     const router = useRouter();
@@ -77,6 +90,10 @@ export default function SessionPage() {
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    const [isWhiteboardActive, setIsWhiteboardActive] = useState(true);
+    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
+
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
         if (!userId) return;
@@ -488,11 +505,23 @@ export default function SessionPage() {
         if (!sessionId || !userId) return;
         console.log("🚀 [INITIALISATION] Démarrage de l'initialisation de la session.");
 
+        let isCleanedUp = false;
+        const performCleanup = () => {
+            if (!isCleanedUp) {
+                cleanup();
+                isCleanedUp = true;
+            }
+        };
+
+
         const initialize = async () => {
             try {
                 // 1. Charger les données de la session
                 console.log("📂 [INITIALISATION] 1. Chargement des données de la session...");
                 const { session: sessionData, students, teacher } = await getSessionData(sessionId);
+                
+                setWhiteboardControllerId(sessionData.whiteboardControllerId);
+
                 if (sessionData.endedAt) {
                     console.log("🏁 [INITIALISATION] Session déjà terminée, redirection...");
                     handleEndSession();
@@ -612,6 +641,9 @@ export default function SessionPage() {
                     setDuration(data.duration);
                     setTimeLeft(data.duration);
                 });
+                channel.bind('whiteboard-control-changed', (data: { controllerId: string | null }) => {
+                    setWhiteboardControllerId(data.controllerId);
+                });
                 
                 console.log("✅ [INITIALISATION] Initialisation terminée.");
                 setIsLoading(false);
@@ -619,7 +651,7 @@ export default function SessionPage() {
             } catch (error) {
                 console.error("❌ [INITIALISATION] Erreur critique lors de l'initialisation:", error);
                 toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
-                cleanup();
+                performCleanup();
             }
         };
 
@@ -627,7 +659,7 @@ export default function SessionPage() {
 
         return () => {
             console.log("🚪 [DÉMONTAGE] Le composant de session est démonté. Nettoyage en cours.");
-            cleanup();
+            performCleanup();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId, userId]);
@@ -653,21 +685,20 @@ export default function SessionPage() {
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
 const handleEndSessionForEveryone = useCallback(async () => {
-    console.log(`🛑 [ACTION] Clic sur "Terminer la session". State: isTeacher=${isTeacher}, isEndingSession=${isEndingSession}`);
-
     // Protection contre les clics multiples ou les appels non autorisés
     if (!isTeacher || isEndingSession) {
-        console.warn(`⚠️ [ACTION] Action de fin de session ignorée. isTeacher=${isTeacher}, isEndingSession=${isEndingSession}`);
         return;
     }
     
     setIsEndingSession(true);
-    console.log("⏳ [ACTION] État de fin de session activé.");
+    setIsWhiteboardActive(false); // Déclenche le nettoyage du tableau blanc
 
     try {
+        // Laisser le temps au tableau blanc de se nettoyer
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         await endCoursSession(sessionId);
-        // Si l'action réussit, le `useEffect` avec l'événement 'session-ended' s'occupera du nettoyage et de la redirection.
-        // On peut afficher un toast de succès ici pour une rétroaction immédiate.
+        // Si l'action réussit, le `useEffect` avec l'événement 'session-ended' s'occupera du reste.
         toast({
             title: "Session terminée",
             description: "La session a été clôturée pour tous les participants.",
@@ -679,9 +710,9 @@ const handleEndSessionForEveryone = useCallback(async () => {
             title: "Erreur",
             description: "Impossible de terminer la session. Veuillez réessayer.",
         });
-        // En cas d'erreur, on réinitialise l'état pour permettre une nouvelle tentative
+        // En cas d'erreur, on réinitialise les états pour permettre une nouvelle tentative
         setIsEndingSession(false);
-        console.log("🏁 [ACTION] État de fin de session réinitialisé après erreur.");
+        setIsWhiteboardActive(true);
     }
 }, [isTeacher, isEndingSession, sessionId, toast]);
     
@@ -791,6 +822,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
+                        isWhiteboardActive={isWhiteboardActive}
+                        whiteboardControllerId={whiteboardControllerId}
                     />
                 ) : (
                     <StudentSessionView
@@ -805,6 +838,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
+                        isWhiteboardActive={isWhiteboardActive}
+                        whiteboardControllerId={whiteboardControllerId}
                     />
                 )}
             </main>

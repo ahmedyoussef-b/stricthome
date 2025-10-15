@@ -12,12 +12,22 @@ import { cn } from '@/lib/utils';
 import { SessionViewMode, UnderstandingStatus } from '@/app/session/[id]/page';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2 } from 'lucide-react';
-import { pusherClient } from '@/lib/pusher/client';
 import { useSession } from 'next-auth/react';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
+
+function WhiteboardWrapper({ sessionId, isControlled, controllerName }: { sessionId: string; isControlled: boolean; controllerName: string | null | undefined; }) {
+  return (
+    <Whiteboard
+      sessionId={sessionId}
+      isControlledByCurrentUser={isControlled}
+      controllerName={controllerName}
+    />
+  );
+}
+
 
 interface StudentSessionViewProps {
     sessionId: string;
@@ -31,6 +41,8 @@ interface StudentSessionViewProps {
     onGiveWhiteboardControl: (userId: string | null) => void;
     onUnderstandingChange: (status: UnderstandingStatus) => void;
     currentUnderstanding: UnderstandingStatus;
+    isWhiteboardActive: boolean;
+    whiteboardControllerId: string | null;
 }
 
 export function StudentSessionView({
@@ -44,27 +56,11 @@ export function StudentSessionView({
     onGiveWhiteboardControl,
     onUnderstandingChange,
     currentUnderstanding,
+    isWhiteboardActive,
+    whiteboardControllerId,
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
     const userId = session?.user.id;
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!sessionId) return;
-        const channelName = `presence-session-${sessionId}`;
-        const channel = pusherClient.subscribe(channelName);
-
-        const handleControlChange = (data: { controllerId: string | null }) => {
-            setWhiteboardControllerId(data.controllerId);
-        };
-
-        channel.bind('whiteboard-control-changed', handleControlChange);
-
-        return () => {
-            channel.unbind('whiteboard-control-changed', handleControlChange);
-            pusherClient.unsubscribe(channelName);
-        };
-    }, [sessionId]);
     
     const renderSpotlight = () => {
         if (spotlightedStream) {
@@ -144,11 +140,13 @@ export function StudentSessionView({
             </div>
             {/* Colonne de droite: Tableau blanc */}
             <div className="lg:col-span-2 min-h-[400px] lg:min-h-0">
-                 <Whiteboard
-                    sessionId={sessionId}
-                    isControlledByCurrentUser={userId === whiteboardControllerId}
-                    controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
-                />
+                {isWhiteboardActive && userId && (
+                     <WhiteboardWrapper 
+                        sessionId={sessionId}
+                        isControlled={userId === whiteboardControllerId}
+                        controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
+                    />
+                )}
             </div>
         </div>
     );
