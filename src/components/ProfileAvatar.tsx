@@ -1,9 +1,9 @@
+
 // src/components/ProfileAvatar.tsx
 'use client';
 
 import { useTransition, useState, useEffect } from 'react';
 import { User } from 'next-auth';
-import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CloudinaryUploadWidget } from '@/components/CloudinaryUploadWidget';
 import { updateUserProfileImage } from '@/lib/actions/user.actions';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Camera, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { ImageDebugger } from './ImageDebugger';
 
 interface ProfileAvatarProps {
   user: User;
@@ -23,15 +24,8 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const { update, data: session } = useSession();
-  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  // Synchroniser l'image locale avec l'utilisateur actuel
-  useEffect(() => {
-    const safeImageUrl = user.image ?? null;
-    console.log('🔄 [AVATAR] Synchronisation image utilisateur:', safeImageUrl);
-    setLocalImageUrl(safeImageUrl);
-  }, [user.image]);
+  const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
 
   const handleUploadSuccess = (result: any) => {
     console.log('=== DÉBUT UPLOAD AVATAR ===');
@@ -51,29 +45,18 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
       }
 
       setIsUploading(true);
-      
-      // Mettre à jour immédiatement l'image locale pour feedback visuel
-      console.log('🎨 [AVATAR] Mise à jour immédiate de l\'image locale');
-      setLocalImageUrl(imageUrl);
+      setDebugImageUrl(imageUrl);
 
       startTransition(async () => {
         try {
           console.log('🚀 [AVATAR] Début transition - appel action serveur...');
           
-          // Appel de l'action serveur
-          const updatedUser = await updateUserProfileImage(imageUrl);
-          console.log('✅ [AVATAR] Action serveur réussie:', {
-            id: updatedUser.id,
-            image: updatedUser.image
-          });
+          await updateUserProfileImage(imageUrl);
+          console.log('✅ [AVATAR] Action serveur terminée.');
 
-          // Mettre à jour la session NextAuth
           console.log('🔄 [AVATAR] Mise à jour session NextAuth...');
-          await update();
-          console.log('✅ [AVATAR] Session mise à jour');
-
-          // Forcer la mise à jour avec l'image de la base de données
-          setLocalImageUrl(updatedUser.image);
+          await update({ image: imageUrl });
+          console.log('✅ [AVATAR] Session mise à jour.');
 
           toast({
             title: '✅ Photo mise à jour!',
@@ -84,11 +67,6 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
 
         } catch (error) {
           console.error('❌ [AVATAR] Erreur lors de la mise à jour:', error);
-          
-          // Revenir à l'ancienne image en cas d'erreur
-          const safeUserImage = user.image ?? null;
-          setLocalImageUrl(safeUserImage);
-          
           toast({
             variant: 'destructive',
             title: 'Erreur',
@@ -96,15 +74,19 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
           });
         } finally {
           setIsUploading(false);
+          // Hide debugger after a delay
+          setTimeout(() => setDebugImageUrl(null), 5000);
         }
       });
     }
   };
 
-  // Utiliser l'image locale si disponible, sinon l'image de l'utilisateur (avec gestion de undefined)
-  const currentImageUrl = localImageUrl ?? (user.image ?? null);
+  const currentImageUrl = session?.user?.image ?? user.image ?? null;
+  console.log('🖼️ [AVATAR] Image actuelle à afficher:', currentImageUrl);
 
   const interactiveAvatar = (
+    <>
+    {debugImageUrl && <ImageDebugger imageUrl={debugImageUrl} />}
     <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
       {({ open, loaded }) => (
         <div className="relative">
@@ -137,10 +119,6 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
                         src={currentImageUrl} 
                         alt={user.name || 'Avatar'} 
                         className="object-cover"
-                        onError={(e) => {
-                          console.error('❌ [AVATAR] Erreur chargement image:', currentImageUrl);
-                        }}
-                        onLoad={() => console.log('✅ [AVATAR] Image chargée avec succès')}
                       />
                       <AvatarFallback className="bg-gray-100">
                         {user.name?.charAt(0) || 'U'}
@@ -157,14 +135,12 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
                   )}
                 </Avatar>
                 
-                {/* Overlay au survol */}
                 {loaded && !isUploading && (
                   <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <Camera className="h-4 w-4 text-white" />
                   </div>
                 )}
                 
-                {/* Indicateur de chargement */}
                 {isUploading && (
                   <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
                     <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -173,16 +149,10 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
               </>
             )}
           </div>
-          
-          {/* Indicateur de chargement du widget */}
-          {!loaded && (
-            <div className="absolute inset-0 bg-gray-100 rounded-full flex items-center justify-center">
-              <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
-            </div>
-          )}
         </div>
       )}
     </CloudinaryUploadWidget>
+    </>
   );
 
   const staticAvatar = (
@@ -193,9 +163,6 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
             src={currentImageUrl} 
             alt={user.name || 'Avatar'} 
             className="object-cover"
-            onError={(e) => {
-              console.error('❌ [AVATAR STATIC] Erreur chargement:', currentImageUrl);
-            }}
           />
           <AvatarFallback>{user.name?.charAt(0) || 'U'}</AvatarFallback>
         </>
