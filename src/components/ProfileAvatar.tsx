@@ -10,6 +10,7 @@ import { updateUserProfileImage } from '@/lib/actions/user.actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Camera, Loader2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 interface ProfileAvatarProps {
   user: User;
@@ -21,12 +22,15 @@ interface ProfileAvatarProps {
 export function ProfileAvatar({ user, isInteractive = false, className, children }: ProfileAvatarProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { update } = useSession();
 
   const handleUploadSuccess = (result: any) => {
     const imageUrl = result.info.secure_url;
     startTransition(async () => {
       try {
         await updateUserProfileImage(imageUrl);
+        // Force a session update on the client to get the new image
+        await update(); 
         toast({
           title: 'Photo de profil mise à jour!',
         });

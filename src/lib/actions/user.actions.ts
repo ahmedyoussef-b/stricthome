@@ -11,11 +11,13 @@ export async function updateUserProfileImage(imageUrl: string) {
     throw new Error('Unauthorized');
   }
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id: session.user.id },
     data: { image: imageUrl },
   });
 
   revalidatePath('/teacher/profile');
   revalidatePath(`/student/${session.user.id}`);
+
+  return updatedUser;
 }
