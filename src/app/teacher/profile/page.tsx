@@ -56,7 +56,7 @@ export default async function TeacherProfilePage() {
                 </div>
               </div>
 
-              <div className="max-w-4xl mx-auto space-y-8">
+              <div className="space-y-8">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-4">
