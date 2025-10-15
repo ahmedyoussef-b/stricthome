@@ -22,23 +22,23 @@ export function useActivityTracker(enabled: boolean) {
     const isInactive = now - lastActivityTimeRef.current > INACTIVITY_THRESHOLD;
 
     if (document.visibilityState !== 'visible' || isInactive) {
-      console.log(`🟡 [Heartbeat] Ping ignoré (Visible: ${document.visibilityState === 'visible'}, Inactif: ${isInactive})`);
+      console.log(`🟡 [CLIENT - Heartbeat] Ping ignoré (Visible: ${document.visibilityState === 'visible'}, Inactif: ${isInactive})`);
       return;
     }
     
-    console.log('💓 [Heartbeat] Envoi du ping au serveur...');
+    console.log('💓 [CLIENT - Heartbeat] Émission du ping...');
     try {
       const result = await trackStudentActivity(PING_INTERVAL / 1000);
-      console.log('✅ [Heartbeat] Réponse du serveur:', result);
+      console.log('✅ [CLIENT - Heartbeat] Effet du ping (Réponse serveur):', result);
     } catch (error) {
-      console.error('❌ [Heartbeat] Échec du ping au serveur:', error);
+      console.error('❌ [CLIENT - Heartbeat] Échec de l\'émission du ping:', error);
     }
   }, []);
 
   useEffect(() => {
     if (!enabled) {
       if (intervalRef.current) {
-        console.log('🛑 [Heartbeat] Tracker désactivé et intervalle nettoyé.');
+        console.log('🛑 [Heartbeat Tracker] Tracker désactivé et intervalle nettoyé.');
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
@@ -46,17 +46,17 @@ export function useActivityTracker(enabled: boolean) {
       return;
     }
 
-    console.log('🚀 [Heartbeat] Tracker d\'activité initialisé.');
+    console.log('🚀 [Heartbeat Tracker] Initialisation.');
     lastActivityTimeRef.current = Date.now();
 
     ACTIVITY_EVENTS.forEach(event => window.addEventListener(event, handleActivity));
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('👀 [Heartbeat] Onglet devenu visible, réinitialisation du temps d\'activité.');
+        console.log('👀 [Heartbeat Tracker] Onglet visible, réinitialisation du temps d\'activité.');
         lastActivityTimeRef.current = Date.now();
       } else {
-        console.log('🙈 [Heartbeat] Onglet devenu caché.');
+        console.log('🙈 [Heartbeat Tracker] Onglet caché.');
       }
     };
     
@@ -64,10 +64,10 @@ export function useActivityTracker(enabled: boolean) {
 
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(pingServer, PING_INTERVAL);
-    console.log(`⏰ [Heartbeat] Intervalle de ping défini toutes les ${PING_INTERVAL / 1000} secondes.`);
+    console.log(`⏰ [Heartbeat Tracker] Intervalle de ping défini toutes les ${PING_INTERVAL / 1000} secondes.`);
 
     return () => {
-      console.log('🧹 [Heartbeat] Nettoyage du tracker d\'activité.');
+      console.log('🧹 [Heartbeat Tracker] Nettoyage.');
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;

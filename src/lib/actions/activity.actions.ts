@@ -13,11 +13,11 @@ export async function trackStudentActivity(activeSeconds: number) {
     const userId = session?.user?.id;
     
     if (!userId || session.user.role !== 'ELEVE') {
-      console.log('👤 [Activity] Action ignorée: Pas un élève authentifié.');
+      console.log('👤 [SERVEUR - Heartbeat] Action ignorée: Non-élève.');
       return { success: true, pointsAwarded: 0, reason: 'Not an authenticated student' };
     }
     
-    console.log(`💓 [Activity] Ping reçu pour l'élève ${userId}.`);
+    console.log(`💓 [SERVEUR - Heartbeat] Ping Reçu: Élève ${userId}.`);
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Récupérer l'état actuel du leaderboard
@@ -27,7 +27,7 @@ export async function trackStudentActivity(activeSeconds: number) {
 
       // 2. Vérifier la limite quotidienne
       if (currentLeaderboard && currentLeaderboard.dailyPoints >= MAX_DAILY_POINTS) {
-        console.log(`📈 [Activity] Limite quotidienne de ${MAX_DAILY_POINTS} points atteinte pour ${userId}.`);
+        console.log(`📈 [SERVEUR - Heartbeat] Limite quotidienne atteinte pour ${userId}.`);
         return { success: true, pointsAwarded: 0, reason: 'Daily limit reached' };
       }
 
@@ -38,11 +38,11 @@ export async function trackStudentActivity(activeSeconds: number) {
       );
 
       if (pointsToAward <= 0) {
-        console.log(`ℹ️ [Activity] Aucun point à attribuer pour ${userId}.`);
+        console.log(`ℹ️ [SERVEUR - Heartbeat] Aucun point à attribuer pour ${userId}.`);
         return { success: true, pointsAwarded: 0, reason: 'No points to award' };
       }
       
-      console.log(`💰 [Activity] Attribution de ${pointsToAward} points à ${userId}.`);
+      console.log(`💰 [SERVEUR - Heartbeat] Effet: +${pointsToAward} points pour ${userId}.`);
 
       // 4. Mettre à jour User et Leaderboard en parallèle
       const [, updatedLeaderboard] = await Promise.all([
@@ -84,7 +84,7 @@ export async function trackStudentActivity(activeSeconds: number) {
 
     return result;
   } catch (error) {
-    console.error('❌ [Activity] Erreur lors du suivi de l\'activité:', error);
+    console.error('❌ [SERVEUR - Heartbeat] Erreur:', error);
     throw new Error('Failed to track activity.');
   }
 }
