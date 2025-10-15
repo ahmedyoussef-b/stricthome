@@ -460,8 +460,8 @@ export default function SessionPage() {
     const handleResetTimer = () => {
         if (!isTeacher) return;
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-        setIsTimerRunning(false);
         setTimeLeft(duration);
+        setIsTimerRunning(false);
         broadcastTimerEvent(sessionId, 'timer-reset', { duration });
     };
 
@@ -794,6 +794,12 @@ const handleEndSessionForEveryone = useCallback(async () => {
         )
     }
 
+    // Determine which stream to show to the student
+    // Priority: 1. Screen Share, 2. Spotlighted Stream
+    const studentMainStream = isSharingScreen ? screenStreamRef.current : spotlightedStream;
+    // Find the teacher's stream among remote participants, for the student view
+    const teacherStream = remoteStreams.get(teacher?.id ?? '');
+
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
             <SessionHeader 
@@ -829,12 +835,13 @@ const handleEndSessionForEveryone = useCallback(async () => {
                     <StudentSessionView
                         sessionId={sessionId}
                         localStream={localStreamRef.current}
-                        spotlightedStream={spotlightedStream}
+                        spotlightedStream={studentMainStream}
                         spotlightedUser={spotlightedUser}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
+                        screenStream={screenStreamRef.current}
                     />
                 )}
             </main>

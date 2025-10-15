@@ -1,7 +1,7 @@
 // src/components/session/StudentSessionView.tsx
 'use client';
 
-import { Hand, Smile, Meh, Frown, ScreenShare } from 'lucide-react';
+import { Hand, Smile, Meh, Frown } from 'lucide-react';
 import { Participant } from '@/components/Participant';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
@@ -26,6 +26,7 @@ interface StudentSessionViewProps {
     onToggleHandRaise: () => void;
     onUnderstandingChange: (status: UnderstandingStatus) => void;
     currentUnderstanding: UnderstandingStatus;
+    screenStream: MediaStream | null; // Stream for screen sharing
 }
 
 export function StudentSessionView({
@@ -37,11 +38,16 @@ export function StudentSessionView({
     onToggleHandRaise,
     onUnderstandingChange,
     currentUnderstanding,
+    screenStream
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
 
-    const renderSpotlight = () => {
-        if (!spotlightedUser || !spotlightedStream) {
+    // The main video feed will be the screen share if it exists, otherwise the spotlighted user.
+    const mainStream = screenStream || spotlightedStream;
+    const mainStreamUser = screenStream ? { id: 'screen-share', name: 'Partage d\'écran' } : spotlightedUser;
+
+    const renderMainContent = () => {
+        if (!mainStreamUser || !mainStream) {
             return (
                 <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
                     <div className="text-center text-muted-foreground">
@@ -54,25 +60,27 @@ export function StudentSessionView({
         
         return (
             <Participant 
-                stream={spotlightedStream}
-                isLocal={localStream === spotlightedStream}
+                stream={mainStream}
+                isLocal={localStream === mainStream}
                 isSpotlighted={true}
                 isTeacher={false}
-                participantUserId={spotlightedUser?.id ?? ''}
-                displayName={spotlightedUser?.name ?? undefined}
+                participantUserId={mainStreamUser?.id ?? ''}
+                displayName={mainStreamUser?.name ?? undefined}
             />
         );
     };
     
     return (
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 py-6">
-            {/* Main content: Spotlight video */}
-            <div className="lg:w-2/3 flex flex-col gap-4">
-                <div className='flex-1'>{renderSpotlight()}</div>
+            {/* Left side: Main video content (spotlight or screen share) */}
+            <div className="lg:w-1/2 flex flex-col gap-4">
+                <div className='flex-1 min-h-0'>
+                    {renderMainContent()}
+                </div>
             </div>
 
-             {/* Right sidebar: Whiteboard and controls */}
-            <div className="lg:w-1/3 flex flex-col gap-4">
+             {/* Right side: Whiteboard and student controls */}
+            <div className="lg:w-1/2 flex flex-col gap-4">
                 <div className='flex-1 min-h-0'>
                     <Whiteboard />
                 </div>
