@@ -790,7 +790,7 @@ export default function SessionPage() {
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
-                        onUnderstandingChange={onUnderstandingChange}
+                        onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
                     />
                 )}
