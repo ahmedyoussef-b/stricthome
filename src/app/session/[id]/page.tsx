@@ -14,7 +14,6 @@ import { TeacherSessionView } from '@/components/session/TeacherSessionView';
 import { StudentSessionView } from '@/components/session/StudentSessionView';
 import { PermissionPrompt } from '@/components/PermissionPrompt';
 import { useWebRTCNegotiation, WebRTCSignal, PendingSignal } from '@/hooks/useWebRTCNegotiation';
-import { Whiteboard } from '@/components/Whiteboard';
 
 
 // Configuration des serveurs STUN de Google
@@ -44,16 +43,6 @@ export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
 
 const OFFER_COOLDOWN = 2000; // 2 secondes entre les offres
-
-function WhiteboardWrapper({ sessionId, isControlled, controllerName }: { sessionId: string; isControlled: boolean; controllerName: string | null | undefined; }) {
-  return (
-    <Whiteboard
-      sessionId={sessionId}
-      isControlledByCurrentUser={isControlled}
-      controllerName={controllerName}
-    />
-  );
-}
 
 
 export default function SessionPage() {
@@ -91,7 +80,6 @@ export default function SessionPage() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const [isWhiteboardActive, setIsWhiteboardActive] = useState(true);
     const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
 
 
@@ -691,12 +679,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
     }
     
     setIsEndingSession(true);
-    setIsWhiteboardActive(false); // Déclenche le nettoyage du tableau blanc
 
     try {
-        // Laisser le temps au tableau blanc de se nettoyer
-        await new Promise(resolve => setTimeout(resolve, 100));
-
         await endCoursSession(sessionId);
         // Si l'action réussit, le `useEffect` avec l'événement 'session-ended' s'occupera du reste.
         toast({
@@ -712,7 +696,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
         });
         // En cas d'erreur, on réinitialise les états pour permettre une nouvelle tentative
         setIsEndingSession(false);
-        setIsWhiteboardActive(true);
     }
 }, [isTeacher, isEndingSession, sessionId, toast]);
     
@@ -822,7 +805,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
-                        isWhiteboardActive={isWhiteboardActive}
                         whiteboardControllerId={whiteboardControllerId}
                     />
                 ) : (
@@ -838,7 +820,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
-                        isWhiteboardActive={isWhiteboardActive}
                         whiteboardControllerId={whiteboardControllerId}
                     />
                 )}

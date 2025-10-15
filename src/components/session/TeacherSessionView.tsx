@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Whiteboard } from '@/components/Whiteboard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
@@ -17,16 +16,6 @@ import { UnderstandingTracker } from '../UnderstandingTracker';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
-function WhiteboardWrapper({ sessionId, isControlled, controllerName }: { sessionId: string; isControlled: boolean; controllerName: string | null | undefined; }) {
-  return (
-    <Whiteboard
-      sessionId={sessionId}
-      isControlledByCurrentUser={isControlled}
-      controllerName={controllerName}
-    />
-  );
-}
-
 
 export function TeacherSessionView({
     sessionId,
@@ -36,11 +25,8 @@ export function TeacherSessionView({
     allSessionUsers,
     onlineUserIds,
     onSpotlightParticipant,
-    onGiveWhiteboardControl,
     raisedHands,
     understandingStatus,
-    isWhiteboardActive,
-    whiteboardControllerId,
 }: {
     sessionId: string;
     localStream: MediaStream | null;
@@ -52,7 +38,6 @@ export function TeacherSessionView({
     onGiveWhiteboardControl: (userId: string | null) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
-    isWhiteboardActive: boolean;
     whiteboardControllerId: string | null;
 }) {
     const { data: session } = useSession();
@@ -64,23 +49,9 @@ export function TeacherSessionView({
     const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
 
-    const handleClearWhiteboardControl = () => {
-        onGiveWhiteboardControl(teacher?.id ?? null);
-    };
-
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 py-6">
             <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-                 {isWhiteboardActive && localUserId && (
-                    <WhiteboardWrapper 
-                        sessionId={sessionId}
-                        isControlled={localUserId === whiteboardControllerId}
-                        controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
-                    />
-                 )}
-            </div>
-            
-            <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
                 <Card className="flex-1 flex flex-col min-h-0 bg-background/80">
                      <CardHeader className="p-4 flex-row items-center justify-between">
                         <CardTitle className="flex items-center gap-2 text-base">
@@ -90,7 +61,7 @@ export function TeacherSessionView({
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pr-2">
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
                                {allSessionUsers.map((user) => {
                                     const remoteStream = remoteStreamsMap.get(user.id);
                                     const isUserLocal = user.id === localUserId;
@@ -104,9 +75,7 @@ export function TeacherSessionView({
                                                 isTeacher={true}
                                                 participantUserId={user.id}
                                                 displayName={user.name ?? "Utilisateur"}
-                                                onGiveWhiteboardControl={onGiveWhiteboardControl}
                                                 onSpotlightParticipant={onSpotlightParticipant}
-                                                isWhiteboardController={user.id === whiteboardControllerId}
                                                 isHandRaised={raisedHands.has(user.id)}
                                                 isSpotlighted={user.id === spotlightedUser?.id}
                                             />
@@ -122,9 +91,7 @@ export function TeacherSessionView({
                                                 isTeacher={true} // isTeacher view for controls
                                                 participantUserId={user.id}
                                                 displayName={user.name ?? "Utilisateur"}
-                                                onGiveWhiteboardControl={onGiveWhiteboardControl}
                                                 onSpotlightParticipant={onSpotlightParticipant}
-                                                isWhiteboardController={user.id === whiteboardControllerId}
                                                 isHandRaised={raisedHands.has(user.id)}
                                                 isSpotlighted={user.id === spotlightedUser?.id}
                                             />
@@ -137,8 +104,6 @@ export function TeacherSessionView({
                                                 isOnline={onlineUserIds.includes(user.id)}
                                                 isHandRaised={raisedHands.has(user.id)}
                                                 onSpotlightParticipant={onSpotlightParticipant}
-                                                onGiveWhiteboardControl={onGiveWhiteboardControl}
-                                                isWhiteboardController={user.id === whiteboardControllerId}
                                             />
                                         );
                                     }
@@ -148,6 +113,9 @@ export function TeacherSessionView({
                         </ScrollArea>
                     </CardContent>
                 </Card>
+            </div>
+            
+            <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
                  <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
                  <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
             </div>

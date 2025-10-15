@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Mic, MicOff, Star, Video, VideoOff, Pen, Hand } from "lucide-react";
+import { Mic, MicOff, Star, Video, VideoOff, Hand } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -17,9 +17,7 @@ interface ParticipantProps {
   isTeacher: boolean;
   displayName?: string;
   participantUserId: string;
-  isWhiteboardController?: boolean;
   isHandRaised?: boolean;
-  onGiveWhiteboardControl: (userId: string) => void;
   onSpotlightParticipant?: (participantId: string) => void;
 }
 
@@ -30,9 +28,7 @@ function ParticipantComponent({
     isTeacher, 
     displayName, 
     participantUserId,
-    isWhiteboardController,
     isHandRaised,
-    onGiveWhiteboardControl,
     onSpotlightParticipant,
 }: ParticipantProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -78,8 +74,7 @@ function ParticipantComponent({
         <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
              <TooltipProvider>
                  {isTeacher && onSpotlightParticipant && (
-                    <>
-                     <Tooltip>
+                    <Tooltip>
                         <TooltipTrigger asChild>
                              <Button variant="secondary" size="icon" className="h-6 w-6 bg-black/50 hover:bg-black/80 border-none" onClick={handleSpotlight}>
                                 <Star className={cn("h-3 w-3", isSpotlighted && "fill-amber-500 text-amber-500")} />
@@ -89,17 +84,6 @@ function ParticipantComponent({
                            <p>Mettre en vedette</p>
                         </TooltipContent>
                     </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                             <Button variant="secondary" size="icon" className="h-6 w-6 bg-black/50 hover:bg-black/80 border-none" onClick={() => onGiveWhiteboardControl(participantUserId)}>
-                                <Pen className={cn("h-3 w-3", isWhiteboardController && "fill-blue-500 text-blue-500")} />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                           <p>Donner le contrôle du tableau</p>
-                        </TooltipContent>
-                    </Tooltip>
-                    </>
                 )}
              </TooltipProvider>
         </div>
@@ -110,20 +94,6 @@ function ParticipantComponent({
             <div className="bg-black/50 backdrop-blur-sm rounded-md p-1">
                 {isMuted ? <MicOff className="h-3 w-3 text-destructive" /> : <Mic className="h-3 w-3 text-green-500" />}
             </div>
-            {isWhiteboardController && (
-                 <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                           <div className="bg-blue-500/80 backdrop-blur-sm rounded-md p-1">
-                                <Pen className="h-3 w-3 text-white" />
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                           <p>Contrôle le tableau</p>
-                        </TooltipContent>
-                    </Tooltip>
-                 </TooltipProvider>
-            )}
             {isHandRaised && (
                 <TooltipProvider>
                     <Tooltip>

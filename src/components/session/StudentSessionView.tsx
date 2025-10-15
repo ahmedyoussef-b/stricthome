@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Hand, Smile, Meh, Frown } from 'lucide-react';
 import { Participant } from '@/components/Participant';
-import { Whiteboard } from '@/components/Whiteboard';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
 import { Button } from '../ui/button';
@@ -18,17 +17,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
-function WhiteboardWrapper({ sessionId, isControlled, controllerName }: { sessionId: string; isControlled: boolean; controllerName: string | null | undefined; }) {
-  return (
-    <Whiteboard
-      sessionId={sessionId}
-      isControlledByCurrentUser={isControlled}
-      controllerName={controllerName}
-    />
-  );
-}
-
-
 interface StudentSessionViewProps {
     sessionId: string;
     localStream: MediaStream | null;
@@ -38,11 +26,8 @@ interface StudentSessionViewProps {
     allSessionUsers: SessionParticipant[];
     isHandRaised: boolean;
     onToggleHandRaise: () => void;
-    onGiveWhiteboardControl: (userId: string | null) => void;
     onUnderstandingChange: (status: UnderstandingStatus) => void;
     currentUnderstanding: UnderstandingStatus;
-    isWhiteboardActive: boolean;
-    whiteboardControllerId: string | null;
 }
 
 export function StudentSessionView({
@@ -50,14 +35,10 @@ export function StudentSessionView({
     localStream,
     spotlightedStream,
     spotlightedUser,
-    allSessionUsers,
     isHandRaised,
     onToggleHandRaise,
-    onGiveWhiteboardControl,
     onUnderstandingChange,
     currentUnderstanding,
-    isWhiteboardActive,
-    whiteboardControllerId,
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
     const userId = session?.user.id;
@@ -72,8 +53,6 @@ export function StudentSessionView({
                     isTeacher={false}
                     participantUserId={spotlightedUser?.id ?? ''}
                     displayName={spotlightedUser?.name ?? undefined}
-                    onGiveWhiteboardControl={onGiveWhiteboardControl}
-                    isWhiteboardController={spotlightedUser?.id === whiteboardControllerId}
                 />
             );
         }
@@ -88,10 +67,9 @@ export function StudentSessionView({
     };
     
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 py-6">
-            {/* Colonne de gauche: Vidéo et contrôles */}
-            <div className="lg:col-span-1 flex flex-col gap-4">
-                {renderSpotlight()}
+        <div className="flex flex-col gap-4 flex-1 min-h-0 py-6">
+            {renderSpotlight()}
+            <div className="grid grid-cols-2 gap-4">
                 <Card>
                     <CardHeader className="p-3">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -132,21 +110,11 @@ export function StudentSessionView({
                 <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
-                    className={cn("w-full mt-auto", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                    className={cn("w-full h-full", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
                 >
                    <Hand className="mr-2 h-5 w-5" />
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
                 </Button>
-            </div>
-            {/* Colonne de droite: Tableau blanc */}
-            <div className="lg:col-span-2 min-h-[400px] lg:min-h-0">
-                {isWhiteboardActive && userId && (
-                     <WhiteboardWrapper 
-                        sessionId={sessionId}
-                        isControlled={userId === whiteboardControllerId}
-                        controllerName={allSessionUsers.find(u => u.id === whiteboardControllerId)?.name}
-                    />
-                )}
             </div>
         </div>
     );

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { cn } from '@/lib/utils';
 import { StudentWithCareer } from '@/lib/types';
-import { Hand, VideoOff, Pen, Star } from 'lucide-react';
+import { Hand, VideoOff, Star } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Button } from './ui/button';
 
@@ -12,8 +12,6 @@ interface StudentPlaceholderProps {
   isOnline: boolean;
   isHandRaised?: boolean;
   onSpotlightParticipant: (participantId: string) => void;
-  onGiveWhiteboardControl: (userId: string) => void;
-  isWhiteboardController?: boolean;
 }
 
 export function StudentPlaceholder({ 
@@ -21,8 +19,6 @@ export function StudentPlaceholder({
   isOnline, 
   isHandRaised,
   onSpotlightParticipant,
-  onGiveWhiteboardControl,
-  isWhiteboardController,
 }: StudentPlaceholderProps) {
   const careerName = student.etat?.metier?.nom;
 
@@ -32,7 +28,6 @@ export function StudentPlaceholder({
         "relative aspect-video bg-muted rounded-lg overflow-hidden flex flex-col items-center justify-center p-2 group",
         !isOnline && "opacity-70",
         isHandRaised && "ring-2 ring-blue-500",
-        isWhiteboardController && "ring-2 ring-blue-500",
       )}
     >
         <div className={cn(
@@ -66,20 +61,6 @@ export function StudentPlaceholder({
                     </Tooltip>
                 </TooltipProvider>
             )}
-            {isWhiteboardController && (
-                 <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                           <div className="bg-blue-500/80 backdrop-blur-sm rounded-md p-1">
-                                <Pen className="h-3 w-3 text-white" />
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                           <p>Contrôle le tableau</p>
-                        </TooltipContent>
-                    </Tooltip>
-                 </TooltipProvider>
-            )}
         </div>
         
         <Avatar className="h-12 w-12 text-xl mb-2">
@@ -99,16 +80,6 @@ export function StudentPlaceholder({
                         </TooltipTrigger>
                         <TooltipContent>
                             <p>Mettre en vedette (audio seulement)</p>
-                        </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="secondary" size="icon" className="h-6 w-6 bg-black/50 hover:bg-black/80 border-none" onClick={() => onGiveWhiteboardControl(student.id)}>
-                                <Pen className={cn("h-3 w-3", isWhiteboardController && "fill-blue-500 text-blue-500")} />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Donner le contrôle du tableau</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
