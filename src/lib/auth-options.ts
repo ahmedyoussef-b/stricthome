@@ -91,30 +91,39 @@ export const authOptions: NextAuthOptions = {
         // Ensure the user object passed along has the correct id and role for the session callback
         user.id = dbUser.id;
         user.role = dbUser.role;
+        user.image = dbUser.image;
       }
       return true;
     },
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.classeId = (user as any).classeId;
-      }
-      return token;
+    jwt({ token, user, trigger, session }) {
+        if (user) {
+            token.id = user.id;
+            token.role = user.role;
+            token.classeId = (user as any).classeId;
+            token.picture = user.image; // IMPORTANT
+        }
+        // Handle session updates, like changing profile picture
+        if (trigger === "update" && session?.image) {
+            token.picture = session.image;
+        }
+        return token;
     },
     session({ session, token }) {
-      if (session.user) {
-        if (token.id) {
-          session.user.id = token.id as string;
+        if (session.user) {
+            if (token.id) {
+            session.user.id = token.id as string;
+            }
+            if (token.role) {
+            session.user.role = token.role as Role;
+            }
+            if (token.classeId) {
+                session.user.classeId = token.classeId as string;
+            }
+            if (token.picture) {
+                session.user.image = token.picture as string; // IMPORTANT
+            }
         }
-        if (token.role) {
-           session.user.role = token.role as Role;
-        }
-        if (token.classeId) {
-            session.user.classeId = token.classeId as string;
-        }
-      }
-      return session;
+        return session;
     },
   },
   pages: {

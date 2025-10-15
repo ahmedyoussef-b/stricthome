@@ -24,24 +24,24 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
   const { toast } = useToast();
   const { update, data: session } = useSession();
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Synchroniser l'image locale avec l'utilisateur actuel
   useEffect(() => {
-    console.log('🔄 [AVATAR] Synchronisation image utilisateur:', user.image);
-    setLocalImageUrl(user.image ?? null);
+    const safeImageUrl = user.image ?? null;
+    console.log('🔄 [AVATAR] Synchronisation image utilisateur:', safeImageUrl);
+    setLocalImageUrl(safeImageUrl);
   }, [user.image]);
 
   const handleUploadSuccess = (result: any) => {
     console.log('=== DÉBUT UPLOAD AVATAR ===');
-    console.log('👤 [AVATAR] Résultat upload:', result);
     
     if (result.event === 'success') {
-      // Extraction robuste de l'URL
       const imageUrl = result.info.secure_url || result.info.url;
       console.log('🖼️ [AVATAR] URL image extraite:', imageUrl);
       
       if (!imageUrl) {
-        console.error('❌ [AVATAR] Aucune URL valide trouvée. Clés disponibles:', Object.keys(result.info));
+        console.error('❌ [AVATAR] Aucune URL valide trouvée');
         toast({
           variant: 'destructive',
           title: 'Erreur',
@@ -50,6 +50,8 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
         return;
       }
 
+      setIsUploading(true);
+      
       // Mettre à jour immédiatement l'image locale pour feedback visuel
       console.log('🎨 [AVATAR] Mise à jour immédiate de l\'image locale');
       setLocalImageUrl(imageUrl);
@@ -62,20 +64,16 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
           const updatedUser = await updateUserProfileImage(imageUrl);
           console.log('✅ [AVATAR] Action serveur réussie:', {
             id: updatedUser.id,
-            image: updatedUser.image,
-            name: updatedUser.name
+            image: updatedUser.image
           });
 
           // Mettre à jour la session NextAuth
           console.log('🔄 [AVATAR] Mise à jour session NextAuth...');
-          const sessionResult = await update();
-          console.log('✅ [AVATAR] Session mise à jour:', sessionResult);
+          await update();
+          console.log('✅ [AVATAR] Session mise à jour');
 
-          // Vérifier que l'image est bien dans la session mise à jour
-          if (session?.user?.image !== imageUrl) {
-            console.log('⚠️ [AVATAR] Image session différente, resynchronisation...');
-            setLocalImageUrl(updatedUser.image || imageUrl);
-          }
+          // Forcer la mise à jour avec l'image de la base de données
+          setLocalImageUrl(updatedUser.image);
 
           toast({
             title: '✅ Photo mise à jour!',
@@ -88,21 +86,23 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
           console.error('❌ [AVATAR] Erreur lors de la mise à jour:', error);
           
           // Revenir à l'ancienne image en cas d'erreur
-          setLocalImageUrl(user.image ?? null);
+          const safeUserImage = user.image ?? null;
+          setLocalImageUrl(safeUserImage);
           
           toast({
             variant: 'destructive',
             title: 'Erreur',
             description: error instanceof Error ? error.message : "Impossible de mettre à jour l'image de profil.",
           });
+        } finally {
+          setIsUploading(false);
         }
       });
     }
   };
 
-  // Utiliser l'image locale si disponible, sinon l'image de l'utilisateur
-  const currentImageUrl = localImageUrl || user.image;
-  console.log('🖼️ [AVATAR] Image actuelle à afficher:', currentImageUrl);
+  // Utiliser l'image locale si disponible, sinon l'image de l'utilisateur (avec gestion de undefined)
+  const currentImageUrl = localImageUrl ?? (user.image ?? null);
 
   const interactiveAvatar = (
     <CloudinaryUploadWidget onUpload={handleUploadSuccess}>
@@ -110,7 +110,7 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
         <div className="relative">
           <div 
             onClick={(e) => {
-              if (!loaded || isPending) return;
+              if (!loaded || isUploading) return;
               e.preventDefault();
               e.stopPropagation();
               console.log('📸 [AVATAR] Ouverture widget...');
@@ -118,8 +118,8 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
             }} 
             className={cn(
               "relative group",
-              loaded && !isPending && "cursor-pointer",
-              !loaded && "opacity-50 cursor-not-allowed"
+              loaded && !isUploading && "cursor-pointer",
+              (!loaded || isUploading) && "opacity-50 cursor-not-allowed"
             )}
           >
             {children ? (
@@ -128,7 +128,7 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
               <>
                 <Avatar className={cn(
                   "h-10 w-10 transition-all duration-200",
-                  loaded && !isPending && "ring-2 ring-transparent hover:ring-blue-500",
+                  loaded && !isUploading && "ring-2 ring-transparent hover:ring-blue-500",
                   className
                 )}>
                   {currentImageUrl ? (
@@ -139,7 +139,6 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
                         className="object-cover"
                         onError={(e) => {
                           console.error('❌ [AVATAR] Erreur chargement image:', currentImageUrl);
-                          // Ne pas cacher l'image, laisser le fallback s'afficher
                         }}
                         onLoad={() => console.log('✅ [AVATAR] Image chargée avec succès')}
                       />
@@ -149,7 +148,7 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
                     </>
                   ) : (
                     <AvatarFallback className="bg-gray-100">
-                      {isPending ? (
+                      {isUploading ? (
                         <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                       ) : (
                         user.name?.charAt(0) || 'U'
@@ -159,14 +158,14 @@ export function ProfileAvatar({ user, isInteractive = false, className, children
                 </Avatar>
                 
                 {/* Overlay au survol */}
-                {loaded && !isPending && (
+                {loaded && !isUploading && (
                   <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <Camera className="h-4 w-4 text-white" />
                   </div>
                 )}
                 
                 {/* Indicateur de chargement */}
-                {isPending && (
+                {isUploading && (
                   <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
                     <Loader2 className="h-4 w-4 animate-spin text-white" />
                   </div>
