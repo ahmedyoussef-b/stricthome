@@ -6,13 +6,23 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import styles from './Menu.module.css';
 import type { Role, Classroom } from '@prisma/client';
-import { menuItems } from '@/lib/constants'; // Import centralized menu items
+import { menuItems } from '@/lib/constants';
 import type { User } from 'next-auth';
 
 interface MenuProps {
   user: User;
   classrooms?: Pick<Classroom, 'id' | 'nom'>[];
   validationCount?: number;
+}
+
+// Type pour les éléments de menu avec toutes les propriétés possibles
+interface MenuItem {
+  label: string;
+  roles: Role[];
+  condition?: (user: User) => boolean;
+  component?: React.ElementType;
+  href?: string | ((user: User) => string);
+  icon?: React.ElementType;
 }
 
 const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 }) => {
@@ -35,11 +45,15 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
       </svg>
       
       {menuItems.map((group) => {
+        // Type assertion pour les éléments de menu
+        const items = group.items as MenuItem[];
+        
         // Filter items based on user role and conditions
-        const visibleItems = group.items.filter(item => 
+        const visibleItems = items.filter(item => 
           item.roles.includes(user.role as Role) &&
           (!item.condition || item.condition(user))
         );
+        
         if (visibleItems.length === 0) return null;
         
         return (
@@ -54,7 +68,7 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
               const colorClass = colorClasses[index % colorClasses.length];
               
               if (item.component) {
-                 const Comp = item.component as React.ElementType;
+                 const Comp = item.component;
                  // Pass necessary props to dynamic components
                  const compProps = item.label === "Créer une Annonce" ? { classrooms } : {};
                  return (
@@ -64,7 +78,7 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
                  )
               }
               
-              if (item.href) {
+              if (item.href && item.icon) {
                 const href = typeof item.href === 'function' ? item.href(user) : item.href;
                 const isActive = pathname === href;
                 const Icon = item.icon;
@@ -78,11 +92,14 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
                     <Icon />
                     <span>{item.label}</span>
                     {item.label === 'Validations' && validationCount > 0 && (
-                      <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">{validationCount}</span>
+                      <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                        {validationCount}
+                      </span>
                     )}
                   </Link>
                 );
               }
+              
               return null;
             })}
           </div>
