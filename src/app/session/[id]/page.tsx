@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant, serverSetWhiteboardController } from '@/lib/actions';
+import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -61,6 +61,7 @@ export default function SessionPage() {
     const pendingIceCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>());
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
     const negotiationTimeoutsRef = useRef(new Map<string, NodeJS.Timeout>());
+    const isCleanedUpRef = useRef(false);
     
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
@@ -79,8 +80,6 @@ export default function SessionPage() {
     const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    const [whiteboardControllerId, setWhiteboardControllerId] = useState<string | null>(null);
 
 
     const broadcastSignal = useCallback(async (toUserId: string, signal: WebRTCSignal) => {
@@ -358,7 +357,12 @@ export default function SessionPage() {
     }, [handleSignal]);
 
     const cleanup = useCallback(() => {
+        if (isCleanedUpRef.current) {
+            console.log("🧹 [NETTOYAGE] Nettoyage déjà effectué, ignoré.");
+            return;
+        }
         console.log("🧹 [NETTOYAGE] Nettoyage complet de la session.");
+        isCleanedUpRef.current = true;
         
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
@@ -493,22 +497,11 @@ export default function SessionPage() {
         if (!sessionId || !userId) return;
         console.log("🚀 [INITIALISATION] Démarrage de l'initialisation de la session.");
 
-        let isCleanedUp = false;
-        const performCleanup = () => {
-            if (!isCleanedUp) {
-                cleanup();
-                isCleanedUp = true;
-            }
-        };
-
-
         const initialize = async () => {
             try {
                 // 1. Charger les données de la session
                 console.log("📂 [INITIALISATION] 1. Chargement des données de la session...");
                 const { session: sessionData, students, teacher } = await getSessionData(sessionId);
-                
-                setWhiteboardControllerId(sessionData.whiteboardControllerId);
 
                 if (sessionData.endedAt) {
                     console.log("🏁 [INITIALISATION] Session déjà terminée, redirection...");
@@ -629,9 +622,6 @@ export default function SessionPage() {
                     setDuration(data.duration);
                     setTimeLeft(data.duration);
                 });
-                channel.bind('whiteboard-control-changed', (data: { controllerId: string | null }) => {
-                    setWhiteboardControllerId(data.controllerId);
-                });
                 
                 console.log("✅ [INITIALISATION] Initialisation terminée.");
                 setIsLoading(false);
@@ -639,7 +629,7 @@ export default function SessionPage() {
             } catch (error) {
                 console.error("❌ [INITIALISATION] Erreur critique lors de l'initialisation:", error);
                 toast({ variant: 'destructive', title: 'Erreur critique', description: "Impossible d'initialiser la session." });
-                performCleanup();
+                cleanup();
             }
         };
 
@@ -647,7 +637,7 @@ export default function SessionPage() {
 
         return () => {
             console.log("🚪 [DÉMONTAGE] Le composant de session est démonté. Nettoyage en cours.");
-            performCleanup();
+            cleanup();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId, userId]);
@@ -673,20 +663,18 @@ export default function SessionPage() {
     }, [spotlightedParticipantId, remoteStreams, userId]);
     
 const handleEndSessionForEveryone = useCallback(async () => {
-    // Protection contre les clics multiples ou les appels non autorisés
-    if (!isTeacher || isEndingSession) {
+    if (isEndingSession) {
         return;
     }
-    
     setIsEndingSession(true);
-
+    
     try {
         await endCoursSession(sessionId);
-        // Si l'action réussit, le `useEffect` avec l'événement 'session-ended' s'occupera du reste.
         toast({
             title: "Session terminée",
             description: "La session a été clôturée pour tous les participants.",
         });
+        // L'événement Pusher `session-ended` déclenchera le cleanup et la redirection
     } catch (error) {
         console.error("❌ [ACTION] Erreur lors de l'appel à endCoursSession:", error);
         toast({
@@ -694,10 +682,9 @@ const handleEndSessionForEveryone = useCallback(async () => {
             title: "Erreur",
             description: "Impossible de terminer la session. Veuillez réessayer.",
         });
-        // En cas d'erreur, on réinitialise les états pour permettre une nouvelle tentative
         setIsEndingSession(false);
     }
-}, [isTeacher, isEndingSession, sessionId, toast]);
+}, [isEndingSession, sessionId, toast]);
     
     const handleSpotlightParticipant = useCallback(async (participantId: string) => {
         console.log(`🔦 [ACTION] Le professeur met en vedette: ${participantId}.`);
@@ -706,16 +693,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
             await serverSpotlightParticipant(sessionId, participantId);
         } catch (error) {
             toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
-        }
-    }, [isTeacher, sessionId, toast]);
-
-    const handleGiveWhiteboardControl = useCallback(async (participantId: string | null) => {
-        console.log(`✍️ [ACTION] Le professeur donne le contrôle du tableau à: ${participantId}.`);
-        if (!isTeacher) return;
-        try {
-            await serverSetWhiteboardController(sessionId, participantId);
-        } catch(error) {
-            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de donner le contrôle." });
         }
     }, [isTeacher, sessionId, toast]);
 
@@ -802,10 +779,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         allSessionUsers={allSessionUsers}
                         onlineUserIds={onlineUsers}
                         onSpotlightParticipant={handleSpotlightParticipant}
-                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
-                        whiteboardControllerId={whiteboardControllerId}
                     />
                 ) : (
                     <StudentSessionView
@@ -817,10 +792,8 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         allSessionUsers={allSessionUsers}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
-                        onGiveWhiteboardControl={handleGiveWhiteboardControl}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
-                        whiteboardControllerId={whiteboardControllerId}
                     />
                 )}
             </main>

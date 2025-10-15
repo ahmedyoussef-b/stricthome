@@ -35,10 +35,8 @@ export function TeacherSessionView({
     allSessionUsers: SessionParticipant[];
     onlineUserIds: string[];
     onSpotlightParticipant: (participantId: string) => void;
-    onGiveWhiteboardControl: (userId: string | null) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
-    whiteboardControllerId: string | null;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;

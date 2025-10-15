@@ -34,7 +34,6 @@ export async function createCoursSession(professeurId: string, studentIds: strin
             classroom: {
                 connect: { id: firstStudent.classroomId }
             },
-            whiteboardControllerId: professeurId, // Teacher has control by default
             spotlightedParticipantSid: professeurId, // Teacher is in spotlight by default
         },
     });
@@ -71,38 +70,6 @@ export async function getSessionDetails(sessionId: string) {
     });
 }
 
-export async function setWhiteboardController(sessionId: string, participantUserId: string | null) {
-    const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSEUR') {
-        throw new Error("Unauthorized: Only teachers can set whiteboard controller.");
-    }
-    console.log(`✍️ [Action Server] Le professeur ${session.user.id} change le contrôle du tableau pour ${participantUserId} dans la session ${sessionId}.`);
-
-
-     const coursSession = await prisma.coursSession.findFirst({
-        where: {
-            id: sessionId,
-            professeurId: session.user.id
-        }
-    });
-     if (!coursSession) {
-        throw new Error("Session not found or you are not the host.");
-    }
-
-    await prisma.coursSession.update({
-        where: { id: sessionId },
-        data: { whiteboardControllerId: participantUserId }
-    });
-    console.log(`✅ [DB] Contrôle du tableau mis à jour en base de données.`);
-
-
-    const channelName = `presence-session-${sessionId}`;
-    await pusherServer.trigger(channelName, 'whiteboard-control-changed', { controllerId: participantUserId });
-    console.log(`📡 [Pusher][OUT] Événement 'whiteboard-control-changed' envoyé sur le canal ${channelName}.`);
-
-
-    revalidatePath(`/session/${sessionId}`);
-}
 
 export async function spotlightParticipant(sessionId: string, participantId: string) {
     console.log(`🔦 [Action Server] Début de spotlightParticipant - Session: ${sessionId}, ParticipantID: ${participantId}`);
@@ -220,15 +187,6 @@ export async function serverSpotlightParticipant(sessionId: string, participantI
     }
     await spotlightParticipant(sessionId, participantId);
 }
-
-export async function serverSetWhiteboardController(sessionId: string, participantId: string | null) {
-     const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSEUR') {
-        throw new Error("Unauthorized");
-    }
-    await setWhiteboardController(sessionId, participantId);
-}
-
 
 export async function broadcastTimerEvent(sessionId: string, event: string, data?: any) {
   const session = await getAuthSession();
