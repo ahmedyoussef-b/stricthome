@@ -96,6 +96,48 @@ export default function SessionPage() {
 
     const { negotiationQueue } = useWebRTCNegotiation();
 
+    const cleanup = useCallback(() => {
+        if (isCleanedUpRef.current) return;
+        console.log("🧹 [CLEANUP] Nettoyage complet de la session.");
+        isCleanedUpRef.current = true;
+        
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+
+        localStreamRef.current?.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+        console.log("🛑 [CLEANUP] Flux média local arrêté.");
+        
+        peerConnectionsRef.current.forEach((pc, peerId) => {
+            pc.connection.close();
+            clearNegotiationTimeout(peerId);
+        });
+        peerConnectionsRef.current.clear();
+        console.log("🛑 [CLEANUP] Toutes les connexions pair-à-pair sont fermées.");
+        
+        if (presenceChannelRef.current) {
+            console.log(`🔌 [CLEANUP] Désabonnement du canal Pusher: ${presenceChannelRef.current.name}`);
+            pusherClient.unsubscribe(presenceChannelRef.current.name);
+            presenceChannelRef.current = null;
+        }
+
+        setRemoteStreams(new Map());
+        setOnlineUsers([]);
+        console.log("🗑️ [CLEANUP] États locaux réinitialisés.");
+    }, []);
+    
+    const handleEndSession = useCallback(() => {
+        console.log("🏁 [SESSION] La session a été marquée comme terminée. Nettoyage et redirection...");
+        cleanup();
+        toast({
+            title: "Session terminée",
+            description: "La session a pris fin.",
+        });
+        router.back();
+    }, [cleanup, router, toast]);
+
     const clearNegotiationTimeout = (peerId: string) => {
         const timeout = negotiationTimeoutsRef.current.get(peerId);
         if (timeout) {
@@ -356,48 +398,6 @@ export default function SessionPage() {
         };
     }, [handleSignal]);
 
-    const cleanup = useCallback(() => {
-        if (isCleanedUpRef.current) return;
-        console.log("🧹 [CLEANUP] Nettoyage complet de la session.");
-        isCleanedUpRef.current = true;
-        
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-
-        localStreamRef.current?.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
-        console.log("🛑 [CLEANUP] Flux média local arrêté.");
-        
-        peerConnectionsRef.current.forEach((pc, peerId) => {
-            pc.connection.close();
-            clearNegotiationTimeout(peerId);
-        });
-        peerConnectionsRef.current.clear();
-        console.log("🛑 [CLEANUP] Toutes les connexions pair-à-pair sont fermées.");
-        
-        if (presenceChannelRef.current) {
-            console.log(`🔌 [CLEANUP] Désabonnement du canal Pusher: ${presenceChannelRef.current.name}`);
-            pusherClient.unsubscribe(presenceChannelRef.current.name);
-            presenceChannelRef.current = null;
-        }
-
-        setRemoteStreams(new Map());
-        setOnlineUsers([]);
-        console.log("🗑️ [CLEANUP] États locaux réinitialisés.");
-    }, []);
-    
-    const handleEndSession = useCallback(() => {
-        console.log("🏁 [SESSION] La session a été marquée comme terminée. Nettoyage et redirection...");
-        cleanup();
-        toast({
-            title: "Session terminée",
-            description: "La session a pris fin.",
-        });
-        router.back();
-    }, [cleanup, router, toast]);
-
     const removePeerConnection = (peerId: string) => {
         console.log(`👋 [CONNEXION] Suppression de la connexion avec ${peerId}.`);
         const peer = peerConnectionsRef.current.get(peerId);
@@ -507,9 +507,9 @@ export default function SessionPage() {
                 console.log(`👥 [INITIALISATION] ${allUsers.length} utilisateurs chargés.`);
                 
                 if (sessionData.spotlightedParticipantId) {
-                  setSpotlightedParticipantId(sessionData.spotlightedParticipantId)
+                  setSpotlightedParticipantId(sessionData.spotlightedParticipantId);
                 } else if(teacher) {
-                  setSpotlightedParticipantId(teacher.id)
+                  setSpotlightedParticipantId(teacher.id);
                 }
 
                 // 2. Obtenir le flux média local

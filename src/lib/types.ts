@@ -105,6 +105,7 @@ export type CoursSessionWithRelations = CoursSession & {
     participants: User[];
     professeur: User;
     classe: Classroom | null;
+    spotlightedParticipantId: string | null;
 };
 
 
