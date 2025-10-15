@@ -11,10 +11,8 @@ interface VideoGridProps {
     participants: { id: string, stream: MediaStream }[];
     spotlightedParticipantId?: string | null;
     isTeacher: boolean;
-    onGiveWhiteboardControl: (userId: string) => void;
     onSpotlightParticipant: (userId: string) => void;
     allSessionUsers: User[];
-    whiteboardControllerId: string | null;
 }
 
 export function VideoGrid({ 
@@ -24,10 +22,8 @@ export function VideoGrid({
     participants, 
     spotlightedParticipantId, 
     isTeacher,
-    onGiveWhiteboardControl,
     onSpotlightParticipant,
     allSessionUsers,
-    whiteboardControllerId
 }: VideoGridProps) {
 
     const findUserById = (userId: string) => {
@@ -47,9 +43,7 @@ export function VideoGrid({
                         isSpotlighted={localUserId === spotlightedParticipantId}
                         isTeacher={isTeacher}
                         participantUserId={user.id}
-                        onGiveWhiteboardControl={onGiveWhiteboardControl}
                         onSpotlightParticipant={onSpotlightParticipant}
-                        isWhiteboardController={user.id === whiteboardControllerId}
                         displayName={user.name ?? ''}
                     />
                 );
@@ -65,9 +59,7 @@ export function VideoGrid({
                         isSpotlighted={p.id === spotlightedParticipantId}
                         isTeacher={false} // Assuming only teacher can be local and teacher
                         participantUserId={user.id}
-                        onGiveWhiteboardControl={onGiveWhiteboardControl}
                         onSpotlightParticipant={onSpotlightParticipant}
-                        isWhiteboardController={user.id === whiteboardControllerId}
                         displayName={user.name ?? ''}
                     />
                 );
