@@ -440,20 +440,22 @@ export default function SessionPage() {
 
 
     const handleStartTimer = useCallback(async () => {
-        console.log("▶️ [TIMER] Démarrage du minuteur par le professeur.");
         if (!isTeacher || isTimerRunning) return;
+        setIsTimerRunning(true);
         await broadcastTimerEvent(sessionId, 'timer-started');
     }, [isTeacher, isTimerRunning, sessionId]);
 
     const handlePauseTimer = useCallback(async () => {
-        console.log("⏸️ [TIMER] Mise en pause du minuteur par le professeur.");
         if (!isTeacher || !isTimerRunning) return;
+        setIsTimerRunning(false);
         await broadcastTimerEvent(sessionId, 'timer-paused');
     }, [isTeacher, isTimerRunning, sessionId]);
 
     const handleResetTimer = useCallback(async () => {
-        console.log("🔄 [TIMER] Réinitialisation du minuteur par le professeur.");
         if (!isTeacher) return;
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        setIsTimerRunning(false);
+        setTimeLeft(duration);
         await broadcastTimerEvent(sessionId, 'timer-reset', { duration });
     }, [isTeacher, duration, sessionId]);
 
