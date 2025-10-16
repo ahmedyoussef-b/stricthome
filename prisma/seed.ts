@@ -432,7 +432,7 @@ async function main() {
     await prisma.leaderboard.create({
       data: {
         studentId: student.id,
-        totalPoints: student.points,
+        totalPoints: student.points ?? 0,
         dailyPoints: Math.floor(Math.random() * 50),
         weeklyPoints: Math.floor(Math.random() * 100),
         monthlyPoints: Math.floor(Math.random() * 200),
@@ -572,3 +572,6 @@ main()
 
     
 
+
+
+    
