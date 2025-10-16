@@ -12,7 +12,6 @@ import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
 import { Whiteboard } from '../Whiteboard';
 import { Card } from '../ui/card';
-import { ScreenShare } from 'lucide-react';
 import { ParticipantList } from './ParticipantList';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
@@ -103,19 +102,21 @@ export function TeacherSessionView({
 
             {/* --- Colonne Centrale : Espace de travail --- */}
             <div className="col-span-4 flex flex-col gap-4 min-h-0">
-                {screenStream ? (
-                    <Card className="w-full h-full p-2 bg-black flex-1">
-                        <Participant
-                            stream={screenStream}
-                            isLocal={true}
-                            isTeacher={true}
-                            participantUserId={localUserId}
-                            displayName="Votre partage d'écran"
-                         />
-                    </Card>
-                ) : (
-                    <Whiteboard />
-                )}
+                <div className="flex-1 min-h-0">
+                    {screenStream ? (
+                        <Card className="w-full h-full p-2 bg-black">
+                            <Participant
+                                stream={screenStream}
+                                isLocal={true}
+                                isTeacher={true}
+                                participantUserId={localUserId}
+                                displayName="Votre partage d'écran"
+                            />
+                        </Card>
+                    ) : (
+                        <Whiteboard />
+                    )}
+                </div>
             </div>
 
             {/* --- Colonne de Droite : Outils Interactifs --- */}
