@@ -73,20 +73,17 @@ export function StudentSessionView({
     
     return (
         <div className="flex flex-1 min-h-0 py-6 gap-6">
-             {/* Main content: Grid for video and whiteboard */}
-            <div className="flex-1 h-full grid grid-cols-2 gap-6">
-                 {/* Column 1: Main video (Teacher/Screenshare) */}
+            {/* Colonne principale : Grille pour la vidéo et le tableau blanc */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
                 <div className="flex flex-col min-h-0">
                     {renderMainContent()}
                 </div>
-
-                {/* Column 2: Whiteboard */}
                 <div className="flex flex-col min-h-0">
-                    <Whiteboard />
+                   <Whiteboard />
                 </div>
             </div>
             
-            {/* Right sidebar: student's own video and controls */}
+            {/* Barre latérale droite : vidéo de l'élève et contrôles */}
             <div className="w-1/5 flex flex-col gap-6 min-h-0">
                 {localUserId && localStream && (
                      <Participant
