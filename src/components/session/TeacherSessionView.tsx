@@ -101,7 +101,7 @@ export function TeacherSessionView({
             </ScrollArea>
 
             {/* --- Colonne Centrale : Espace de travail --- */}
-            <div className="flex-1 grid grid-rows-[3fr_2fr] gap-4 min-h-0">
+            <div className="flex-1 grid grid-rows-[2fr_3fr] gap-4 min-h-0">
                 {/* Ligne 1: Tableau blanc ou partage d'écran */}
                 <div className="flex flex-col min-h-0">
                     {screenStream ? (
