@@ -103,13 +103,16 @@ export function TeacherSessionView({
                 </div>
             </ScrollArea>
 
-            {/* Zone centrale : Tableau blanc et Partage d'écran */}
-            <div className="flex-1 h-full flex flex-col gap-4">
-                <div className="flex-1 min-h-0 h-2/3">
+            {/* Zone centrale : Grille à trois colonnes */}
+            <div className="flex-1 h-full grid grid-cols-3 gap-4">
+                {/* Colonne 1: Tableau Blanc */}
+                <div className="flex flex-col min-h-0">
                     <Whiteboard />
                 </div>
-                {screenStream && (
-                    <div className="flex-1 h-1/3">
+
+                {/* Colonne 2: Partage d'écran ou Vide */}
+                <div className="flex flex-col min-h-0">
+                    {screenStream && (
                         <Card className="w-full h-full p-2 bg-black">
                             <Participant
                                 stream={screenStream}
@@ -120,8 +123,13 @@ export function TeacherSessionView({
                                 displayName="Votre partage d'écran"
                              />
                         </Card>
-                    </div>
-                )}
+                    )}
+                </div>
+
+                {/* Colonne 3: Vide */}
+                <div className="flex flex-col min-h-0">
+                    {/* Cet espace est intentionnellement laissé vide */}
+                </div>
             </div>
 
             {/* Colonne de droite : Outils interactifs */}
