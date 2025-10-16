@@ -9,6 +9,8 @@ import { StudentWithCareer } from '@/lib/types';
 import { UnderstandingStatus } from '@/app/session/[id]/page';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+
 
 interface UnderstandingTrackerProps {
   students: StudentWithCareer[];
@@ -36,57 +38,63 @@ export function UnderstandingTracker({ students, understandingStatus }: Understa
 
   return (
     <Card className='bg-background/80'>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <HelpCircle className="h-5 w-5 text-primary" />
-          Suivi de la Compréhension
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-around text-center">
-          {Object.entries(counts).map(([key, value]) => {
-            if (key === 'none') return null;
-            const config = statusConfig[key as keyof typeof statusConfig];
-            return (
-              <div key={key} className="flex flex-col items-center">
-                <config.icon className={cn("h-6 w-6 mb-1", config.color)} />
-                <span className="font-bold text-lg">{value}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <ScrollArea className="h-48">
-          <div className="space-y-2 pr-4">
-            <TooltipProvider>
-              {students.map(student => {
-                const status = understandingStatus.get(student.id) || 'none';
-                const config = statusConfig[status];
-                const Icon = config.icon;
-
-                return (
-                  <Tooltip key={student.id}>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-7 w-7 text-xs">
-                            <AvatarFallback>{student.name?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium">{student.name}</span>
+        <Accordion type="single" collapsible defaultValue="tracker">
+            <AccordionItem value="tracker" className="border-b-0">
+                <AccordionTrigger className="p-6">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <HelpCircle className="h-5 w-5 text-primary" />
+                        Suivi de la Compréhension
+                    </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <CardContent className="space-y-4 pt-0">
+                        <div className="flex justify-around text-center">
+                        {Object.entries(counts).map(([key, value]) => {
+                            if (key === 'none') return null;
+                            const config = statusConfig[key as keyof typeof statusConfig];
+                            return (
+                            <div key={key} className="flex flex-col items-center">
+                                <config.icon className={cn("h-6 w-6 mb-1", config.color)} />
+                                <span className="font-bold text-lg">{value}</span>
+                            </div>
+                            );
+                        })}
                         </div>
-                        <Icon className={cn("h-5 w-5", config.color)} />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{config.label}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </TooltipProvider>
-          </div>
-        </ScrollArea>
-      </CardContent>
+
+                        <ScrollArea className="h-48">
+                        <div className="space-y-2 pr-4">
+                            <TooltipProvider>
+                            {students.map(student => {
+                                const status = understandingStatus.get(student.id) || 'none';
+                                const config = statusConfig[status];
+                                const Icon = config.icon;
+
+                                return (
+                                <Tooltip key={student.id}>
+                                    <TooltipTrigger asChild>
+                                    <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                        <Avatar className="h-7 w-7 text-xs">
+                                            <AvatarFallback>{student.name?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm font-medium">{student.name}</span>
+                                        </div>
+                                        <Icon className={cn("h-5 w-5", config.color)} />
+                                    </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                    <p>{config.label}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                );
+                            })}
+                            </TooltipProvider>
+                        </div>
+                        </ScrollArea>
+                    </CardContent>
+                </AccordionContent>
+            </AccordionItem>
+      </Accordion>
     </Card>
   );
 }
