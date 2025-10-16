@@ -41,10 +41,11 @@ export function StudentSessionView({
     screenStream
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
+    const localUserId = session?.user.id;
 
     // The main video feed will be the screen share if it exists, otherwise the spotlighted user.
     const mainStream = screenStream || spotlightedStream;
-    const mainStreamUser = screenStream ? { id: 'screen-share', name: 'Partage d\'écran' } : spotlightedUser;
+    const mainStreamUser = screenStream ? { id: 'screen-share', name: "Partage d'écran" } : spotlightedUser;
 
     const renderMainContent = () => {
         if (!mainStreamUser || !mainStream) {
@@ -61,7 +62,7 @@ export function StudentSessionView({
         return (
             <Participant 
                 stream={mainStream}
-                isLocal={localStream === mainStream}
+                isLocal={false} // Student view is never "local" for the main stream
                 isSpotlighted={true}
                 isTeacher={false}
                 participantUserId={mainStreamUser?.id ?? ''}
@@ -71,23 +72,32 @@ export function StudentSessionView({
     };
     
     return (
-        <div className="flex flex-1 min-h-0 py-6 gap-4">
-             {/* Left side: Main video content (spotlight or screen share) */}
-            <div className="flex-1 h-full flex flex-col gap-4">
-                 <div className='flex-1 min-h-0'>
+        <div className="flex flex-1 min-h-0 py-6 gap-6">
+             {/* Main content: Grid for video and whiteboard */}
+            <div className="flex-1 h-full grid grid-cols-2 gap-6">
+                 {/* Column 1: Main video (Teacher/Screenshare) */}
+                <div className="flex flex-col min-h-0">
                     {renderMainContent()}
                 </div>
-            </div>
 
-             {/* Center: Whiteboard */}
-            <div className="flex-1 h-full flex flex-col gap-4">
-                <div className='flex-1 min-h-0'>
+                {/* Column 2: Whiteboard */}
+                <div className="flex flex-col min-h-0">
                     <Whiteboard />
                 </div>
             </div>
             
-            {/* Right sidebar: student controls */}
-            <div className="w-1/5 flex flex-col gap-4 min-h-0">
+            {/* Right sidebar: student's own video and controls */}
+            <div className="w-1/5 flex flex-col gap-6 min-h-0">
+                {localUserId && localStream && (
+                     <Participant
+                        stream={localStream}
+                        isLocal={true}
+                        isTeacher={false}
+                        participantUserId={localUserId}
+                        displayName="Vous"
+                        isHandRaised={isHandRaised}
+                    />
+                )}
                  <Card>
                     <CardHeader className="p-3">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -128,7 +138,7 @@ export function StudentSessionView({
                 <Button 
                     onClick={onToggleHandRaise} 
                     size="lg"
-                    className={cn("w-full h-full flex-1", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                    className={cn("w-full flex-1", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
                 >
                    <Hand className="mr-2 h-5 w-5" />
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
