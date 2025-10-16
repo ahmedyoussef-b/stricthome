@@ -101,8 +101,9 @@ export function TeacherSessionView({
             </ScrollArea>
 
             {/* --- Colonne Centrale : Espace de travail --- */}
-            <div className="flex-1 flex flex-col gap-4 min-h-0">
-                <div className="flex-1 min-h-0 h-full">
+            <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
+                {/* Colonne 1: Tableau blanc ou partage d'écran */}
+                <div className="flex flex-col min-h-0 h-full">
                     {screenStream ? (
                         <Card className="w-full h-full p-2 bg-black">
                             <Participant
@@ -118,6 +119,11 @@ export function TeacherSessionView({
                             <Whiteboard />
                         </div>
                     )}
+                </div>
+
+                 {/* Colonne 2: Espace vide pour utilisation future */}
+                <div className="flex flex-col min-h-0 h-full">
+                    <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
                 </div>
             </div>
 
