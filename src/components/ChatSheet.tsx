@@ -1,3 +1,4 @@
+
 //src/components/chatSheet.tsx
 "use client";
 
@@ -292,8 +293,9 @@ export function ChatSheet({ classroomId, userId, userRole }: { classroomId: stri
         reactions: [],
         status: 'pending',
         classroomId: classroomId,
-        isQuestion: null, // Add the missing property
+        isQuestion: null,
         conversationId: null,
+        directMessageSenderId: null,
     };
     
     setMessages(prev => [...prev, optimisticMessage]);
@@ -414,3 +416,5 @@ export function ChatSheet({ classroomId, userId, userRole }: { classroomId: stri
     </Sheet>
   );
 }
+
+    
