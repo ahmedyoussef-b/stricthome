@@ -51,9 +51,9 @@ export function TeacherSessionView({
     if (!localUserId || !teacher) return null;
 
     return (
-        <div className="grid grid-cols-6 flex-1 min-h-0 py-6 gap-4">
+        <div className="flex flex-1 min-h-0 py-6 gap-4">
             {/* --- Colonne de Gauche : Caméras des Participants --- */}
-            <ScrollArea className="col-span-1 pr-4 -mr-4">
+            <ScrollArea className="w-64 pr-4 -mr-4">
                  <div className="space-y-4">
                     {/* Vidéo du professeur */}
                      <Participant 
@@ -101,8 +101,8 @@ export function TeacherSessionView({
             </ScrollArea>
 
             {/* --- Colonne Centrale : Espace de travail --- */}
-            <div className="col-span-4 flex flex-col gap-4 min-h-0">
-                <div className="flex-1 min-h-0">
+            <div className="flex-1 flex flex-col gap-4 min-h-0">
+                <div className="flex-1 min-h-0 h-full">
                     {screenStream ? (
                         <Card className="w-full h-full p-2 bg-black">
                             <Participant
@@ -114,13 +114,15 @@ export function TeacherSessionView({
                             />
                         </Card>
                     ) : (
-                        <Whiteboard />
+                        <div className='h-full w-full'>
+                            <Whiteboard />
+                        </div>
                     )}
                 </div>
             </div>
 
             {/* --- Colonne de Droite : Outils Interactifs --- */}
-            <div className="col-span-1 flex flex-col gap-4 min-h-0">
+            <div className="w-72 flex flex-col gap-4 min-h-0">
                  <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
                  <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
                  <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
