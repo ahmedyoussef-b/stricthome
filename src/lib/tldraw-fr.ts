@@ -1,7 +1,8 @@
+
 // src/lib/tldraw-fr.ts
 "use client"
 
-import { useTranslation } from '@tldraw/tldraw'
+import { useTranslation, useDefaultTranslation } from '@tldraw/tldraw'
 
 // This file is mostly AI-generated, and may have mistakes.
 // If you see any, please file an issue on GitHub.
@@ -203,6 +204,6 @@ const TLDRAW_FRENCH_TRANSLATION = {
 	"zoom-menu.zoom-to-selection": "Zoom sur la sélection",
 }
 export function FrenchTranslation() {
-	useTranslation(TLDRAW_FRENCH_TRANSLATION)
+	useDefaultTranslation(TLDRAW_FRENCH_TRANSLATION)
 	return null
 }
