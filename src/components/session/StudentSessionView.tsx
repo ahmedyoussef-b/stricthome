@@ -78,24 +78,13 @@ export function StudentSessionView({
                 <div className="flex flex-col min-h-0">
                     {renderMainContent()}
                 </div>
-                <div className="h-full w-2/5">
+                <div className="h-full w-full">
                     <Whiteboard />
                 </div>
-                <div className="h-full w-3/5"></div>
             </div>
             
-            {/* Barre latérale droite : vidéo de l'élève et contrôles */}
+            {/* Barre latérale droite : contrôles de l'élève */}
             <div className="w-1/5 flex flex-col gap-6 min-h-0">
-                {localUserId && localStream && (
-                     <Participant
-                        stream={localStream}
-                        isLocal={true}
-                        isTeacher={false}
-                        participantUserId={localUserId}
-                        displayName="Vous"
-                        isHandRaised={isHandRaised}
-                    />
-                )}
                  <Card>
                     <CardHeader className="p-3">
                         <CardTitle className="text-sm flex items-center gap-2">
