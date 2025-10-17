@@ -180,7 +180,8 @@ export async function endCoursSession(sessionId: string) {
 
 export async function serverSpotlightParticipant(sessionId: string, participantId: string) {
     const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSEUR') {
+    if (session?.user.role !== 'PROFESSESEUR') { // Typo: PROFESSEUR
+        // Correction du typo
         throw new Error("Unauthorized");
     }
     await spotlightParticipant(sessionId, participantId);

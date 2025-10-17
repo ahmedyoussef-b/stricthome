@@ -61,6 +61,24 @@ export function TeacherSessionView({
     
     if (!localUserId || !teacher) return null;
 
+    // Combine local and remote participants for the grid
+    const gridParticipants = [
+        // The teacher (local user) is always first
+        { 
+            user: teacher,
+            stream: localStream,
+            isOnline: true,
+            isLocal: true,
+        },
+        // Then all students
+        ...students.map(student => ({
+            user: student,
+            stream: remoteStreamsMap.get(student.id),
+            isOnline: onlineUserIds.includes(student.id),
+            isLocal: false,
+        }))
+    ];
+
     return (
         <div className="flex flex-col flex-1 min-h-0 py-6 gap-4">
             {/* --- Ligne du haut : Espace de travail --- */}
@@ -103,19 +121,15 @@ export function TeacherSessionView({
             <div className="h-48">
                 <ScrollArea className="h-full">
                     <div className="flex gap-4 pb-4">
-                       {allSessionUsers.map(user => {
-                            const isLocalUser = user.id === localUserId;
-                            const stream = isLocalUser ? localStream : remoteStreamsMap.get(user.id);
-                            const isOnline = onlineUserIds.includes(user.id);
-
+                       {gridParticipants.map(({ user, stream, isOnline, isLocal }) => {
                             if (isOnline) {
                                 return (
                                      <div className="w-64 flex-shrink-0" key={user.id}>
                                         <Participant
-                                            stream={stream}
-                                            isLocal={isLocalUser}
+                                            stream={stream || null}
+                                            isLocal={isLocal}
                                             isSpotlighted={user.id === spotlightedUser?.id}
-                                            isTeacher={true}
+                                            isTeacher={true} // Teacher can always spotlight
                                             participantUserId={user.id}
                                             onSpotlightParticipant={handleSpotlightParticipant}
                                             displayName={user.name ?? ''}
