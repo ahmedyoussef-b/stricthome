@@ -7,87 +7,274 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ================================================= //
-// MODÈLES DE DONNÉES                                //
+//                 MODÈLES DE L'APPLICATION
 // ================================================= //
 
-// --- Modèles principaux ---
+// --- Modèle Utilisateur ---
+model User {
+  id                   String                 @id @default(cuid())
+  name                 String?
+  email                String?                @unique
+  emailVerified        DateTime?
+  image                String?
+  password             String?
+  parentPassword       String?
+  role                 Role                   @default(ELEVE)
+  ambition             String?
+  points               Int?                   @default(0)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  classe               Classroom?             @relation(fields: [classroomId], references: [id])
+  classroomId          String?
+  classesEnseignees    Classroom[]            @relation("ProfesseurToClassroom")
+  sessionsEnseignees   CoursSession[]         @relation("ProfesseurToSession") // Ajout de la relation inverse
+  sessionsParticipees  CoursSession[]         @relation("SessionParticipants")
+  announcements        Announcement[]
+  messages             Message[]
+  reactions            Reaction[]
+  progress             StudentProgress[]
+  leaderboardEntry     Leaderboard?
+  etat                 EtatEleve?
+  sentDirectMessages   Conversation[]         @relation("Initiator")
+  receivedDirectMessages Conversation[]       @relation("Receiver")
+  studentAchievements  StudentAchievement[]
+  finalRoundParticipations FinalRoundParticipant[]
+  parentFeedback       ParentFeedback[]
+}
+
+// --- Modèle Classe ---
+model Classroom {
+  id           String         @id @default(cuid())
+  nom          String
+  professeur   User           @relation("ProfesseurToClassroom", fields: [professeurId], references: [id])
+  professeurId String
+  eleves       User[]
+  annonces     Announcement[]
+  messages     Message[]
+  sessions     CoursSession[]
+}
+
+// --- Modèle Session de Cours ---
+model CoursSession {
+  id                       String   @id @default(cuid())
+  createdAt                DateTime @default(now())
+  endedAt                  DateTime?
+  professeurId             String
+  professeur               User     @relation("ProfesseurToSession", fields: [professeurId], references: [id])
+  participants             User[]   @relation("SessionParticipants")
+  classroom                Classroom? @relation(fields: [classroomId], references: [id])
+  classroomId              String?
+  spotlightedParticipantId String?
+  whiteboardControllerId   String?
+}
+
+// --- Modèle État de l'Élève ---
+model EtatEleve {
+  id         String  @id @default(cuid())
+  eleve      User    @relation(fields: [eleveId], references: [id])
+  eleveId    String  @unique
+  isPunished Boolean @default(false)
+  metier     Metier? @relation(fields: [metierId], references: [id])
+  metierId   String?
+}
+
+// --- Modèle Métier ---
+model Metier {
+  id          String      @id @default(cuid())
+  nom         String      @unique
+  description String
+  icon        String
+  theme       Json // { backgroundColor, textColor, primaryColor, accentColor, cursor, imageUrl }
+  etatsEleve  EtatEleve[]
+}
+
+// --- Modèle Tâche ---
+model Task {
+  id              String           @id @default(cuid())
+  title           String
+  description     String
+  points          Int
+  type            TaskType         @default(DAILY)
+  category        TaskCategory
+  difficulty      TaskDifficulty
+  startTime       String? // Format HH:MM pour les tâches journalières
+  endTime         String? // Format HH:MM pour les tâches journalières
+  duration        Int?             // en minutes, pour les tâches actives
+  isActive        Boolean          @default(true)
+  requiresProof   Boolean          @default(false)
+  validationType  ValidationType   @default(PROFESSOR)
+  attachmentUrl   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  studentProgress StudentProgress[]
+}
+
+// --- Modèle Progression de l'Élève ---
+model StudentProgress {
+  id             String          @id @default(cuid())
+  student        User            @relation(fields: [studentId], references: [id])
+  studentId      String
+  task           Task            @relation(fields: [taskId], references: [id])
+  taskId         String
+  status         ProgressStatus
+  completionDate DateTime?
+  submissionUrl  String?
+  rejectionReason String?
+  pointsAwarded  Int?
+  accuracy       Int? // Pourcentage de réussite
+  recipeName     String? // Nom de la recette pour la tâche de cuisine
+  parentFeedback ParentFeedback?
+}
+
+// --- Modèle Feedback Parental ---
+model ParentFeedback {
+  id                String          @id @default(cuid())
+  studentProgress   StudentProgress @relation(fields: [studentProgressId], references: [id])
+  studentProgressId String          @unique
+  student           User            @relation(fields: [studentId], references: [id])
+  studentId         String
+  taste             Int
+  presentation      Int
+  autonomy          Int
+  comment           String?
+  createdAt         DateTime        @default(now())
+}
+
+
+// --- Modèle Annonce ---
+model Announcement {
+  id          String     @id @default(cuid())
+  title       String
+  content     String
+  attachmentUrl String?
+  author      User       @relation(fields: [authorId], references: [id])
+  authorId    String
+  classe      Classroom? @relation(fields: [classeId], references: [id])
+  classeId    String?
+  createdAt   DateTime   @default(now())
+}
+
+// --- Modèle Conversation (DM) ---
+model Conversation {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
+  initiatorId String
+  receiver    User      @relation("Receiver", fields: [receiverId], references: [id])
+  receiverId  String
+  messages    Message[]
+
+  @@unique([initiatorId, receiverId])
+}
+
+// --- Modèle Message ---
+model Message {
+  id                   String        @id @default(cuid())
+  message              String        @db.Text
+  createdAt            DateTime      @default(now())
+  sender               User          @relation(fields: [senderId], references: [id])
+  senderId             String
+  senderName           String
+  isQuestion           Boolean?
+  classroomId          String?
+  classroom            Classroom?    @relation(fields: [classroomId], references: [id])
+  conversationId       String?
+  conversation         Conversation? @relation(fields: [conversationId], references: [id])
+  directMessageSenderId String?
+  reactions            Reaction[]
+}
+
+// --- Modèle Réaction ---
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  message   Message  @relation(fields: [messageId], references: [id])
+  messageId String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+}
+
+// --- Modèle Classement (Leaderboard) ---
+model Leaderboard {
+  id             String   @id @default(cuid())
+  student        User     @relation(fields: [studentId], references: [id])
+  studentId      String   @unique
+  rank           Int
+  totalPoints    Int
+  dailyPoints    Int      @default(0)
+  weeklyPoints   Int      @default(0)
+  monthlyPoints  Int      @default(0)
+  completedTasks Int
+  currentStreak  Int      @default(0)
+  bestStreak     Int      @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+// --- Modèle Succès (Achievement) ---
+model Achievement {
+  id                  String               @id @default(cuid())
+  name                String
+  description         String
+  icon                String
+  points              Int
+  criteria            Json
+  createdAt           DateTime             @default(now())
+  studentAchievements StudentAchievement[]
+}
+
+model StudentAchievement {
+  id            String      @id @default(cuid())
+  student       User        @relation(fields: [studentId], references: [id])
+  studentId     String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([studentId, achievementId])
+}
+
+
+model FinalRound {
+    id String @id @default(cuid())
+    name String
+    description String?
+    startTime DateTime
+    endTime DateTime
+    participants FinalRoundParticipant[]
+    createdAt DateTime @default(now())
+}
+
+model FinalRoundParticipant {
+    id String @id @default(cuid())
+    finalRound FinalRound @relation(fields: [finalRoundId], references: [id])
+    finalRoundId String
+    student User @relation(fields: [studentId], references: [id])
+    studentId String
+    score Int @default(0)
+    joinedAt DateTime @default(now())
+
+    @@unique([finalRoundId, studentId])
+}
+
+
+// ================================================= //
+//                     ÉNUMÉRATIONS
+// ================================================= //
 
 enum Role {
   ELEVE
   PROFESSEUR
+  ADMIN
 }
-
-model User {
-  id                    String              @id @default(cuid())
-  name                  String?
-  email                 String?             @unique
-  emailVerified         DateTime?
-  image                 String?
-  role                  Role                @default(ELEVE)
-  points                Int?                @default(0)
-  ambition              String?
-  parentPassword        String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  classe                Classroom?          @relation("ElevesInClasse", fields: [classroomId], references: [id])
-  classroomId           String?
-  classesEnseignees     Classroom[]         @relation("ProfesseurDeClasse")
-  sessionsParticipees   CoursSession[]      @relation("SessionParticipants")
-  annonces              Announcement[]
-  reactions             Reaction[]
-  messages              Message[]           @relation("MessageSender")
-  directMessagesSent    Message[]           @relation("DirectMessageSender")
-  conversationsInitiated Conversation[]     @relation("Initiator")
-  conversationsReceived  Conversation[]     @relation("Receiver")
-  etat                  EtatEleve?          @relation("EtatDeLEleve")
-  progress              StudentProgress[]
-  leaderboardEntry      Leaderboard?
-  achievements          StudentAchievement[]
-  feedbacks             ParentFeedback[]
-}
-
-model Classroom {
-  id           String         @id @default(cuid())
-  nom          String
-  professeur   User           @relation("ProfesseurDeClasse", fields: [professeurId], references: [id])
-  professeurId String
-  eleves       User[]         @relation("ElevesInClasse")
-  sessions     CoursSession[]
-  announcements Announcement[]
-  messages      Message[]
-}
-
-model Metier {
-  id          String    @id @default(cuid())
-  nom         String    @unique
-  description String
-  icon        String
-  theme       Json      // Pour stocker { backgroundColor, textColor, cursor, etc. }
-  etatsEleves EtatEleve[]
-}
-
-// --- Modèles de session ---
-
-model CoursSession {
-  id                       String      @id @default(cuid())
-  professeurId             String
-  professeur               User        @relation(fields: [professeurId], references: [id])
-  participants             User[]      @relation("SessionParticipants")
-  createdAt                DateTime    @default(now())
-  endedAt                  DateTime?
-  classroomId              String?
-  classroom                Classroom?  @relation(fields: [classroomId], references: [id])
-  spotlightedParticipantId String?
-  whiteboardControllerId   String?     // ID de l'utilisateur qui contrôle le tableau blanc
-}
-
-
-// --- Modèles de jeu/gamification ---
 
 enum TaskType {
   DAILY
@@ -109,30 +296,6 @@ enum TaskDifficulty {
   HARD
 }
 
-enum ValidationType {
-  AUTOMATIC
-  PROFESSOR
-  PARENT
-}
-
-model Task {
-  id              String         @id @default(cuid())
-  title           String
-  description     String
-  points          Int
-  type            TaskType
-  category        TaskCategory
-  difficulty      TaskDifficulty
-  requiresProof   Boolean        @default(false)
-  attachmentUrl   String?
-  validationType  ValidationType @default(PROFESSOR)
-  startTime       String?        // ex: '09:00' pour les tâches à heure fixe
-  endTime         String?        // ex: '10:00'
-  duration        Int?           // en minutes, pour les tâches de durée
-  isActive        Boolean        @default(true)
-  studentProgress StudentProgress[]
-}
-
 enum ProgressStatus {
   NOT_STARTED
   IN_PROGRESS
@@ -141,159 +304,8 @@ enum ProgressStatus {
   REJECTED
 }
 
-model StudentProgress {
-  id             String         @id @default(cuid())
-  student        User           @relation(fields: [studentId], references: [id])
-  studentId      String
-  task           Task           @relation(fields: [taskId], references: [id])
-  taskId         String
-  status         ProgressStatus @default(NOT_STARTED)
-  completionDate DateTime?
-  submissionUrl  String?
-  pointsAwarded  Int?
-  accuracy       Int?           // Pourcentage de réussite
-  rejectionReason String?
-  parentFeedback ParentFeedback[]
-  recipeName     String?        // Champ spécifique pour la tâche de cuisine
-  
-  @@unique([studentId, taskId, completionDate])
-}
-
-model Leaderboard {
-  id             String   @id @default(cuid())
-  student        User     @relation(fields: [studentId], references: [id])
-  studentId      String   @unique
-  rank           Int
-  totalPoints    Int
-  dailyPoints    Int
-  weeklyPoints   Int
-  monthlyPoints  Int
-  completedTasks Int
-  currentStreak  Int      // Nombre de jours consécutifs avec au moins une tâche
-  bestStreak     Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-model Achievement {
-  id           String    @id @default(cuid())
-  name         String
-  description  String
-  icon         String    // Peut être un nom d'icône ou une URL d'image
-  points       Int
-  criteria     Json      // ex: { type: 'streak', days: 7 } ou { type: 'total_points', amount: 1000 }
-  students     StudentAchievement[]
-}
-
-model StudentAchievement {
-  id            String      @id @default(cuid())
-  student       User        @relation(fields: [studentId], references: [id])
-  studentId     String
-  achievement   Achievement @relation(fields: [achievementId], references: [id])
-  achievementId String
-  unlockedAt    DateTime    @default(now())
-
-  @@unique([studentId, achievementId])
-}
-
-// --- Modèles de communication ---
-
-model Announcement {
-  id          String     @id @default(cuid())
-  title       String
-  content     String
-  createdAt   DateTime   @default(now())
-  author      User       @relation(fields: [authorId], references: [id])
-  authorId    String
-  classe      Classroom? @relation(fields: [classeId], references: [id])
-  classeId    String?
-  attachmentUrl String?
-}
-
-model Conversation {
-  id             String    @id @default(cuid())
-  initiator      User      @relation("Initiator", fields: [initiatorId], references: [id])
-  initiatorId    String
-  receiver       User      @relation("Receiver", fields: [receiverId], references: [id])
-  receiverId     String
-  messages       Message[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  @@unique([initiatorId, receiverId])
-}
-
-model Message {
-  id                    String        @id @default(cuid())
-  message               String
-  createdAt             DateTime      @default(now())
-  sender                User          @relation("MessageSender", fields: [senderId], references: [id])
-  senderId              String
-  senderName            String
-  reactions             Reaction[]
-  isQuestion            Boolean?
-  
-  // Pour les messages de classe
-  classroomId           String?
-  classroom             Classroom?    @relation(fields: [classroomId], references: [id])
-
-  // Pour les messages directs
-  conversationId        String?
-  conversation          Conversation? @relation(fields: [conversationId], references: [id])
-  directMessageSenderId String?
-  directMessageSender   User?         @relation("DirectMessageSender", fields: [directMessageSenderId], references: [id])
-
-}
-
-
-model Reaction {
-  id        String   @id @default(cuid())
-  emoji     String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  message   Message  @relation(fields: [messageId], references: [id])
-  messageId String
-}
-
-// --- Modèles de suivi et d'état ---
-
-model EtatEleve {
-  id         String  @id @default(cuid())
-  eleve      User    @relation("EtatDeLEleve", fields: [eleveId], references: [id])
-  eleveId    String  @unique
-  isPunished Boolean @default(false)
-  metier     Metier? @relation(fields: [metierId], references: [id])
-  metierId   String?
-}
-
-// --- Modèles de la finale ---
-model FinalRound {
-    id              String @id @default(cuid())
-    name            String
-    startDate       DateTime
-    endDate         DateTime
-    description     String
-    participants    FinalRoundParticipant[]
-    winnerId        String?
-}
-
-model FinalRoundParticipant {
-    id              String      @id @default(cuid())
-    finalRound      FinalRound  @relation(fields: [finalRoundId], references: [id])
-    finalRoundId    String
-    studentId       String      @unique // Un élève ne peut participer qu'une fois à une finale
-    score           Int         @default(0)
-}
-
-model ParentFeedback {
-  id                  String          @id @default(cuid())
-  studentProgress     StudentProgress @relation(fields: [studentProgressId], references: [id])
-  studentProgressId   String
-  student             User            @relation(fields: [studentId], references: [id])
-  studentId           String
-  taste               Int // Note sur 100
-  presentation        Int // Note sur 100
-  autonomy            Int // Note sur 100
-  comment             String?
-  createdAt           DateTime        @default(now())
+enum ValidationType {
+  AUTOMATIC
+  PROFESSOR
+  PARENT
 }
