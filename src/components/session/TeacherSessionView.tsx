@@ -65,6 +65,7 @@ export function TeacherSessionView({
                                     isLocal={true}
                                     isTeacher={true}
                                     participantUserId={localUserId}
+                                    onSpotlightParticipant={onSpotlightParticipant}
                                     displayName="Votre partage d'écran"
                                 />
                             </Card>
