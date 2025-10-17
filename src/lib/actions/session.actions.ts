@@ -115,9 +115,6 @@ export async function spotlightParticipant(sessionId: string, participantId: str
         console.error(`❌ [Pusher] Erreur lors de l'envoi:`, error);
         throw error;
     }
-    
-    revalidatePath(`/session/${sessionId}`);
-    console.log(`🔄 [Revalidation] Page de session ${sessionId} invalidée`);
 }
 
 export async function endCoursSession(sessionId: string) {
@@ -185,6 +182,8 @@ export async function serverSpotlightParticipant(sessionId: string, participantI
     if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized");
     }
+    // This server action will NOT revalidate the path.
+    // The client will update its state based on the Pusher event.
     await spotlightParticipant(sessionId, participantId);
 }
 
