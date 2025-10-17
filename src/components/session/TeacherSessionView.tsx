@@ -16,6 +16,7 @@ import { ParticipantList } from './ParticipantList';
 import { serverSpotlightParticipant } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useCallback } from 'react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -118,45 +119,46 @@ export function TeacherSessionView({
             </div>
 
             {/* --- Ligne du bas : Caméras des Participants --- */}
-            <div className="h-48">
-                <ScrollArea className="h-full">
-                    <div className="flex gap-4 pb-4">
-                       {gridParticipants.map(({ user, stream, isOnline, isLocal }) => {
+             <div className="relative px-12">
+                <Carousel opts={{ align: 'start', slidesToScroll: 1, dragFree: true }} className="w-full">
+                    <CarouselContent className="-ml-4">
+                        {gridParticipants.map(({ user, stream, isOnline, isLocal }) => {
                             if (isOnline) {
                                 return (
-                                     <div className="w-64 flex-shrink-0" key={user.id}>
+                                    <CarouselItem key={user.id} className="basis-1/3 md:basis-1/4 lg:basis-1/5 pl-4">
                                         <Participant
                                             stream={stream || null}
                                             isLocal={isLocal}
                                             isSpotlighted={user.id === spotlightedUser?.id}
-                                            isTeacher={true} // Teacher can always spotlight
+                                            isTeacher={true}
                                             participantUserId={user.id}
                                             onSpotlightParticipant={handleSpotlightParticipant}
                                             displayName={user.name ?? ''}
                                             isHandRaised={raisedHands.has(user.id)}
                                         />
-                                    </div>
+                                    </CarouselItem>
                                 );
                             }
                             
-                            // Affiche un placeholder seulement pour les élèves hors ligne
                             if (user.role === 'ELEVE') {
                                 return (
-                                    <div className="w-64 flex-shrink-0" key={user.id}>
+                                    <CarouselItem key={user.id} className="basis-1/3 md:basis-1/4 lg:basis-1/5 pl-4">
                                         <StudentPlaceholder
                                             student={user as StudentWithCareer}
                                             isOnline={false}
                                             onSpotlightParticipant={handleSpotlightParticipant}
                                             isHandRaised={raisedHands.has(user.id)}
                                         />
-                                    </div>
+                                    </CarouselItem>
                                 )
                             }
                             
                             return null;
-                       })}
-                    </div>
-                </ScrollArea>
+                        })}
+                    </CarouselContent>
+                    <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2" />
+                    <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2" />
+                </Carousel>
             </div>
         </div>
     );
