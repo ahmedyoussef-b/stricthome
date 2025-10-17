@@ -130,7 +130,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     where: {
       studentId: userId,
       taskId,
-      status: { in: ['COMPLETED', 'VALIDATED', 'PENDING_VALIDATION', 'VERIFIED'] },
+      status: { in: ['COMPLETED', 'VALIDATED'] },
       completionDate: { gte: periodStart },
     },
   });
@@ -144,7 +144,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
   
   const finalStatus = isAutomaticValidation
     ? ProgressStatus.COMPLETED
-    : ProgressStatus.PENDING_VALIDATION;
+    : ProgressStatus.VALIDATED;
 
   let pointsAwarded = 0;
   

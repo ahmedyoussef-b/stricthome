@@ -55,7 +55,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
         if (isTeacherView || isPending) return;
 
         // Optimistic update
-        setStatus(ProgressStatus.PENDING_VALIDATION); 
+        setStatus(ProgressStatus.VALIDATED); 
 
         startTransition(async () => {
             try {
@@ -83,8 +83,8 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
         handleComplete(result.info.secure_url);
     };
 
-    const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VALIDATED || status === ProgressStatus.VERIFIED;
-    const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
+    const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VALIDATED || status === ProgressStatus.IN_PROGRESS;
+    const isPendingValidation = status === ProgressStatus.VALIDATED;
     const isParentValidation = task.validationType === ValidationType.PARENT;
     const isProfessorValidation = task.validationType === ValidationType.PROFESSOR;
     const isAutomaticValidation = task.validationType === ValidationType.AUTOMATIC;
