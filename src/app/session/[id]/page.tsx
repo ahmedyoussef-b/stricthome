@@ -77,11 +77,6 @@ export default function SessionPage() {
     const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
     const [understandingStatus, setUnderstandingStatus] = useState<Map<string, UnderstandingStatus>>(new Map());
 
-    const [duration, setDuration] = useState(300); // 5 minutes
-    const [timeLeft, setTimeLeft] = useState(duration);
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
     const [isSharingScreen, setIsSharingScreen] = useState(false);
 
 
@@ -104,11 +99,6 @@ export default function SessionPage() {
         console.log("🧹 [CLEANUP] Nettoyage complet de la session.");
         isCleanedUpRef.current = true;
         
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
         screenStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -445,50 +435,21 @@ export default function SessionPage() {
     }, [checkAndRepairConnections]);
 
 
-    const handleStartTimer = () => {
+    const handleStartTimer = useCallback(() => {
         if (!isTeacher) return;
-        setIsTimerRunning(true);
         broadcastTimerEvent(sessionId, 'timer-started');
-    };
+    }, [isTeacher, sessionId]);
 
-    const handlePauseTimer = () => {
+    const handlePauseTimer = useCallback(() => {
         if (!isTeacher) return;
-        setIsTimerRunning(false);
         broadcastTimerEvent(sessionId, 'timer-paused');
-    };
+    }, [isTeacher, sessionId]);
 
-    const handleResetTimer = () => {
+    const handleResetTimer = useCallback(() => {
         if (!isTeacher) return;
-        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-        setTimeLeft(duration);
-        setIsTimerRunning(false);
-        broadcastTimerEvent(sessionId, 'timer-reset', { duration });
-    };
+        broadcastTimerEvent(sessionId, 'timer-reset', { duration: 300 });
+    }, [isTeacher, sessionId]);
 
-
-    useEffect(() => {
-        if (isTimerRunning) {
-            timerIntervalRef.current = setInterval(() => {
-                setTimeLeft(prevTimeLeft => {
-                    if (prevTimeLeft <= 1) {
-                        clearInterval(timerIntervalRef.current!);
-                        timerIntervalRef.current = null;
-                        setIsTimerRunning(false);
-                        return 0;
-                    }
-                    return prevTimeLeft - 1;
-                });
-            }, 1000);
-        } else if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-        return () => {
-            if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-            }
-        };
-    }, [isTimerRunning]);
 
     // Initialisation et nettoyage de la session
      useEffect(() => {
@@ -605,18 +566,15 @@ export default function SessionPage() {
                 });
                 channel.bind('timer-started', () => {
                     console.log("▶️ [ÉVÉNEMENT] 'timer-started' reçu.");
-                    setIsTimerRunning(true);
+                    // La logique du minuteur est maintenant dans SessionTimer
                 });
                 channel.bind('timer-paused', () => {
                     console.log("⏸️ [ÉVÉNEMENT] 'timer-paused' reçu.");
-                    setIsTimerRunning(false);
+                     // La logique du minuteur est maintenant dans SessionTimer
                 });
                 channel.bind('timer-reset', (data: { duration: number }) => {
                     console.log("🔄 [ÉVÉNEMENT] 'timer-reset' reçu.");
-                    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-                    setIsTimerRunning(false);
-                    setDuration(data.duration);
-                    setTimeLeft(data.duration);
+                     // La logique du minuteur est maintenant dans SessionTimer
                 });
                 
                 console.log("✅ [INITIALISATION] Initialisation terminée.");
@@ -808,13 +766,12 @@ const handleEndSessionForEveryone = useCallback(async () => {
                 onEndSession={handleEndSessionForEveryone}
                 onLeaveSession={handleEndSession} // Les élèves quittent via la même logique de fin
                 isEndingSession={isEndingSession}
-                timeLeft={timeLeft}
-                isTimerRunning={isTimerRunning}
                 onStartTimer={handleStartTimer}
                 onPauseTimer={handlePauseTimer}
                 onResetTimer={handleResetTimer}
                 isSharingScreen={isSharingScreen}
                 onToggleScreenShare={handleToggleScreenShare}
+                channel={presenceChannelRef.current}
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0 relative">
                 <PermissionPrompt />

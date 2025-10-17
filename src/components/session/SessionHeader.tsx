@@ -7,20 +7,20 @@ import { Loader2, PhoneOff } from "lucide-react";
 import { SessionTimer } from "./SessionTimer";
 import { useCallback } from "react";
 import { VideoControls } from "../VideoControls";
+import { PresenceChannel } from "pusher-js";
 
 interface SessionHeaderProps {
     sessionId: string;
     isTeacher: boolean;
     onEndSession: () => void;
     onLeaveSession: () => void;
-    timeLeft: number;
-    isTimerRunning: boolean;
     onStartTimer: () => void;
     onPauseTimer: () => void;
     onResetTimer: () => void;
     isEndingSession?: boolean;
     isSharingScreen: boolean;
     onToggleScreenShare: () => void;
+    channel: PresenceChannel | null;
 }
 
 export function SessionHeader({ 
@@ -28,14 +28,13 @@ export function SessionHeader({
     isTeacher, 
     onEndSession,
     onLeaveSession,
-    timeLeft,
-    isTimerRunning,
     onStartTimer,
     onPauseTimer,
     onResetTimer,
     isEndingSession = false,
     isSharingScreen,
     onToggleScreenShare,
+    channel,
 }: SessionHeaderProps) {
     
     // CORRECTION : Gestionnaire de clic direct et sécurisé
@@ -62,11 +61,10 @@ export function SessionHeader({
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
                     <SessionTimer
                         isTeacher={isTeacher}
-                        timeLeft={timeLeft}
-                        isTimerRunning={isTimerRunning}
                         onStart={onStartTimer}
                         onPause={onPauseTimer}
                         onReset={onResetTimer}
+                        channel={channel}
                     />
                      {isTeacher && (
                         <VideoControls 
