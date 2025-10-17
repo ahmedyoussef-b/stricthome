@@ -69,7 +69,7 @@ export async function endAllActiveSessionsForTeacher() {
 export async function getTasksForProfessorValidation(teacherId: string): Promise<TaskForProfessorValidation[]> {
     const tasks = await prisma.studentProgress.findMany({
         where: {
-            status: ProgressStatus.PENDING_VALIDATION,
+            status: ProgressStatus.COMPLETED,
             task: {
                 validationType: ValidationType.PROFESSOR,
             },
@@ -118,7 +118,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
         },
     });
 
-    if (!progress || progress.task.validationType !== 'PROFESSOR' || progress.status !== 'PENDING_VALIDATION') {
+    if (!progress || progress.task.validationType !== 'PROFESSOR' || progress.status !== 'COMPLETED') {
         throw new Error('Tâche non trouvée ou validation incorrecte.');
     }
 

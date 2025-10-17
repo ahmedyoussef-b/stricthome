@@ -143,8 +143,8 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
   const isAutomaticValidation = validationType === ValidationType.AUTOMATIC;
   
   const finalStatus = isAutomaticValidation
-    ? ProgressStatus.COMPLETED
-    : ProgressStatus.VALIDATED;
+    ? ProgressStatus.VALIDATED
+    : ProgressStatus.COMPLETED;
 
   let pointsAwarded = 0;
   
@@ -169,7 +169,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
           pointsAwarded = task.points;
           
           // Update the user's total points
-          const updatedUser = await tx.user.update({
+          await tx.user.update({
             where: { id: userId },
             data: { points: { increment: pointsAwarded } },
           });
