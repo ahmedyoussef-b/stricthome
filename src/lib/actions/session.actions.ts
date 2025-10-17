@@ -174,16 +174,12 @@ export async function endCoursSession(sessionId: string) {
 }
 
 
-// These actions were being called from the client, but should be server actions
-// for security and consistency. I am moving the fetch calls inside the main
-// session page to server actions.
-
 export async function serverSpotlightParticipant(sessionId: string, participantId: string) {
     const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSESEUR') { // Typo: PROFESSEUR
-        // Correction du typo
+    if (session?.user.role !== 'PROFESSEUR') { 
         throw new Error("Unauthorized");
     }
+    // No revalidatePath here, Pusher handles the update.
     await spotlightParticipant(sessionId, participantId);
 }
 
