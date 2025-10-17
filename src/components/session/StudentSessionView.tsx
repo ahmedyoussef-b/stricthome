@@ -84,7 +84,7 @@ export function StudentSessionView({
             </div>
             
             {/* Barre latérale droite : contrôles de l'élève */}
-            <div className="w-1/5 flex flex-col gap-6 min-h-0">
+            <div className="w-1/5 flex flex-col gap-6">
                  <Card>
                     <CardHeader className="p-3">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -123,9 +123,8 @@ export function StudentSessionView({
                     </CardContent>
                 </Card>
                 <Button 
-                    onClick={onToggleHandRaise} 
-                    size="lg"
-                    className={cn("w-full flex-1", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
+                    onClick={onToggleHandRaise}
+                    className={cn("w-full", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
                 >
                    <Hand className="mr-2 h-5 w-5" />
                    {isHandRaised ? 'Baisser la main' : 'Lever la main'}
