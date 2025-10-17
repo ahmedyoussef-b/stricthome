@@ -1,7 +1,7 @@
 // src/components/StudentPlaceholder.tsx
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { cn } from '@/lib/utils';
 import { StudentWithCareer } from '@/lib/types';
