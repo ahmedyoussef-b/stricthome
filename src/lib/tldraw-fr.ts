@@ -2,7 +2,7 @@
 // src/lib/tldraw-fr.ts
 "use client"
 
-import { useTranslation, useDefaultTranslation } from '@tldraw/tldraw'
+import { useDefaultTranslation } from '@tldraw/tldraw'
 
 // This file is mostly AI-generated, and may have mistakes.
 // If you see any, please file an issue on GitHub.
