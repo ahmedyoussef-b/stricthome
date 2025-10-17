@@ -83,7 +83,7 @@ function TaskItem({ task, studentId, initialStatus, isTeacherView, onTaskUpdate 
         handleComplete(result.info.secure_url);
     };
 
-    const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VERIFIED;
+    const isCompletedOrVerified = status === ProgressStatus.COMPLETED || status === ProgressStatus.VALIDATED || status === ProgressStatus.VERIFIED;
     const isPendingValidation = status === ProgressStatus.PENDING_VALIDATION;
     const isParentValidation = task.validationType === ValidationType.PARENT;
     const isProfessorValidation = task.validationType === ValidationType.PROFESSOR;

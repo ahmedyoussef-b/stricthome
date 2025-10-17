@@ -75,7 +75,7 @@ export async function validateTaskByParent(
   let finalScore = 100;
   
   const progressUpdateData: any = {
-    status: ProgressStatus.VERIFIED,
+    status: ProgressStatus.VALIDATED,
     recipeName: recipeName,
   };
 

@@ -128,7 +128,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
             prisma.studentProgress.update({
                 where: { id: payload.progressId },
                 data: { 
-                    status: ProgressStatus.VERIFIED,
+                    status: ProgressStatus.VALIDATED,
                     pointsAwarded: pointsAwarded
                 },
             }),
@@ -171,7 +171,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
     } else {
         await prisma.studentProgress.update({
             where: { id: payload.progressId },
-            data: { status: ProgressStatus.NOT_STARTED }, // Student can retry
+            data: { status: ProgressStatus.REJECTED }, // Student can retry
         });
         
         revalidatePath(`/student/${progress.studentId}`);
@@ -260,7 +260,7 @@ export async function resetPeriodicData() {
       const lastCompletedTask = await prisma.studentProgress.findFirst({
           where: {
               studentId: student.id,
-              status: { in: [ProgressStatus.COMPLETED, ProgressStatus.VERIFIED] },
+              status: { in: [ProgressStatus.COMPLETED, ProgressStatus.VALIDATED] },
               completionDate: {
                   gte: startOfYesterday,
                   lt: startOfToday,
