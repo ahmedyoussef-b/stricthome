@@ -6,6 +6,7 @@ import { getAuthSession } from '@/lib/session';
 import { getClassAnnouncements } from '@/lib/actions/announcement.actions';
 import { ClassroomWithDetails } from '@/lib/types';
 import { User } from '@prisma/client';
+import { endAllActiveSessionsForTeacher } from '@/lib/actions/teacher.actions';
 
 export default async function ClassPage({ params }: { params: { id: string } }) {
   const classroomId = params.id;
@@ -14,6 +15,9 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
   if (!session || session.user.role !== 'PROFESSEUR') {
       redirect('/login')
   }
+
+  // End all active sessions for this teacher to clean up any leftover invitations
+  await endAllActiveSessionsForTeacher();
 
   const classroom = await prisma.classroom.findUnique({
       where: { id: classroomId, professeurId: session.user.id },
