@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Trophy, Star, Award } from 'lucide-react';
 import prisma from '@/lib/prisma';
 import * as Icons from 'lucide-react';
-import type { Achievement as AchievementType, User, Message } from '@prisma/client';
+import type { Achievement as AchievementType, User, Message, ProgressStatus } from '@prisma/client';
 import { isQuestion } from '@/ai/flows/is-question-flow';
 
 type IconName = keyof typeof Icons;
@@ -29,7 +29,7 @@ interface StudentWithRelations extends User {
   } | null;
   progress?: Array<{
     id: string;
-    status: string;
+    status: ProgressStatus;
   }>;
   sessionsParticipees?: Array<{
     id: string;
@@ -51,7 +51,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
         },
       },
       progress: {
-        where: { status: { in: ['COMPLETED', 'VERIFIED'] } },
+        where: { status: { in: ['COMPLETED', 'VALIDATED'] } },
         select: {
           id: true,
           status: true,

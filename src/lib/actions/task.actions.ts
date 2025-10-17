@@ -130,7 +130,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     where: {
       studentId: userId,
       taskId,
-      status: { in: ['COMPLETED', 'VALIDATED', 'PENDING_VALIDATION'] },
+      status: { in: ['COMPLETED', 'VALIDATED', 'PENDING_VALIDATION', 'VERIFIED'] },
       completionDate: { gte: periodStart },
     },
   });
