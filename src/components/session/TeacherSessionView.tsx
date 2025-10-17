@@ -115,7 +115,7 @@ export function TeacherSessionView({
                                             stream={stream}
                                             isLocal={isLocalUser}
                                             isSpotlighted={user.id === spotlightedUser?.id}
-                                            isTeacher={user.role === 'PROFESSEUR'}
+                                            isTeacher={true}
                                             participantUserId={user.id}
                                             onSpotlightParticipant={handleSpotlightParticipant}
                                             displayName={user.name ?? ''}
