@@ -100,10 +100,11 @@ export const authOptions: NextAuthOptions = {
       
       // Initial sign in
       if (user) {
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
         token.id = user.id;
-        token.role = user.role;
-        token.picture = user.image; // ← CRITIQUE
-        token.classeId = (user as any).classeId;
+        token.role = dbUser?.role;
+        token.picture = user.image;
+        token.classeId = dbUser?.classroomId;
       }
       
       // Update session (when `update()` is called)
