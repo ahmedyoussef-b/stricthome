@@ -91,48 +91,43 @@ export function TeacherSessionView({
             <div className="h-48">
                 <ScrollArea className="h-full">
                     <div className="flex gap-4 pb-4">
-                        {/* Vidéo du professeur */}
-                        <div className="w-64 flex-shrink-0">
-                            <Participant 
-                                key={teacher.id}
-                                stream={localStream}
-                                isLocal={true}
-                                isSpotlighted={teacher.id === spotlightedUser?.id}
-                                isTeacher={true}
-                                participantUserId={teacher.id}
-                                onSpotlightParticipant={onSpotlightParticipant}
-                                displayName={teacher.name ?? ''}
-                                isHandRaised={raisedHands.has(teacher.id)}
-                            />
-                        </div>
-                        
-                        {/* Vidéos des élèves */}
-                        {students.map(student => {
-                            const stream = remoteStreamsMap.get(student.id);
-                            return (
-                                <div className="w-64 flex-shrink-0" key={student.id}>
-                                {stream ? (
-                                    <Participant
-                                        stream={stream}
-                                        isLocal={false}
-                                        isSpotlighted={student.id === spotlightedUser?.id}
-                                        isTeacher={false}
-                                        participantUserId={student.id}
-                                        onSpotlightParticipant={onSpotlightParticipant}
-                                        displayName={student.name ?? ''}
-                                        isHandRaised={raisedHands.has(student.id)}
-                                    />
-                                ) : (
-                                    <StudentPlaceholder
-                                        student={student}
-                                        isOnline={onlineUserIds.includes(student.id)}
-                                        onSpotlightParticipant={onSpotlightParticipant}
-                                        isHandRaised={raisedHands.has(student.id)}
-                                    />
-                                )}
-                                </div>
-                            );
-                        })}
+                       {allSessionUsers.map(user => {
+                            const isLocalUser = user.id === localUserId;
+                            const stream = isLocalUser ? localStream : remoteStreamsMap.get(user.id);
+
+                            if (stream) {
+                                return (
+                                     <div className="w-64 flex-shrink-0" key={user.id}>
+                                        <Participant
+                                            stream={stream}
+                                            isLocal={isLocalUser}
+                                            isSpotlighted={user.id === spotlightedUser?.id}
+                                            isTeacher={user.role === 'PROFESSEUR'}
+                                            participantUserId={user.id}
+                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            displayName={user.name ?? ''}
+                                            isHandRaised={raisedHands.has(user.id)}
+                                        />
+                                    </div>
+                                );
+                            }
+                            
+                            // Affiche un placeholder seulement pour les élèves hors ligne
+                            if (user.role === 'ELEVE' && !onlineUserIds.includes(user.id)) {
+                                return (
+                                    <div className="w-64 flex-shrink-0" key={user.id}>
+                                        <StudentPlaceholder
+                                            student={user as StudentWithCareer}
+                                            isOnline={false}
+                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            isHandRaised={raisedHands.has(user.id)}
+                                        />
+                                    </div>
+                                )
+                            }
+                            
+                            return null;
+                       })}
                     </div>
                 </ScrollArea>
             </div>
