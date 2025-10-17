@@ -64,7 +64,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
       },
       messages: {
         where: {
-          classroomId: { not: null },
+          conversationId: null, // Only count classroom messages, not direct messages
         },
       },
     },
