@@ -13,6 +13,9 @@ import { UnderstandingTracker } from '../UnderstandingTracker';
 import { Whiteboard } from '../Whiteboard';
 import { Card } from '../ui/card';
 import { ParticipantList } from './ParticipantList';
+import { serverSpotlightParticipant } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
+import { useCallback } from 'react';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -24,7 +27,6 @@ export function TeacherSessionView({
     spotlightedUser,
     allSessionUsers,
     onlineUserIds,
-    onSpotlightParticipant,
     raisedHands,
     understandingStatus,
 }: {
@@ -35,18 +37,27 @@ export function TeacherSessionView({
     spotlightedUser: SessionParticipant | undefined | null;
     allSessionUsers: SessionParticipant[];
     onlineUserIds: string[];
-    onSpotlightParticipant: (participantId: string) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
+    const { toast } = useToast();
     
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
     const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id));
     const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
+
+    const handleSpotlightParticipant = useCallback(async (participantId: string) => {
+        console.log(`🔦 [ACTION] Le professeur met en vedette: ${participantId}.`);
+        try {
+            await serverSpotlightParticipant(sessionId, participantId);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
+        }
+    }, [sessionId, toast]);
     
     if (!localUserId || !teacher) return null;
 
@@ -65,7 +76,7 @@ export function TeacherSessionView({
                                     isLocal={true}
                                     isTeacher={true}
                                     participantUserId={localUserId}
-                                    onSpotlightParticipant={onSpotlightParticipant}
+                                    onSpotlightParticipant={handleSpotlightParticipant}
                                     displayName="Votre partage d'écran"
                                 />
                             </Card>
@@ -105,7 +116,7 @@ export function TeacherSessionView({
                                             isSpotlighted={user.id === spotlightedUser?.id}
                                             isTeacher={user.role === 'PROFESSEUR'}
                                             participantUserId={user.id}
-                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            onSpotlightParticipant={handleSpotlightParticipant}
                                             displayName={user.name ?? ''}
                                             isHandRaised={raisedHands.has(user.id)}
                                         />
@@ -120,7 +131,7 @@ export function TeacherSessionView({
                                         <StudentPlaceholder
                                             student={user as StudentWithCareer}
                                             isOnline={false}
-                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            onSpotlightParticipant={handleSpotlightParticipant}
                                             isHandRaised={raisedHands.has(user.id)}
                                         />
                                     </div>

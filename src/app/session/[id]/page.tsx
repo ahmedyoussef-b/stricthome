@@ -636,16 +636,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
         setIsEndingSession(false);
     }
 }, [isEndingSession, sessionId, toast]);
-    
-    const handleSpotlightParticipant = useCallback(async (participantId: string) => {
-        console.log(`🔦 [ACTION] Le professeur met en vedette: ${participantId}.`);
-        if (!isTeacher) return;
-        try {
-            await serverSpotlightParticipant(sessionId, participantId);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
-        }
-    }, [isTeacher, sessionId, toast]);
 
     const handleToggleHandRaise = useCallback(async () => {
         if (isTeacher || !userId) return;
@@ -784,7 +774,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         spotlightedUser={spotlightedUser}
                         allSessionUsers={allSessionUsers}
                         onlineUserIds={onlineUsers}
-                        onSpotlightParticipant={handleSpotlightParticipant}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
                     />
