@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getAuthSession } from '../session';
 import { pusherServer } from '../pusher/server';
+import { UnderstandingStatus } from '@/app/session/[id]/page';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
     console.log(`🚀 [Action Server] Démarrage de la création de session pour ${studentIds.length} élève(s).`);
@@ -182,8 +183,6 @@ export async function serverSpotlightParticipant(sessionId: string, participantI
     if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized");
     }
-    // This server action will NOT revalidate the path.
-    // The client will update its state based on the Pusher event.
     await spotlightParticipant(sessionId, participantId);
 }
 
@@ -203,4 +202,25 @@ export async function broadcastTimerEvent(sessionId: string, event: string, data
 
   const channel = `presence-session-${sessionId}`;
   await pusherServer.trigger(channel, event, data || {});
+}
+
+export async function updateUnderstandingStatus(sessionId: string, userId: string, status: UnderstandingStatus) {
+    const session = await getAuthSession();
+    if (session?.user.id !== userId) {
+        throw new Error('Unauthorized');
+    }
+
+    const participant = await prisma.coursSession.findFirst({
+        where: {
+            id: sessionId,
+            participants: { some: { id: userId } }
+        }
+    });
+
+    if (!participant) {
+        throw new Error('Forbidden');
+    }
+
+    const channel = `presence-session-${sessionId}`;
+    await pusherServer.trigger(channel, 'understanding-status-updated', { userId, status });
 }

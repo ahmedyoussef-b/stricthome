@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant } from '@/lib/actions';
+import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant, updateUnderstandingStatus } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -668,19 +668,19 @@ const handleEndSessionForEveryone = useCallback(async () => {
     const handleUnderstandingChange = useCallback(async (status: UnderstandingStatus) => {
         if (isTeacher || !userId) return;
         console.log(`🤔 [ACTION] L'élève change son statut de compréhension à '${status}'.`);
+        // Optimistic update
         setUnderstandingStatus(prev => new Map(prev).set(userId, status));
 
         try {
-            await fetch(`/api/session/${sessionId}/understanding`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, status }),
-            });
+            // Server action without revalidation
+            await updateUnderstandingStatus(sessionId, userId, status);
         } catch (error) {
             console.error("❌ [ACTION] Échec de la mise à jour du statut de compréhension:", error);
+            // Revert optimistic update (optional, but good practice)
+            setUnderstandingStatus(prev => new Map(prev).set(userId, understandingStatus.get(userId) || 'none'));
             toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut.' });
         }
-    }, [isTeacher, sessionId, toast, userId]);
+    }, [isTeacher, sessionId, toast, userId, understandingStatus]);
 
     const handleToggleScreenShare = useCallback(() => {
         if (!isTeacher) return;
