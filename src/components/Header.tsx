@@ -7,6 +7,8 @@ import { UserNav } from './UserNav';
 import { Button } from './ui/button';
 import { User } from 'next-auth';
 import { ThemeToggle } from './ThemeToggle';
+import { ToggleButton } from './ToggleButton';
+import { Role } from '@prisma/client';
 
 interface HeaderProps {
   user?: User | null;
@@ -29,6 +31,7 @@ export function Header({ user, children }: HeaderProps) {
             <Link href="/librairie-metiers">Métiers</Link>
           </Button>
            {children}
+           {user?.role === Role.PROFESSEUR && <ToggleButton />}
            <ThemeToggle />
           <UserNav user={user} />
         </nav>
