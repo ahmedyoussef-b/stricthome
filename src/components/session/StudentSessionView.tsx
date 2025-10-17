@@ -78,9 +78,10 @@ export function StudentSessionView({
                 <div className="flex flex-col min-h-0">
                     {renderMainContent()}
                 </div>
-                <div className="flex flex-col min-h-0">
-                   <Whiteboard />
+                <div className="h-full w-2/5">
+                    <Whiteboard />
                 </div>
+                <div className="h-full w-3/5"></div>
             </div>
             
             {/* Barre latérale droite : vidéo de l'élève et contrôles */}

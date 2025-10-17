@@ -51,87 +51,90 @@ export function TeacherSessionView({
     if (!localUserId || !teacher) return null;
 
     return (
-        <div className="flex flex-1 min-h-0 py-6 gap-4">
-            {/* --- Colonne de Gauche : Caméras des Participants --- */}
-            <ScrollArea className="w-64 pr-4 -mr-4">
-                 <div className="space-y-4">
-                    {/* Vidéo du professeur */}
-                     <Participant 
-                        key={teacher.id}
-                        stream={localStream}
-                        isLocal={true}
-                        isSpotlighted={teacher.id === spotlightedUser?.id}
-                        isTeacher={true}
-                        participantUserId={teacher.id}
-                        onSpotlightParticipant={onSpotlightParticipant}
-                        displayName={teacher.name ?? ''}
-                        isHandRaised={raisedHands.has(teacher.id)}
-                    />
-                    
-                    {/* Vidéos des élèves */}
-                    {students.map(student => {
-                        const stream = remoteStreamsMap.get(student.id);
-                        if (stream) {
-                            return (
+        <div className="flex flex-col flex-1 min-h-0 py-6 gap-4">
+            {/* --- Ligne du haut : Espace de travail --- */}
+            <div className="flex-1 flex flex-row gap-4 min-h-0">
+                 {/* Colonne de Gauche : Espace de travail */}
+                <div className="flex-1 flex flex-row gap-4 min-h-0">
+                    {/* Ligne 1: Tableau blanc ou partage d'écran */}
+                    <div className="flex flex-col min-h-0 w-2/5">
+                        {screenStream ? (
+                            <Card className="w-full h-full p-2 bg-black">
                                 <Participant
-                                    key={student.id}
-                                    stream={stream}
-                                    isLocal={false}
-                                    isSpotlighted={student.id === spotlightedUser?.id}
-                                    isTeacher={false}
-                                    participantUserId={student.id}
-                                    onSpotlightParticipant={onSpotlightParticipant}
-                                    displayName={student.name ?? ''}
-                                    isHandRaised={raisedHands.has(student.id)}
+                                    stream={screenStream}
+                                    isLocal={true}
+                                    isTeacher={true}
+                                    participantUserId={localUserId}
+                                    displayName="Votre partage d'écran"
                                 />
-                            );
-                        }
-                        // Affiche un placeholder si l'élève est hors-ligne ou sans vidéo
-                        return (
-                             <StudentPlaceholder
-                                key={student.id}
-                                student={student}
-                                isOnline={onlineUserIds.includes(student.id)}
-                                onSpotlightParticipant={onSpotlightParticipant}
-                                isHandRaised={raisedHands.has(student.id)}
-                            />
-                        )
-                    })}
-                </div>
-            </ScrollArea>
-
-            {/* --- Colonne Centrale : Espace de travail --- */}
-            <div className="flex-1 grid grid-rows-[2fr_3fr] gap-4 min-h-0">
-                {/* Ligne 1: Tableau blanc ou partage d'écran */}
-                <div className="flex flex-col min-h-0">
-                    {screenStream ? (
-                        <Card className="w-full h-full p-2 bg-black">
-                            <Participant
-                                stream={screenStream}
-                                isLocal={true}
-                                isTeacher={true}
-                                participantUserId={localUserId}
-                                displayName="Votre partage d'écran"
-                            />
-                        </Card>
-                    ) : (
-                        <div className='h-full w-full'>
-                            <Whiteboard />
-                        </div>
-                    )}
+                            </Card>
+                        ) : (
+                            <div className='h-full w-full'>
+                                <Whiteboard />
+                            </div>
+                        )}
+                    </div>
+                     <div className="flex flex-col min-h-0 w-3/5">
+                        <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
+                    </div>
                 </div>
 
-                 {/* Ligne 2: Espace vide pour utilisation future */}
-                <div className="flex flex-col min-h-0">
-                    <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
+                {/* --- Colonne de Droite : Outils Interactifs --- */}
+                <div className="w-72 flex flex-col gap-4 min-h-0">
+                    <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
+                    <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
+                    <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
                 </div>
             </div>
 
-            {/* --- Colonne de Droite : Outils Interactifs --- */}
-            <div className="w-72 flex flex-col gap-4 min-h-0">
-                 <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
-                 <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
-                 <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
+            {/* --- Ligne du bas : Caméras des Participants --- */}
+            <div className="h-48">
+                <ScrollArea className="h-full">
+                    <div className="flex gap-4 pb-4">
+                        {/* Vidéo du professeur */}
+                        <div className="w-64 flex-shrink-0">
+                            <Participant 
+                                key={teacher.id}
+                                stream={localStream}
+                                isLocal={true}
+                                isSpotlighted={teacher.id === spotlightedUser?.id}
+                                isTeacher={true}
+                                participantUserId={teacher.id}
+                                onSpotlightParticipant={onSpotlightParticipant}
+                                displayName={teacher.name ?? ''}
+                                isHandRaised={raisedHands.has(teacher.id)}
+                            />
+                        </div>
+                        
+                        {/* Vidéos des élèves */}
+                        {students.map(student => {
+                            const stream = remoteStreamsMap.get(student.id);
+                            return (
+                                <div className="w-64 flex-shrink-0" key={student.id}>
+                                {stream ? (
+                                    <Participant
+                                        stream={stream}
+                                        isLocal={false}
+                                        isSpotlighted={student.id === spotlightedUser?.id}
+                                        isTeacher={false}
+                                        participantUserId={student.id}
+                                        onSpotlightParticipant={onSpotlightParticipant}
+                                        displayName={student.name ?? ''}
+                                        isHandRaised={raisedHands.has(student.id)}
+                                    />
+                                ) : (
+                                    <StudentPlaceholder
+                                        student={student}
+                                        isOnline={onlineUserIds.includes(student.id)}
+                                        onSpotlightParticipant={onSpotlightParticipant}
+                                        isHandRaised={raisedHands.has(student.id)}
+                                    />
+                                )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </ScrollArea>
             </div>
         </div>
     );

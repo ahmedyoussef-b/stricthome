@@ -160,7 +160,7 @@ export default function SessionPage() {
         clearNegotiationTimeout(peerId);
         await new Promise(resolve => setTimeout(resolve, 100)); // Petit délai
         createPeerConnection(peerId);
-    }, []);
+    }, [negotiationQueue]);
 
     const rollbackToStable = async (peerId: string) => {
         const peer = peerConnectionsRef.current.get(peerId);
