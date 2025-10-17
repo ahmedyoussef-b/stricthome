@@ -106,8 +106,9 @@ export function TeacherSessionView({
                        {allSessionUsers.map(user => {
                             const isLocalUser = user.id === localUserId;
                             const stream = isLocalUser ? localStream : remoteStreamsMap.get(user.id);
+                            const isOnline = onlineUserIds.includes(user.id);
 
-                            if (stream) {
+                            if (isOnline) {
                                 return (
                                      <div className="w-64 flex-shrink-0" key={user.id}>
                                         <Participant
@@ -125,7 +126,7 @@ export function TeacherSessionView({
                             }
                             
                             // Affiche un placeholder seulement pour les élèves hors ligne
-                            if (user.role === 'ELEVE' && !onlineUserIds.includes(user.id)) {
+                            if (user.role === 'ELEVE') {
                                 return (
                                     <div className="w-64 flex-shrink-0" key={user.id}>
                                         <StudentPlaceholder
