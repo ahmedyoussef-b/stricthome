@@ -49,7 +49,7 @@ export async function SkillMatrix({ studentId, classId }: SkillMatrixProps) {
 
   const skillData = Object.values(TaskCategory).filter(c => c !== 'PERSONAL').map(category => {
     const categoryTasks = classTasks.filter(t => t.category === category);
-    const completedTasksInCategory = studentProgress.filter(p => p.task.category === category && (p.status === 'COMPLETED' || p.status === 'VERIFIED'));
+    const completedTasksInCategory = studentProgress.filter(p => p.task.category === category && (p.status === 'COMPLETED' || p.status === 'VALIDATED'));
 
     const totalPointsPossible = categoryTasks.reduce((sum, task) => sum + task.points, 0);
     const pointsEarned = completedTasksInCategory.reduce((sum, p) => sum + (p.pointsAwarded ?? 0), 0);
