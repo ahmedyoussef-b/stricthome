@@ -43,7 +43,7 @@ export async function getTasksForValidation(studentId: string): Promise<(Task & 
   const progress = await prisma.studentProgress.findMany({
     where: {
       studentId: studentId,
-      status: ProgressStatus.PENDING_VALIDATION,
+      status: ProgressStatus.COMPLETED,
     },
     include: {
       task: true,
@@ -66,7 +66,7 @@ export async function validateTaskByParent(
     include: { task: true, student: true },
   });
 
-  if (!progress || progress.status !== ProgressStatus.PENDING_VALIDATION) {
+  if (!progress || progress.status !== ProgressStatus.COMPLETED) {
     throw new Error('Tâche non trouvée ou déjà validée.');
   }
   
