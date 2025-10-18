@@ -6,7 +6,6 @@ import { Trophy, Star, Award } from 'lucide-react';
 import prisma from '@/lib/prisma';
 import * as Icons from 'lucide-react';
 import type { Achievement as AchievementType, User, Message } from '@prisma/client';
-import { isQuestion } from '@/ai/flows/is-question-flow';
 
 type IconName = keyof typeof Icons;
 
@@ -72,15 +71,8 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
 
   if (!student) return null;
 
-  // Analyse des messages pour les questions
-  const questionMessages = await Promise.all(
-    (student.messages || []).map(async (message) => {
-      // Utilise la nouvelle fonction simple
-      return isQuestion(message.message);
-    })
-  );
-
-  const questionsAskedCount = questionMessages.filter(Boolean).length;
+  // L'analyse des questions est désactivée car Genkit est supprimé.
+  const questionsAskedCount = 0;
 
   const getAchievementProgress = (achievement: AchievementType) => {
     const criteria = achievement.criteria as any;
@@ -106,6 +98,7 @@ export async function AchievementSystem({ studentId }: AchievementSystemProps) {
         target = criteria.count || 10;
         break;
       case 'questions_asked':
+        // La fonctionnalité de comptage des questions est désactivée.
         progress = questionsAskedCount;
         target = criteria.count || 20;
         break;
