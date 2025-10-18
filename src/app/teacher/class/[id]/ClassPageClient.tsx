@@ -53,6 +53,24 @@ export default function ClassPageClient({ classroom, teacher, announcements }: C
   }, [classroom.eleves]);
 
   useEffect(() => {
+    // Nettoyer les sessions précédentes et les cartes d'invitation au chargement de la page
+    const cleanupPreviousSessions = async () => {
+        try {
+            await endAllActiveSessionsAndHideCardForTeacher();
+            console.log("🧹 Sessions précédentes et cartes d'invitation nettoyées.");
+        } catch (error) {
+            console.error("❌ Erreur lors du nettoyage des sessions précédentes:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur de nettoyage',
+                description: 'Impossible de nettoyer les sessions précédentes.',
+            });
+        }
+    };
+    cleanupPreviousSessions();
+  }, [toast]); // Le tableau de dépendances est vide pour que cela ne s'exécute qu'au montage
+
+  useEffect(() => {
     if (!classroom.id) return;
 
     const channelName = `presence-classe-${classroom.id}`;
