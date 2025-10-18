@@ -745,7 +745,6 @@ const handleEndSessionForEveryone = useCallback(async () => {
                 isEndingSession={isEndingSession}
                 isSharingScreen={isSharingScreen}
                 onToggleScreenShare={handleToggleScreenShare}
-                initialDuration={300} // Passez la durée initiale ici
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0 relative">
                 <PermissionPrompt />
@@ -761,6 +760,7 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         onSpotlightParticipant={handleSpotlightParticipant}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
+                        initialDuration={300}
                     />
                 ) : (
                     <StudentSessionView

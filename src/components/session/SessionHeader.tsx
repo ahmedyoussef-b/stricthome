@@ -4,7 +4,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, PhoneOff } from "lucide-react";
-import { SessionTimer } from "./SessionTimer";
 import { useCallback } from "react";
 import { VideoControls } from "../VideoControls";
 
@@ -16,7 +15,6 @@ interface SessionHeaderProps {
     isEndingSession?: boolean;
     isSharingScreen: boolean;
     onToggleScreenShare: () => void;
-    initialDuration: number;
 }
 
 export function SessionHeader({ 
@@ -27,7 +25,6 @@ export function SessionHeader({
     isEndingSession = false,
     isSharingScreen,
     onToggleScreenShare,
-    initialDuration,
 }: SessionHeaderProps) {
     
     // CORRECTION : Gestionnaire de clic direct et sécurisé
@@ -52,11 +49,6 @@ export function SessionHeader({
                 </div>
 
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
-                    <SessionTimer
-                        isTeacher={isTeacher}
-                        sessionId={sessionId}
-                        initialDuration={initialDuration}
-                    />
                      {isTeacher && (
                         <VideoControls 
                             isSharingScreen={isSharingScreen} 

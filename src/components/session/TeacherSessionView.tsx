@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader } from '../ui/card';
 import { ParticipantList } from './ParticipantList';
 import { Brush, Star } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
+import { SessionTimer } from './SessionTimer';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -29,6 +30,7 @@ export function TeacherSessionView({
     onSpotlightParticipant,
     raisedHands,
     understandingStatus,
+    initialDuration
 }: {
     sessionId: string;
     localStream: MediaStream | null;
@@ -40,6 +42,7 @@ export function TeacherSessionView({
     onSpotlightParticipant: (participantId: string) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
+    initialDuration: number;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
@@ -135,6 +138,15 @@ export function TeacherSessionView({
                     <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
                     <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
                     <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
+                    <Card className='bg-background/80'>
+                        <CardContent className="p-3 flex items-center justify-center">
+                            <SessionTimer
+                                isTeacher={true}
+                                sessionId={sessionId}
+                                initialDuration={initialDuration}
+                            />
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
