@@ -1,7 +1,7 @@
 // src/components/Whiteboard.tsx
 'use client'
 import { Tldraw } from '@tldraw/tldraw'
-import type { TldrawEditor } from '@tldraw/tldraw'
+import type { Editor } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -16,10 +16,10 @@ interface BroadcastMessage {
 }
 
 export function Whiteboard({ sessionId }: { sessionId: string }) {
-	const [editor, setEditor] = useState<TldrawEditor | null>(null)
+	const [editor, setEditor] = useState<Editor | null>(null)
 	const { data: authSession } = useSession()
 
-	const setEditorCB = useCallback((editor: TldrawEditor) => {
+	const setEditorCB = useCallback((editor: Editor) => {
 		editor.user.updateUserPreferences({
 			id: authSession?.user.id,
 			name: authSession?.user.name ?? 'Anonymous',
@@ -56,8 +56,15 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 			if (change.source !== 'user') return
 
 			const toRemove = Object.keys(change.changes.removed)
+			const updatedValues = Object.values(change.changes.updated)
 			const toPut = Object.values(change.changes.added).concat(
-				Object.values(change.changes.updated).map(([, to]: [any, any]) => to)
+				updatedValues.map((update: unknown) => {
+					// Type guard pour s'assurer que c'est un tuple [any, any]
+					if (Array.isArray(update) && update.length === 2) {
+						return update[1]
+					}
+					return update
+				})
 			)
 
 			// Ne rien envoyer s'il n'y a pas de modifications
@@ -92,7 +99,7 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 	}, [editor, sessionId, authSession])
 
 	return (
-		<div style={{ position: 'fixed', inset: 0 }}>
+		<div className="relative h-full w-full">
 			<Tldraw
 				onMount={setEditorCB}
 				// Force le mode sombre pour une meilleure visibilité dans le thème actuel
