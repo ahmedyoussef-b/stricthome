@@ -24,14 +24,16 @@ export function Header({ user, children }: HeaderProps) {
           <School className="h-6 w-6" />
           <span>Classroom Connector</span>
         </Link>
-        <nav className="flex items-center gap-2 sm:gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/librairie-metiers">Métiers</Link>
-          </Button>
-           {children}
-           <ThemeToggle />
+        <div className="flex items-center gap-2 sm:gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" asChild>
+              <Link href="/librairie-metiers">Métiers</Link>
+            </Button>
+            {children}
+          </nav>
+          <ThemeToggle />
           <UserNav user={user} />
-        </nav>
+        </div>
       </div>
     </header>
   );

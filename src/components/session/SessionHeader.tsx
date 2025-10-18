@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, PhoneOff } from "lucide-react";
 import { useCallback } from "react";
 import { VideoControls } from "../VideoControls";
+import { ThemeToggle } from "../ThemeToggle";
 
 interface SessionHeaderProps {
     sessionId: string;
@@ -57,7 +58,8 @@ export function SessionHeader({
                     )}
                 </div>
                 
-                <div className='w-48 flex justify-end'>
+                <div className='w-48 flex items-center justify-end gap-2'>
+                    <ThemeToggle />
                     {isTeacher ? (
                         <Button 
                             variant="destructive" 
@@ -73,7 +75,7 @@ export function SessionHeader({
                             ) : (
                                 <>
                                     <PhoneOff className="mr-2 h-4 w-4" />
-                                    Terminer la session
+                                    Terminer
                                 </>
                             )}
                         </Button>
@@ -84,7 +86,7 @@ export function SessionHeader({
                             data-session-action="leave-session"
                          >
                             <PhoneOff className="mr-2 h-4 w-4" />
-                            Quitter la session
+                            Quitter
                         </Button>
                     )}
                 </div>
