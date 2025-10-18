@@ -119,13 +119,13 @@ export function TeacherSessionView({
             case 'camera':
                 return <div className="h-full">{renderSpotlightContent()}</div>;
             case 'whiteboard':
-                return <Whiteboard />;
+                return <Whiteboard sessionId={sessionId} />;
             case 'split':
             default:
                 return (
                     <div className="grid grid-cols-2 gap-4 h-full">
                         <div className="h-full">{renderSpotlightContent()}</div>
-                        <div className="h-full"><Whiteboard /></div>
+                        <div className="h-full"><Whiteboard sessionId={sessionId} /></div>
                     </div>
                 );
         }
