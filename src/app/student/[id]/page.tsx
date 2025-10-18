@@ -10,7 +10,7 @@ import { getStudentAnnouncements } from '@/lib/actions/announcement.actions';
 import StudentPageClient from '@/components/StudentPageClient';
 import { AppTask } from '@/lib/types';
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import Menu from '@/components/Menu';
+import MenuWrapper from '@/components/Menu'; // CORRECTION: Importer le wrapper
 
 
 async function getStudentData(id: string): Promise<StudentWithStateAndCareer | null> {
@@ -101,7 +101,7 @@ export default async function StudentPage({
             {!isTeacherView && (
               <Sidebar>
                 <SidebarContent>
-                  <Menu user={session.user} />
+                  <MenuWrapper user={session.user} />
                 </SidebarContent>
               </Sidebar>
             )}

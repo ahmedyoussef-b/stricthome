@@ -10,7 +10,7 @@ import { getPublicAnnouncements } from '@/lib/actions/announcement.actions';
 import { format } from 'date-fns';
 import { AnnouncementWithAuthor } from '@/lib/types';
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import Menu from '@/components/Menu';
+import MenuWrapper from '@/components/Menu'; // CORRECTION: Importer le wrapper
 
 export default async function HomePage() {
   const session = await getAuthSession();

@@ -9,7 +9,7 @@ import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { getTasksForProfessorValidation } from '@/lib/actions/teacher.actions';
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import Menu from '@/components/Menu'; // Import the new Menu component
+import MenuWrapper from '@/components/Menu'; // CORRECTION: Importer le wrapper
 
 export default async function TeacherPage() {
   const session = await getAuthSession();
@@ -36,7 +36,7 @@ export default async function TeacherPage() {
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
-              <Menu user={user} classrooms={classrooms} validationCount={validationCount} />
+              <MenuWrapper user={user} classrooms={classrooms} validationCount={validationCount} />
             </SidebarContent>
           </Sidebar>
           <SidebarInset>

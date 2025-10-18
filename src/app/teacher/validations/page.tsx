@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ValidationConsoleClient } from "./ValidationConsoleClient";
 import { CheckCircle } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import Menu from "@/components/Menu";
+import MenuWrapper from '@/components/Menu'; // CORRECTION: Importer le wrapper
 
 export default async function ProfessorValidationPage() {
   const session = await getAuthSession();
@@ -28,7 +28,7 @@ export default async function ProfessorValidationPage() {
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
-              <Menu user={session.user} validationCount={tasksToValidate.length} />
+              <MenuWrapper user={session.user} validationCount={tasksToValidate.length} />
             </SidebarContent>
           </Sidebar>
           <SidebarInset>

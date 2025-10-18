@@ -13,6 +13,7 @@ interface MenuProps {
   user: User;
   classrooms?: Pick<Classroom, 'id' | 'nom'>[];
   validationCount?: number;
+  pathname: string; // Ajout de la prop pathname
 }
 
 // Type pour les éléments de menu avec toutes les propriétés possibles
@@ -25,9 +26,7 @@ interface MenuItem {
   icon?: React.ElementType;
 }
 
-const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 }) => {
-  const pathname = usePathname();
-
+const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0, pathname }) => {
   const colorClasses = [
     styles.red,
     styles.green,
@@ -45,10 +44,8 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
       </svg>
       
       {menuItems.map((group) => {
-        // Type assertion pour les éléments de menu
         const items = group.items as MenuItem[];
         
-        // Filter items based on user role and conditions
         const visibleItems = items.filter(item => 
           item.roles.includes(user.role as Role) &&
           (!item.condition || item.condition(user))
@@ -69,7 +66,6 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
               
               if (item.component) {
                  const Comp = item.component;
-                 // Pass necessary props to dynamic components
                  const compProps = item.label === "Créer une Annonce" ? { classrooms } : {};
                  return (
                     <div key={item.label} className={cn(styles.button, colorClass, "justify-center")}>
@@ -109,4 +105,11 @@ const Menu: React.FC<MenuProps> = ({ user, classrooms = [], validationCount = 0 
   );
 };
 
-export default Menu;
+// Wrapper Client Component pour utiliser le hook usePathname
+const MenuWrapper: React.FC<Omit<MenuProps, 'pathname'>> = (props) => {
+  const pathname = usePathname();
+  return <Menu {...props} pathname={pathname} />;
+};
+
+
+export default MenuWrapper;

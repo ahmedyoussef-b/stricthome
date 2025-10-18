@@ -1,7 +1,7 @@
 // src/app/teacher/profile/page.tsx
 import { Header } from "@/components/Header";
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import Menu from "@/components/Menu";
+import MenuWrapper from '@/components/Menu'; // CORRECTION: Importer le wrapper
 import { getAuthSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
@@ -44,7 +44,7 @@ export default async function TeacherProfilePage() {
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
-              <Menu user={user} classrooms={classrooms} />
+              <MenuWrapper user={user} classrooms={classrooms} />
             </SidebarContent>
           </Sidebar>
           <SidebarInset>

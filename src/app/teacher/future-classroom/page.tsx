@@ -8,7 +8,7 @@ import { getAuthSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { BackButton } from '@/components/BackButton';
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import Menu from '@/components/Menu';
+import MenuWrapper from '@/components/Menu'; // CORRECTION: Importer le wrapper
 
 export default async function FutureClassroomPage() {
   const session = await getAuthSession();
@@ -25,7 +25,7 @@ export default async function FutureClassroomPage() {
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
-              <Menu user={session.user} />
+              <MenuWrapper user={session.user} />
             </SidebarContent>
           </Sidebar>
           <SidebarInset>
