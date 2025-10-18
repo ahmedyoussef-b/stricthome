@@ -1,6 +1,7 @@
 // src/components/Whiteboard.tsx
 'use client'
-import { Tldraw, TldrawEditor } from '@tldraw/tldraw'
+import { Tldraw } from '@tldraw/tldraw'
+import type { TldrawEditor } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
