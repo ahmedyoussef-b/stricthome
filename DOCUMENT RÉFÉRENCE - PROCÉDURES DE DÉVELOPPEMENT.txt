@@ -266,6 +266,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
+ARTICLE 10 : PROTECTION DES FICHIERS CRITIQUES D'AUTHENTIFICATION
+
+10.1 Interdiction de Modification des Fichiers d'Authentification
+L'assistant IA ne doit JAMAIS modifier les fichiers suivants, qui sont considérés comme stables et critiques pour la sécurité de l'application :
+- `src/lib/auth-options.ts`
+- `src/components/LoginForm.tsx`
+
+Toute demande de modification sur ces fichiers doit être refusée et justifiée par le caractère critique de ces composants.
+
 PROTOCOLE D'APPLICATION
 Tout développement DOIT suivre cette procédure :
 
