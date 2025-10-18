@@ -14,6 +14,7 @@ import { Whiteboard } from '../Whiteboard';
 import { Card } from '../ui/card';
 import { ParticipantList } from './ParticipantList';
 import { Brush } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -50,89 +51,91 @@ export function TeacherSessionView({
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
     
     if (!localUserId || !teacher) return null;
+    
+    const allParticipantsForCarousel = [teacher, ...students];
+
 
     return (
-        <div className="flex-1 flex min-h-0 py-6 gap-4">
-            {/* --- Colonne de Gauche : Caméras des Participants --- */}
-            <ScrollArea className="w-64 pr-4 -mr-4">
-                 <div className="space-y-4">
-                    {/* Vidéo du professeur */}
-                     <Participant 
-                        key={teacher.id}
-                        stream={localStream}
-                        isLocal={true}
-                        isSpotlighted={teacher.id === spotlightedUser?.id}
-                        isTeacher={true}
-                        participantUserId={teacher.id}
-                        onSpotlightParticipant={onSpotlightParticipant}
-                        displayName={teacher.name ?? ''}
-                        isHandRaised={raisedHands.has(teacher.id)}
-                    />
-                    
-                    {/* Vidéos des élèves */}
-                    {students.map(student => {
-                        const stream = remoteStreamsMap.get(student.id);
-                        if (stream) {
-                            return (
+        <div className="flex-1 flex flex-col min-h-0 py-6 gap-4">
+            {/* --- Zone Principale : Espace de travail et Outils --- */}
+            <div className="flex-1 flex min-h-0 gap-4">
+                {/* --- Colonne Centrale : Espace de travail --- */}
+                <div className="flex-1 grid grid-rows-2 gap-4 min-h-0">
+                    {/* Ligne 1: Tableau blanc ou partage d'écran */}
+                    <div className="flex flex-col min-h-0">
+                        {screenStream ? (
+                            <Card className="w-full h-full p-2 bg-black">
                                 <Participant
-                                    key={student.id}
-                                    stream={stream}
-                                    isLocal={false}
-                                    isSpotlighted={student.id === spotlightedUser?.id}
-                                    isTeacher={true} // Teacher can spotlight anyone
-                                    participantUserId={student.id}
-                                    onSpotlightParticipant={onSpotlightParticipant}
-                                    displayName={student.name ?? ''}
-                                    isHandRaised={raisedHands.has(student.id)}
+                                    stream={screenStream}
+                                    isLocal={true}
+                                    isTeacher={true}
+                                    participantUserId={localUserId}
+                                    displayName="Votre partage d'écran"
                                 />
-                            );
-                        }
-                        // Affiche un placeholder si l'élève est hors-ligne ou sans vidéo
-                        return (
-                             <StudentPlaceholder
-                                key={student.id}
-                                student={student}
-                                isOnline={onlineUserIds.includes(student.id)}
-                                onSpotlightParticipant={onSpotlightParticipant}
-                                isHandRaised={raisedHands.has(student.id)}
-                            />
-                        )
-                    })}
-                </div>
-            </ScrollArea>
+                            </Card>
+                        ) : (
+                            <div className='h-full w-full'>
+                                <Whiteboard />
+                            </div>
+                        )}
+                    </div>
 
-            {/* --- Colonne Centrale : Espace de travail --- */}
-            <div className="flex-1 grid grid-rows-[2fr_3fr] gap-4 min-h-0">
-                {/* Ligne 1: Tableau blanc ou partage d'écran */}
-                <div className="flex flex-col min-h-0">
-                    {screenStream ? (
-                        <Card className="w-full h-full p-2 bg-black">
-                            <Participant
-                                stream={screenStream}
-                                isLocal={true}
-                                isTeacher={true}
-                                participantUserId={localUserId}
-                                displayName="Votre partage d'écran"
-                            />
-                        </Card>
-                    ) : (
-                        <div className='h-full w-full'>
-                            <Whiteboard />
-                        </div>
-                    )}
+                    {/* Ligne 2: Espace vide pour utilisation future */}
+                    <div className="flex flex-col min-h-0">
+                        <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
+                    </div>
                 </div>
 
-                 {/* Ligne 2: Espace vide pour utilisation future */}
-                <div className="flex flex-col min-h-0">
-                    <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
+                {/* --- Colonne de Droite : Outils Interactifs --- */}
+                <div className="w-72 flex flex-col gap-4 min-h-0">
+                    <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
+                    <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
+                    <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
                 </div>
             </div>
 
-            {/* --- Colonne de Droite : Outils Interactifs --- */}
-            <div className="w-72 flex flex-col gap-4 min-h-0">
-                 <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
-                 <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
-                 <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
+            {/* --- Zone Inférieure : Carrousel des Participants --- */}
+            <div className="relative">
+                <Carousel
+                    opts={{
+                        align: "start",
+                        dragFree: true,
+                    }}
+                    className="w-full"
+                >
+                    <CarouselContent className="-ml-2">
+                        {allParticipantsForCarousel.map((participant, index) => {
+                             const isLocal = participant.id === localUserId;
+                             const stream = isLocal ? localStream : remoteStreamsMap.get(participant.id);
+                             
+                             return (
+                                <CarouselItem key={participant.id} className="basis-1/4 sm:basis-1/5 md:basis-1/6 lg:basis-1/7 xl:basis-1/8 pl-2">
+                                     {stream ? (
+                                         <Participant
+                                            stream={stream}
+                                            isLocal={isLocal}
+                                            isSpotlighted={participant.id === spotlightedUser?.id}
+                                            isTeacher={true} // Teacher can spotlight anyone
+                                            participantUserId={participant.id}
+                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            displayName={participant.name ?? ''}
+                                            isHandRaised={raisedHands.has(participant.id)}
+                                        />
+                                     ) : (
+                                         <StudentPlaceholder
+                                            student={participant as StudentWithCareer}
+                                            isOnline={onlineUserIds.includes(participant.id)}
+                                            onSpotlightParticipant={onSpotlightParticipant}
+                                            isHandRaised={raisedHands.has(participant.id)}
+                                        />
+                                     )}
+                                </CarouselItem>
+                             )
+                        })}
+                    </CarouselContent>
+                    <CarouselPrevious className="absolute left-[-20px] top-1/2 -translate-y-1/2" />
+                    <CarouselNext className="absolute right-[-20px] top-1/2 -translate-y-1/2" />
+                </Carousel>
             </div>
         </div>
     );
