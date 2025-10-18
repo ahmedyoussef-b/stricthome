@@ -1,21 +1,25 @@
 // src/components/session/TeacherSessionView.tsx
 'use client';
 
+import { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StudentWithCareer } from '@/lib/types';
 import { Role } from '@prisma/client';
 import { Participant } from '@/components/Participant';
 import { StudentPlaceholder } from '../StudentPlaceholder';
 import { HandRaiseController } from '../HandRaiseController';
-import { UnderstandingStatus } from '@/app/session/[id]/page';
+import { UnderstandingStatus, SessionViewMode } from '@/app/session/[id]/page';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
 import { Whiteboard } from '../Whiteboard';
-import { Card, CardContent, CardHeader } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
 import { ParticipantList } from './ParticipantList';
-import { Brush, Star } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 import { SessionTimer } from './SessionTimer';
+import { SessionViewControls } from './SessionViewControls';
+import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -46,6 +50,7 @@ export function TeacherSessionView({
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
+    const [viewMode, setViewMode] = useState<SessionViewMode>('split');
     
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
@@ -57,30 +62,88 @@ export function TeacherSessionView({
     
     const allParticipantsForCarousel = [teacher, ...students];
 
+    const spotlightedStream = spotlightedUser?.id === localUserId 
+      ? localStream 
+      : remoteStreamsMap.get(spotlightedUser?.id ?? '');
+
+
+    const renderSpotlightContent = () => {
+        if (!spotlightedUser) {
+            return (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>Sélectionnez un participant à mettre en vedette.</p>
+                </div>
+            );
+        }
+
+        if (spotlightedStream) {
+            return (
+                <Participant
+                    stream={spotlightedStream}
+                    isLocal={spotlightedUser.id === localUserId}
+                    isSpotlighted={true}
+                    isTeacher={true}
+                    participantUserId={spotlightedUser.id}
+                    onSpotlightParticipant={onSpotlightParticipant}
+                    displayName={spotlightedUser.name ?? ''}
+                />
+            );
+        }
+
+        return (
+            <div className="flex items-center justify-center h-full bg-muted rounded-lg">
+                <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p>En attente du flux de {spotlightedUser.name}...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const renderMainWorkspace = () => {
+        if (screenStream) {
+             return (
+                <Card className="w-full h-full p-2 bg-black">
+                    <Participant
+                        stream={screenStream}
+                        isLocal={true}
+                        isTeacher={true}
+                        participantUserId={localUserId}
+                        displayName="Votre partage d'écran"
+                    />
+                </Card>
+            );
+        }
+
+        switch(viewMode) {
+            case 'camera':
+                return <div className="h-full">{renderSpotlightContent()}</div>;
+            case 'whiteboard':
+                return <Whiteboard />;
+            case 'split':
+            default:
+                return (
+                    <div className="grid grid-cols-2 gap-4 h-full">
+                        <div className="h-full">{renderSpotlightContent()}</div>
+                        <div className="h-full"><Whiteboard /></div>
+                    </div>
+                );
+        }
+    }
+
 
     return (
         <div className="flex-1 flex flex-col min-h-0 py-6 gap-4">
             {/* --- Zone Principale : Espace de travail et Outils --- */}
             <div className="flex-1 flex min-h-0 gap-4">
                 {/* --- Colonne Centrale : Espace de travail --- */}
-                <div className="flex-1 flex flex-col min-h-0">
-                    {/* Un seul grand espace pour le tableau blanc ou le partage d'écran */}
-                    <div className="flex-1 flex flex-col min-h-0">
-                        {screenStream ? (
-                            <Card className="w-full h-full p-2 bg-black">
-                                <Participant
-                                    stream={screenStream}
-                                    isLocal={true}
-                                    isTeacher={true}
-                                    participantUserId={localUserId}
-                                    displayName="Votre partage d'écran"
-                                />
-                            </Card>
-                        ) : (
-                            <div className='h-full w-full'>
-                                <Whiteboard />
-                            </div>
-                        )}
+                <div className="flex-1 flex flex-col min-h-0 gap-4">
+                    <SessionViewControls currentView={viewMode} onSetView={setViewMode} />
+                    <div className={cn(
+                        "flex-1 rounded-lg overflow-hidden",
+                        viewMode !== 'split' && "aspect-video self-center w-full max-w-4xl"
+                    )}>
+                        {renderMainWorkspace()}
                     </div>
                 </div>
 

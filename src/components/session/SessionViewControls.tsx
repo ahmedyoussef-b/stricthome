@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Camera, LayoutTemplate, ScreenShare } from "lucide-react";
+import { Camera, LayoutTemplate, Split } from "lucide-react";
 import { SessionViewMode } from "@/app/session/[id]/page";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
@@ -27,7 +27,7 @@ export function SessionViewControls({ currentView, onSetView }: SessionViewContr
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <ToggleGroupItem value="split" aria-label="Vue partagée">
-                                <LayoutTemplate className="h-4 w-4" />
+                                <Split className="h-4 w-4" />
                             </ToggleGroupItem>
                         </TooltipTrigger>
                         <TooltipContent>

@@ -39,7 +39,7 @@ interface PeerConnection {
   stream?: MediaStream;
 }
 
-export type SessionViewMode = 'camera' | 'whiteboard' | 'split';
+export type SessionViewMode = 'split' | 'camera' | 'whiteboard';
 export type UnderstandingStatus = 'understood' | 'confused' | 'lost' | 'none';
 
 const OFFER_COOLDOWN = 2000; // 2 secondes entre les offres
