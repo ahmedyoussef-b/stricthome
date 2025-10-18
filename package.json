@@ -17,7 +17,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:push": "prisma db push --accept-data-loss",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "npx prisma generate && tsx prisma/seed.ts",
     "clean": "rm -rf .next node_modules",
     "fix-dev": "bash fix-dev.sh"
   },
