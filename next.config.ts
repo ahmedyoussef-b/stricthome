@@ -1,7 +1,7 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['embla-carousel-react', '@next-auth/prisma-adapter', 'next-auth'],
+  compress: false,
   images: {
     remotePatterns: [
       {
