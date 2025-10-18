@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Whiteboard } from '../Whiteboard';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -68,9 +69,14 @@ export function StudentSessionView({
     
     return (
         <div className="flex flex-1 min-h-0 py-6 gap-6">
-            {/* Colonne principale : Vidéo en vedette */}
-            <div className="flex-1 flex flex-col min-h-0">
-                {renderMainContent()}
+            {/* Colonne principale : Vidéo en vedette et tableau blanc */}
+            <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
+                 <div className="flex flex-col min-h-0">
+                    {renderMainContent()}
+                </div>
+                 <div className="flex flex-col min-h-0">
+                    <Whiteboard sessionId={sessionId} />
+                </div>
             </div>
             
             {/* Barre latérale droite : contrôles */}
