@@ -57,7 +57,7 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 
 			const toRemove = Object.keys(change.changes.removed)
 			const toPut = Object.values(change.changes.added).concat(
-				Object.values(change.changes.updated).map(([, to]) => to)
+				Object.values(change.changes.updated).map(([, to]: [any, any]) => to)
 			)
 
 			// Ne rien envoyer s'il n'y a pas de modifications
