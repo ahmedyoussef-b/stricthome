@@ -4,43 +4,51 @@ ARTICLE 1 : CADRE GÉNÉRAL
 
 1.1 Stack Technique Imposable
 
+Le développement de l'application doit impérativement respecter la stack technique et les versions de dépendances définies ci-dessous. Aucune modification de ces dépendances (mise à jour, ajout ou suppression) ne doit être effectuée sans une validation formelle préalable.
+
 {
   "metadata": {
-    "document_version": "2.1",
+    "document_version": "2.2",
     "enforcement_level": "STRICTE",
     "compliance_required": true
   },
   "technical_stack": {
     "framework": {
       "name": "Next.js",
-      "version": "14.2.0",
-      "stability_index": 98,
-      "lts_until": "2025-08-01"
+      "version": "14.2.33"
     },
     "database": {
       "name": "PostgreSQL",
-      "version": "15.6",
       "orm": "Prisma",
-      "orm_version": "5.10.2",
-      "migration_strategy": "safe-ddl"
+      "version": "5.22.0"
     },
     "authentication": {
-      "name": "Auth.js",
-      "version": "4.24.5",
-      "adapter": "@auth/prisma-adapter@1.0.7"
+      "name": "Auth.js (Next-Auth)",
+      "version": "4.24.7",
+      "adapter": "@next-auth/prisma-adapter@1.0.7"
     },
     "styling": {
       "name": "TailwindCSS",
       "version": "3.4.1",
-      "config": "tailwind.config.js"
+      "config": "tailwind.config.ts"
     },
     "typescript": {
       "version": "5.4.5",
       "strict": true,
       "config": "tsconfig.json"
+    },
+    "ui_library": {
+        "name": "ShadCN/UI",
+        "components": "@/components/ui"
+    },
+    "real_time": {
+        "name": "Pusher",
+        "client": "pusher-js@8.4.0-rc2",
+        "server": "pusher@5.2.0"
     }
   }
 }
+
 
 ARTICLE 2 : PROCÉDURES DE DÉVELOPPEMENT AUTOMATIQUES
 
@@ -85,8 +93,8 @@ Template de Revue :
 ## 📋 REVUE TECHNIQUE AUTOMATISÉE
 
 ### CONFORMITÉ STACK
-- [ ] Next.js 14.2.0 ✅
-- [ ] Prisma 5.10.2 ✅  
+- [ ] Next.js 14.2.33 ✅
+- [ ] Prisma 5.22.0 ✅  
 - [ ] TypeScript 5.4.5 ✅
 - [ ] Tailwind 3.4.1 ✅
 
@@ -216,7 +224,7 @@ ARTICLE 6 : DOCUMENTATION ET MAINTENANCE
 # DOCUMENTATION TECHNIQUE - [COMPOSANT/FONCTIONNALITÉ]
 
 ## CONFORMITÉ
-- ✅ Stack: Next.js 14.2.0 + Prisma 5.10.2
+- ✅ Stack: Next.js 14.2.33 + Prisma 5.22.0
 - ✅ Sécurité: Niveau HIGH
 - ✅ Performance: Core Web Vitals optimisés
 
