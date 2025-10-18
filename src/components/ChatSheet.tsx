@@ -1,4 +1,5 @@
 
+
 //src/components/chatSheet.tsx
 "use client";
 
@@ -30,22 +31,14 @@ import { OnlineUsers } from './OnlineUsers';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Role } from '@prisma/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import type { Message as PrismaMessage } from '@prisma/client';
 
-type MessageWithStatus = MessageWithReactions & {
+type MessageWithStatus = PrismaMessage & {
+    reactions: ReactionWithUser[];
     status?: 'pending' | 'failed';
-};
+    directMessageSenderId?: string | null; // ← Ajouter cette ligne
 
-function ReactionBubble({ emoji, count, hasReacted }: { emoji: string, count: number, hasReacted: boolean }) {
-    return (
-        <div className={cn(
-            "rounded-full px-2 py-0.5 text-xs flex items-center gap-1 cursor-pointer",
-            hasReacted ? "bg-primary/20 border border-primary" : "bg-muted border"
-        )}>
-            <span>{emoji}</span>
-            <span>{count}</span>
-        </div>
-    )
-}
+};
 
 function Message({ msg, currentUserId, onReaction, onResend }: { msg: MessageWithStatus, currentUserId: string, onReaction: (emoji: string) => void, onResend: () => void }) {
     const isCurrentUser = msg.senderId === currentUserId;
@@ -288,11 +281,11 @@ export function ChatSheet({ classroomId, userId, userRole }: { classroomId: stri
         id: tempId,
         message: messageContent,
         senderId: session.user.id,
-        senderName: session.user.name ?? 'Moi',
+        senderName: session.user.name ?? 'User',
+        classroomId: classroomId,
         createdAt: new Date(),
         reactions: [],
         status: 'pending',
-        classroomId: classroomId,
         isQuestion: null,
         conversationId: null,
         directMessageSenderId: null,
@@ -416,5 +409,20 @@ export function ChatSheet({ classroomId, userId, userRole }: { classroomId: stri
     </Sheet>
   );
 }
+
+function ReactionBubble({ emoji, count, hasReacted }: { emoji: string, count: number, hasReacted: boolean }) {
+    return (
+        <div className={cn(
+            "rounded-full px-2 py-0.5 text-xs flex items-center gap-1 cursor-pointer",
+            hasReacted ? "bg-primary/20 border border-primary" : "bg-muted border"
+        )}>
+            <span>{emoji}</span>
+            <span>{count}</span>
+        </div>
+    )
+}
+    
+    
+    
 
     

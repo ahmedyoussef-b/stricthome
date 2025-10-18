@@ -1,4 +1,3 @@
-
 // src/lib/actions/task.actions.ts
 'use server';
 
@@ -130,7 +129,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
     where: {
       studentId: userId,
       taskId,
-      status: { in: ['COMPLETED', 'VALIDATED'] },
+      status: { in: ['COMPLETED', 'VERIFIED', 'PENDING_VALIDATION'] },
       completionDate: { gte: periodStart },
     },
   });
@@ -143,8 +142,8 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
   const isAutomaticValidation = validationType === ValidationType.AUTOMATIC;
   
   const finalStatus = isAutomaticValidation
-    ? ProgressStatus.VALIDATED
-    : ProgressStatus.COMPLETED;
+    ? ProgressStatus.COMPLETED
+    : ProgressStatus.PENDING_VALIDATION;
 
   let pointsAwarded = 0;
   
@@ -169,7 +168,7 @@ export async function completeTask(taskId: string, submissionUrl?: string) {
           pointsAwarded = task.points;
           
           // Update the user's total points
-          await tx.user.update({
+          const updatedUser = await tx.user.update({
             where: { id: userId },
             data: { points: { increment: pointsAwarded } },
           });

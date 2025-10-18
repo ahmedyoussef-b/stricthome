@@ -65,11 +65,39 @@ export async function endAllActiveSessionsForTeacher() {
   revalidatePath('/teacher');
 }
 
+export async function endAllActiveSessionsAndHideCardForTeacher() {
+    const session = await getAuthSession();
+    if (session?.user.role !== 'PROFESSEUR') {
+        throw new Error('Unauthorized');
+    }
+
+    // 1. End all active sessions
+    await endAllActiveSessionsForTeacher();
+
+    // 2. Broadcast event to hide the card on all clients
+    const classrooms = await prisma.classroom.findMany({
+        where: { professeurId: session.user.id },
+        select: { id: true },
+    });
+
+    const events = classrooms.map(classroom => ({
+        channel: `presence-classe-${classroom.id}`,
+        name: 'card-trigger',
+        data: { isActive: false }
+    }));
+    
+    if (events.length > 0) {
+        await pusherServer.triggerBatch(events);
+    }
+
+    return { success: true };
+}
+
 
 export async function getTasksForProfessorValidation(teacherId: string): Promise<TaskForProfessorValidation[]> {
     const tasks = await prisma.studentProgress.findMany({
         where: {
-            status: ProgressStatus.COMPLETED,
+            status: ProgressStatus.PENDING_VALIDATION,
             task: {
                 validationType: ValidationType.PROFESSOR,
             },
@@ -118,7 +146,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
         },
     });
 
-    if (!progress || progress.task.validationType !== 'PROFESSOR' || progress.status !== 'COMPLETED') {
+    if (!progress || progress.task.validationType !== 'PROFESSOR' || progress.status !== 'PENDING_VALIDATION') {
         throw new Error('Tâche non trouvée ou validation incorrecte.');
     }
 
@@ -128,7 +156,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
             prisma.studentProgress.update({
                 where: { id: payload.progressId },
                 data: { 
-                    status: ProgressStatus.VALIDATED,
+                    status: ProgressStatus.VERIFIED,
                     pointsAwarded: pointsAwarded
                 },
             }),
@@ -171,7 +199,7 @@ export async function validateTaskByProfessor(payload: ProfessorValidationPayloa
     } else {
         await prisma.studentProgress.update({
             where: { id: payload.progressId },
-            data: { status: ProgressStatus.REJECTED }, // Student can retry
+            data: { status: ProgressStatus.NOT_STARTED }, // Student can retry
         });
         
         revalidatePath(`/student/${progress.studentId}`);
@@ -260,7 +288,7 @@ export async function resetPeriodicData() {
       const lastCompletedTask = await prisma.studentProgress.findFirst({
           where: {
               studentId: student.id,
-              status: { in: [ProgressStatus.COMPLETED, ProgressStatus.VALIDATED] },
+              status: { in: [ProgressStatus.COMPLETED, ProgressStatus.VERIFIED] },
               completionDate: {
                   gte: startOfYesterday,
                   lt: startOfToday,

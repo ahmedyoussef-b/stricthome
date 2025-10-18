@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher/client';
 import { StudentWithCareer, CoursSessionWithRelations } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant, updateUnderstandingStatus } from '@/lib/actions';
+import { endCoursSession, broadcastTimerEvent, serverSpotlightParticipant } from '@/lib/actions';
 import type { PresenceChannel } from 'pusher-js';
 import { Role } from '@prisma/client';
 import { SessionHeader } from '@/components/session/SessionHeader';
@@ -160,7 +160,7 @@ export default function SessionPage() {
         clearNegotiationTimeout(peerId);
         await new Promise(resolve => setTimeout(resolve, 100)); // Petit délai
         createPeerConnection(peerId);
-    }, [negotiationQueue]);
+    }, []);
 
     const rollbackToStable = async (peerId: string) => {
         const peer = peerConnectionsRef.current.get(peerId);
@@ -435,27 +435,14 @@ export default function SessionPage() {
     }, [checkAndRepairConnections]);
 
 
-    const handleStartTimer = useCallback(() => {
-        if (!isTeacher) return;
-        broadcastTimerEvent(sessionId, 'timer-started');
-    }, [isTeacher, sessionId]);
-
-    const handlePauseTimer = useCallback(() => {
-        if (!isTeacher) return;
-        broadcastTimerEvent(sessionId, 'timer-paused');
-    }, [isTeacher, sessionId]);
-
-    const handleResetTimer = useCallback(() => {
-        if (!isTeacher) return;
-        broadcastTimerEvent(sessionId, 'timer-reset', { duration: 300 });
-    }, [isTeacher, sessionId]);
-
-
     // Initialisation et nettoyage de la session
      useEffect(() => {
         if (!sessionId || !userId) return;
         console.log("🚀 [INITIALISATION] Démarrage de l'initialisation de la session.");
         isCleanedUpRef.current = false;
+
+        let channel: PresenceChannel;
+        const channelName = `presence-session-${sessionId}`;
 
         const initialize = async () => {
             try {
@@ -475,7 +462,7 @@ export default function SessionPage() {
                 setAllSessionUsers(allUsers);
                 console.log(`👥 [INITIALISATION] ${allUsers.length} utilisateurs chargés.`);
                 
-                setSpotlightedParticipantId(sessionData.spotlightedParticipantId);
+                setSpotlightedParticipantId(sessionData.spotlightedParticipantId ?? null);
 
 
                 // 2. Obtenir le flux média local
@@ -495,9 +482,8 @@ export default function SessionPage() {
                     pusherClient.unsubscribe(presenceChannelRef.current.name);
                 }
                 
-                const presenceChannelName = `presence-session-${sessionId}`;
-                presenceChannelRef.current = pusherClient.subscribe(presenceChannelName) as PresenceChannel;
-                const channel = presenceChannelRef.current;
+                channel = pusherClient.subscribe(channelName) as PresenceChannel;
+                presenceChannelRef.current = channel;
                 
                 // 4. Gérer les membres de la présence
                 channel.bind('pusher:subscription_succeeded', (members: any) => {
@@ -564,18 +550,6 @@ export default function SessionPage() {
                     console.log(`🤔 [ÉVÉNEMENT] Statut de compréhension de ${data.userId} mis à jour à '${data.status}'.`);
                     setUnderstandingStatus(prev => new Map(prev).set(data.userId, data.status));
                 });
-                channel.bind('timer-started', () => {
-                    console.log("▶️ [ÉVÉNEMENT] 'timer-started' reçu.");
-                    // La logique du minuteur est maintenant dans SessionTimer
-                });
-                channel.bind('timer-paused', () => {
-                    console.log("⏸️ [ÉVÉNEMENT] 'timer-paused' reçu.");
-                     // La logique du minuteur est maintenant dans SessionTimer
-                });
-                channel.bind('timer-reset', (data: { duration: number }) => {
-                    console.log("🔄 [ÉVÉNEMENT] 'timer-reset' reçu.");
-                     // La logique du minuteur est maintenant dans SessionTimer
-                });
                 
                 console.log("✅ [INITIALISATION] Initialisation terminée.");
                 setIsLoading(false);
@@ -591,6 +565,10 @@ export default function SessionPage() {
 
         return () => {
             console.log("🚪 [DÉMONTAGE] Le composant de session est démonté. Nettoyage en cours.");
+            if (channel) {
+                channel.unbind_all();
+                pusherClient.unsubscribe(channelName);
+            }
             cleanup();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -636,6 +614,16 @@ const handleEndSessionForEveryone = useCallback(async () => {
         setIsEndingSession(false);
     }
 }, [isEndingSession, sessionId, toast]);
+    
+    const handleSpotlightParticipant = useCallback(async (participantId: string) => {
+        console.log(`🔦 [ACTION] Le professeur met en vedette: ${participantId}.`);
+        if (!isTeacher) return;
+        try {
+            await serverSpotlightParticipant(sessionId, participantId);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
+        }
+    }, [isTeacher, sessionId, toast]);
 
     const handleToggleHandRaise = useCallback(async () => {
         if (isTeacher || !userId) return;
@@ -668,19 +656,19 @@ const handleEndSessionForEveryone = useCallback(async () => {
     const handleUnderstandingChange = useCallback(async (status: UnderstandingStatus) => {
         if (isTeacher || !userId) return;
         console.log(`🤔 [ACTION] L'élève change son statut de compréhension à '${status}'.`);
-        // Optimistic update
         setUnderstandingStatus(prev => new Map(prev).set(userId, status));
 
         try {
-            // Server action without revalidation
-            await updateUnderstandingStatus(sessionId, userId, status);
+            await fetch(`/api/session/${sessionId}/understanding`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, status }),
+            });
         } catch (error) {
             console.error("❌ [ACTION] Échec de la mise à jour du statut de compréhension:", error);
-            // Revert optimistic update (optional, but good practice)
-            setUnderstandingStatus(prev => new Map(prev).set(userId, understandingStatus.get(userId) || 'none'));
             toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de mettre à jour le statut.' });
         }
-    }, [isTeacher, sessionId, toast, userId, understandingStatus]);
+    }, [isTeacher, sessionId, toast, userId]);
 
     const handleToggleScreenShare = useCallback(() => {
         if (!isTeacher) return;
@@ -743,10 +731,9 @@ const handleEndSessionForEveryone = useCallback(async () => {
     }
 
     // Determine which stream to show to the student
-    // Priority: 1. Screen Share, 2. Spotlighted Stream
-    const studentMainStream = isSharingScreen ? screenStreamRef.current : spotlightedStream;
-    // Find the teacher's stream among remote participants, for the student view
     const teacherStream = remoteStreams.get(teacher?.id ?? '');
+    const studentMainStream = isSharingScreen ? screenStreamRef.current : (spotlightedStream || teacherStream || null);
+    const studentMainUser = isSharingScreen ? { id: 'screen-share', name: "Partage d'écran" } : (spotlightedUser || teacher);
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -756,12 +743,9 @@ const handleEndSessionForEveryone = useCallback(async () => {
                 onEndSession={handleEndSessionForEveryone}
                 onLeaveSession={handleEndSession} // Les élèves quittent via la même logique de fin
                 isEndingSession={isEndingSession}
-                onStartTimer={handleStartTimer}
-                onPauseTimer={handlePauseTimer}
-                onResetTimer={handleResetTimer}
                 isSharingScreen={isSharingScreen}
                 onToggleScreenShare={handleToggleScreenShare}
-                channel={presenceChannelRef.current}
+                initialDuration={300} // Passez la durée initiale ici
             />
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col min-h-0 relative">
                 <PermissionPrompt />
@@ -774,6 +758,7 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         spotlightedUser={spotlightedUser}
                         allSessionUsers={allSessionUsers}
                         onlineUserIds={onlineUsers}
+                        onSpotlightParticipant={handleSpotlightParticipant}
                         raisedHands={raisedHands}
                         understandingStatus={understandingStatus}
                     />
@@ -782,15 +767,15 @@ const handleEndSessionForEveryone = useCallback(async () => {
                         sessionId={sessionId}
                         localStream={localStreamRef.current}
                         spotlightedStream={studentMainStream}
-                        spotlightedUser={spotlightedUser}
+                        spotlightedUser={studentMainUser}
                         isHandRaised={userId ? raisedHands.has(userId) : false}
                         onToggleHandRaise={handleToggleHandRaise}
                         onUnderstandingChange={handleUnderstandingChange}
                         currentUnderstanding={userId ? understandingStatus.get(userId) || 'none' : 'none'}
-                        screenStream={screenStreamRef.current}
                     />
                 )}
             </main>
         </div>
     );
 }
+    

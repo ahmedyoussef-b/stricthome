@@ -152,7 +152,7 @@ async function main() {
   const teacher = await prisma.user.create({
     data: {
       email: 'teacher@example.com',
-      name: 'ABBES',
+      name: 'M. Dupont',
       role: Role.PROFESSEUR,
     },
   });
@@ -573,7 +573,5 @@ main()
     
 
 
-
-    
 
     

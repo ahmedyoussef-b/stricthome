@@ -20,16 +20,13 @@ interface ParticipantListProps {
 }
 
 export function ParticipantList({ allSessionUsers, onlineUserIds, currentUserId }: ParticipantListProps) {
-    const onlineCount = onlineUserIds.length;
-    const totalCount = allSessionUsers.length;
-    
     return (
         <Card className="flex flex-col">
              <Accordion type="single" collapsible defaultValue="participants">
                 <AccordionItem value="participants" className="border-b-0">
                     <AccordionTrigger className="p-6">
                         <CardTitle className="flex items-center gap-2 text-base">
-                            <Users /> Participants ({onlineCount}/{totalCount})
+                            <Users /> Participants ({onlineUserIds.length})
                         </CardTitle>
                     </AccordionTrigger>
                     <AccordionContent>

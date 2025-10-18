@@ -5,14 +5,13 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Timer, Play, Pause, RotateCcw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
-import type { PresenceChannel } from 'pusher-js';
+import { broadcastTimerEvent } from '@/lib/actions';
+import { pusherClient } from '@/lib/pusher/client';
 
 interface SessionTimerProps {
+    sessionId: string;
     isTeacher: boolean;
-    onStart: () => void;
-    onPause: () => void;
-    onReset: () => void;
-    channel: PresenceChannel | null;
+    initialDuration: number;
 }
 
 function formatTime(seconds: number) {
@@ -22,16 +21,37 @@ function formatTime(seconds: number) {
 }
 
 export function SessionTimer({ 
+    sessionId,
     isTeacher,
-    onStart,
-    onPause,
-    onReset,
-    channel,
+    initialDuration,
 }: SessionTimerProps) {
-    const [timeLeft, setTimeLeft] = useState(300);
+    const [duration, setDuration] = useState(initialDuration);
+    const [timeLeft, setTimeLeft] = useState(duration);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Pusher listener effect
+    useEffect(() => {
+        if (!sessionId) return;
+        const channelName = `presence-session-${sessionId}`;
+        const channel = pusherClient.subscribe(channelName);
+        
+        channel.bind('timer-started', () => setIsTimerRunning(true));
+        channel.bind('timer-paused', () => setIsTimerRunning(false));
+        channel.bind('timer-reset', (data: { duration: number }) => {
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+            setIsTimerRunning(false);
+            setDuration(data.duration);
+            setTimeLeft(data.duration);
+        });
+
+        return () => {
+            channel.unbind_all();
+            pusherClient.unsubscribe(channelName);
+        }
+    }, [sessionId]);
+
+    // Timer logic effect
     useEffect(() => {
         if (isTimerRunning) {
             timerIntervalRef.current = setInterval(() => {
@@ -49,6 +69,7 @@ export function SessionTimer({
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
         }
+
         return () => {
             if (timerIntervalRef.current) {
                 clearInterval(timerIntervalRef.current);
@@ -56,28 +77,26 @@ export function SessionTimer({
         };
     }, [isTimerRunning]);
 
-    useEffect(() => {
-        if (!channel) return;
 
-        const handleTimerStarted = () => setIsTimerRunning(true);
-        const handleTimerPaused = () => setIsTimerRunning(false);
-        const handleTimerReset = (data: { duration: number }) => {
-            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-            setIsTimerRunning(false);
-            setTimeLeft(data.duration || 300);
-        };
-        
-        channel.bind('timer-started', handleTimerStarted);
-        channel.bind('timer-paused', handleTimerPaused);
-        channel.bind('timer-reset', handleTimerReset);
+    const handleStart = () => {
+        if (!isTeacher) return;
+        setIsTimerRunning(true);
+        broadcastTimerEvent(sessionId, 'timer-started');
+    };
 
-        return () => {
-            channel.unbind('timer-started', handleTimerStarted);
-            channel.unbind('timer-paused', handleTimerPaused);
-            channel.unbind('timer-reset', handleTimerReset);
-        }
+    const handlePause = () => {
+        if (!isTeacher) return;
+        setIsTimerRunning(false);
+        broadcastTimerEvent(sessionId, 'timer-paused');
+    };
 
-    }, [channel]);
+    const handleReset = () => {
+        if (!isTeacher) return;
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        setTimeLeft(duration);
+        setIsTimerRunning(false);
+        broadcastTimerEvent(sessionId, 'timer-reset', { duration });
+    };
 
     return (
         <div className="flex items-center gap-2 p-1 rounded-lg bg-muted border">
@@ -91,7 +110,7 @@ export function SessionTimer({
                         {!isTimerRunning ? (
                              <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onStart} disabled={timeLeft === 0 && !isTimerRunning}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleStart} disabled={timeLeft === 0}>
                                         <Play className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -100,7 +119,7 @@ export function SessionTimer({
                         ) : (
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPause}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePause}>
                                         <Pause className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -109,7 +128,7 @@ export function SessionTimer({
                         )}
                          <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onReset}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleReset}>
                                     <RotateCcw className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>

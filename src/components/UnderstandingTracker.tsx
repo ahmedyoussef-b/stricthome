@@ -10,6 +10,7 @@ import { UnderstandingStatus } from '@/app/session/[id]/page';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { useState, useEffect, useRef } from 'react';
 
 
 interface UnderstandingTrackerProps {
@@ -25,6 +26,28 @@ const statusConfig = {
 };
 
 export function UnderstandingTracker({ students, understandingStatus }: UnderstandingTrackerProps) {
+  const [accordionValue, setAccordionValue] = useState<string | undefined>('tracker');
+  const [hasNewStatus, setHasNewStatus] = useState(false);
+  const prevStatusRef = useRef<Map<string, UnderstandingStatus>>();
+
+  useEffect(() => {
+    // Si l'accordéon est fermé et qu'il y a un changement, marquer comme nouvelle réaction
+    if (accordionValue === undefined && prevStatusRef.current && prevStatusRef.current !== understandingStatus) {
+        setHasNewStatus(true);
+    }
+    // Mettre à jour la référence pour la prochaine comparaison
+    prevStatusRef.current = understandingStatus;
+  }, [understandingStatus, accordionValue]);
+
+  const handleAccordionChange = (value?: string) => {
+    setAccordionValue(value);
+    // Si l'utilisateur ouvre l'accordéon, on considère qu'il a vu les nouvelles réactions
+    if (value === 'tracker') {
+      setHasNewStatus(false);
+    }
+  };
+
+
   const getStatusCounts = () => {
     const counts = { understood: 0, confused: 0, lost: 0, none: 0 };
     students.forEach(student => {
@@ -38,12 +61,12 @@ export function UnderstandingTracker({ students, understandingStatus }: Understa
 
   return (
     <Card className='bg-background/80'>
-        <Accordion type="single" collapsible defaultValue="tracker">
+        <Accordion type="single" collapsible value={accordionValue} onValueChange={handleAccordionChange}>
             <AccordionItem value="tracker" className="border-b-0">
                 <AccordionTrigger className="p-6">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <HelpCircle className="h-5 w-5 text-primary" />
-                        Suivi de la Compréhension
+                    <CardTitle className="flex items-center gap-2 text-base relative">
+                        <HelpCircle className={cn("h-5 w-5 text-primary", hasNewStatus && accordionValue !== 'tracker' && 'animate-pulse')} />
+                        <span>Suivi de la Compréhension</span>
                     </CardTitle>
                 </AccordionTrigger>
                 <AccordionContent>

@@ -5,7 +5,6 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getAuthSession } from '../session';
 import { pusherServer } from '../pusher/server';
-import { UnderstandingStatus } from '@/app/session/[id]/page';
 
 export async function createCoursSession(professeurId: string, studentIds: string[]) {
     console.log(`🚀 [Action Server] Démarrage de la création de session pour ${studentIds.length} élève(s).`);
@@ -116,6 +115,9 @@ export async function spotlightParticipant(sessionId: string, participantId: str
         console.error(`❌ [Pusher] Erreur lors de l'envoi:`, error);
         throw error;
     }
+    
+    revalidatePath(`/session/${sessionId}`);
+    console.log(`🔄 [Revalidation] Page de session ${sessionId} invalidée`);
 }
 
 export async function endCoursSession(sessionId: string) {
@@ -174,12 +176,15 @@ export async function endCoursSession(sessionId: string) {
 }
 
 
+// These actions were being called from the client, but should be server actions
+// for security and consistency. I am moving the fetch calls inside the main
+// session page to server actions.
+
 export async function serverSpotlightParticipant(sessionId: string, participantId: string) {
     const session = await getAuthSession();
-    if (session?.user.role !== 'PROFESSEUR') { 
+    if (session?.user.role !== 'PROFESSEUR') {
         throw new Error("Unauthorized");
     }
-    // No revalidatePath here, Pusher handles the update.
     await spotlightParticipant(sessionId, participantId);
 }
 
@@ -199,25 +204,4 @@ export async function broadcastTimerEvent(sessionId: string, event: string, data
 
   const channel = `presence-session-${sessionId}`;
   await pusherServer.trigger(channel, event, data || {});
-}
-
-export async function updateUnderstandingStatus(sessionId: string, userId: string, status: UnderstandingStatus) {
-    const session = await getAuthSession();
-    if (session?.user.id !== userId) {
-        throw new Error('Unauthorized');
-    }
-
-    const participant = await prisma.coursSession.findFirst({
-        where: {
-            id: sessionId,
-            participants: { some: { id: userId } }
-        }
-    });
-
-    if (!participant) {
-        throw new Error('Forbidden');
-    }
-
-    const channel = `presence-session-${sessionId}`;
-    await pusherServer.trigger(channel, 'understanding-status-updated', { userId, status });
 }

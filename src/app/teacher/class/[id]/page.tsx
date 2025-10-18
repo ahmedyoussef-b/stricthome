@@ -15,8 +15,6 @@ export default async function ClassPage({ params }: { params: { id: string } }) 
       redirect('/login')
   }
 
-  // L'appel à endAllActiveSessionsForTeacher() a été supprimé car il fermait les sessions dès leur création.
-
   const classroom = await prisma.classroom.findUnique({
       where: { id: classroomId, professeurId: session.user.id },
       include: {

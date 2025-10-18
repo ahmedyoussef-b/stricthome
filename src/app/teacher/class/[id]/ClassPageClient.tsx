@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Video, Users, Trophy } from 'lucide-react';
 import { AddStudentForm } from '@/components/AddStudentForm';
-import { createCoursSession } from '@/lib/actions';
+import { createCoursSession, endAllActiveSessionsAndHideCardForTeacher } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { User as AuthUser } from 'next-auth';
 import { ChatSheet } from '@/components/ChatSheet';
@@ -103,18 +103,19 @@ export default function ClassPageClient({ classroom, teacher, announcements }: C
 
   const handleStartSession = () => {
     if (selectedStudents.size === 0 || !teacher.id) return;
-    
-    console.log(`🚀 [Session Start] Le professeur ${teacher.id} démarre une session pour ${selectedStudents.size} élève(s).`);
 
     startSessionTransition(async () => {
       try {
+        // First, ensure any special card is hidden and old sessions are terminated
+        await endAllActiveSessionsAndHideCardForTeacher();
+
+        // Then, create the new session
         const studentIds = Array.from(selectedStudents);
         const session = await createCoursSession(teacher.id!, studentIds);
         toast({
           title: "Session créée !",
           description: `La session a été démarrée avec ${studentIds.length} élève(s).`,
         });
-        console.log(`✅ [Session Start] Session ${session.id} créée. Redirection...`);
         router.push(`/session/${session.id}?role=teacher&userId=${teacher.id}`);
       } catch (error) {
         console.error("❌ [Session Start] Erreur lors de la création de la session:", error);

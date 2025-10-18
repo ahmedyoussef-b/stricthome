@@ -1,3 +1,4 @@
+
 // src/components/StudentPageClient.tsx
 'use client';
 
@@ -72,11 +73,12 @@ export default function StudentPageClient({
         if (data.invitedStudentIds.includes(student.id)) {
             const newSession: CoursSession = {
               id: data.sessionId,
-              professeurId: data.sessionId || '',               createdAt: new Date(),
+              professeurId: '',
+              createdAt: new Date(),
               endedAt: null,
-              spotlightedParticipantId: null,
-              whiteboardControllerId: '',
+              whiteboardControllerId: null,
               classroomId: student.classe?.id ?? null,
+              spotlightedParticipantId: null,
             };
             setActiveSession(newSession);
         }

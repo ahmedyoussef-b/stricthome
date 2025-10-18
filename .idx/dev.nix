@@ -17,9 +17,6 @@
     # Variables pour aider Prisma à détecter OpenSSL
     OPENSSL_DIR = "${pkgs.openssl_3.dev}";
     OPENSSL_LIB_DIR = "${pkgs.openssl_3.out}/lib";
-    # Forcer Prisma à utiliser le moteur Debian
-    PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.openssl_3.out}/lib/libssl.so";
-    PRISMA_QUERY_ENGINE_BINARY = "${pkgs.openssl_3.out}/lib/libcrypto.so";
   };
   # This adds a file watcher to startup the firebase emulators. The emulators will only start if
   # a firebase.json file is written into the user's directory

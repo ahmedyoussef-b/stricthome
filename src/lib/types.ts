@@ -36,17 +36,9 @@ export type ReactionWithUser = Prisma.ReactionGetPayload<{
     }
 }>;
 
-export type MessageWithReactions = Prisma.MessageGetPayload<{
-    include: { 
-        reactions: {
-            include: {
-                user: {
-                    select: { name: true, id: true }
-                }
-            }
-        } 
-    }
-}>;
+export type MessageWithReactions = PrismaMessage & {
+    reactions: ReactionWithUser[];
+};
 
 
 export type AppTask = Task;
@@ -105,7 +97,7 @@ export type CoursSessionWithRelations = CoursSession & {
     participants: User[];
     professeur: User;
     classe: Classroom | null;
-    spotlightedParticipantId: string | null;
+    spotlightedParticipantId?: string | null;
 };
 
 

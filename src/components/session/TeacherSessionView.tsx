@@ -13,10 +13,7 @@ import { UnderstandingTracker } from '../UnderstandingTracker';
 import { Whiteboard } from '../Whiteboard';
 import { Card } from '../ui/card';
 import { ParticipantList } from './ParticipantList';
-import { serverSpotlightParticipant } from '@/lib/actions';
-import { useToast } from '@/hooks/use-toast';
-import { useCallback } from 'react';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
+import { Brush } from 'lucide-react';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -28,6 +25,7 @@ export function TeacherSessionView({
     spotlightedUser,
     allSessionUsers,
     onlineUserIds,
+    onSpotlightParticipant,
     raisedHands,
     understandingStatus,
 }: {
@@ -38,127 +36,103 @@ export function TeacherSessionView({
     spotlightedUser: SessionParticipant | undefined | null;
     allSessionUsers: SessionParticipant[];
     onlineUserIds: string[];
+    onSpotlightParticipant: (participantId: string) => void;
     raisedHands: Set<string>;
     understandingStatus: Map<string, UnderstandingStatus>;
 }) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
-    const { toast } = useToast();
     
     const remoteStreamsMap = new Map(remoteParticipants.map(p => [p.id, p.stream]));
     
     const studentsWithRaisedHands = allSessionUsers.filter(u => u.role === 'ELEVE' && raisedHands.has(u.id));
     const students = allSessionUsers.filter(u => u.role === 'ELEVE') as StudentWithCareer[];
     const teacher = allSessionUsers.find(u => u.role === 'PROFESSEUR');
-
-    const handleSpotlightParticipant = useCallback(async (participantId: string) => {
-        console.log(`🔦 [ACTION] Le professeur met en vedette: ${participantId}.`);
-        try {
-            await serverSpotlightParticipant(sessionId, participantId);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de mettre ce participant en vedette." });
-        }
-    }, [sessionId, toast]);
     
     if (!localUserId || !teacher) return null;
 
-    // Combine local and remote participants for the grid
-    const gridParticipants = [
-        // The teacher (local user) is always first
-        { 
-            user: teacher,
-            stream: localStream,
-            isOnline: true,
-            isLocal: true,
-        },
-        // Then all students
-        ...students.map(student => ({
-            user: student,
-            stream: remoteStreamsMap.get(student.id),
-            isOnline: onlineUserIds.includes(student.id),
-            isLocal: false,
-        }))
-    ];
-
     return (
-        <div className="flex flex-col flex-1 min-h-0 py-6 gap-4">
-            {/* --- Ligne du haut : Espace de travail --- */}
-            <div className="flex-1 flex flex-row gap-4 min-h-0">
-                 {/* Colonne de Gauche : Espace de travail */}
-                <div className="flex-1 flex flex-row gap-4 min-h-0">
-                    {/* Ligne 1: Tableau blanc ou partage d'écran */}
-                    <div className="flex flex-col min-h-0 w-2/5">
-                        {screenStream ? (
-                            <Card className="w-full h-full p-2 bg-black">
+        <div className="flex-1 flex min-h-0 py-6 gap-4">
+            {/* --- Colonne de Gauche : Caméras des Participants --- */}
+            <ScrollArea className="w-64 pr-4 -mr-4">
+                 <div className="space-y-4">
+                    {/* Vidéo du professeur */}
+                     <Participant 
+                        key={teacher.id}
+                        stream={localStream}
+                        isLocal={true}
+                        isSpotlighted={teacher.id === spotlightedUser?.id}
+                        isTeacher={true}
+                        participantUserId={teacher.id}
+                        onSpotlightParticipant={onSpotlightParticipant}
+                        displayName={teacher.name ?? ''}
+                        isHandRaised={raisedHands.has(teacher.id)}
+                    />
+                    
+                    {/* Vidéos des élèves */}
+                    {students.map(student => {
+                        const stream = remoteStreamsMap.get(student.id);
+                        if (stream) {
+                            return (
                                 <Participant
-                                    stream={screenStream}
-                                    isLocal={true}
-                                    isTeacher={true}
-                                    participantUserId={localUserId}
-                                    onSpotlightParticipant={handleSpotlightParticipant}
-                                    displayName="Votre partage d'écran"
+                                    key={student.id}
+                                    stream={stream}
+                                    isLocal={false}
+                                    isSpotlighted={student.id === spotlightedUser?.id}
+                                    isTeacher={true} // Teacher can spotlight anyone
+                                    participantUserId={student.id}
+                                    onSpotlightParticipant={onSpotlightParticipant}
+                                    displayName={student.name ?? ''}
+                                    isHandRaised={raisedHands.has(student.id)}
                                 />
-                            </Card>
-                        ) : (
-                            <div className='h-full w-full'>
-                                <Whiteboard />
-                            </div>
-                        )}
-                    </div>
-                     <div className="flex flex-col min-h-0 w-3/5">
-                        <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
-                    </div>
+                            );
+                        }
+                        // Affiche un placeholder si l'élève est hors-ligne ou sans vidéo
+                        return (
+                             <StudentPlaceholder
+                                key={student.id}
+                                student={student}
+                                isOnline={onlineUserIds.includes(student.id)}
+                                onSpotlightParticipant={onSpotlightParticipant}
+                                isHandRaised={raisedHands.has(student.id)}
+                            />
+                        )
+                    })}
+                </div>
+            </ScrollArea>
+
+            {/* --- Colonne Centrale : Espace de travail --- */}
+            <div className="flex-1 grid grid-rows-[2fr_3fr] gap-4 min-h-0">
+                {/* Ligne 1: Tableau blanc ou partage d'écran */}
+                <div className="flex flex-col min-h-0">
+                    {screenStream ? (
+                        <Card className="w-full h-full p-2 bg-black">
+                            <Participant
+                                stream={screenStream}
+                                isLocal={true}
+                                isTeacher={true}
+                                participantUserId={localUserId}
+                                displayName="Votre partage d'écran"
+                            />
+                        </Card>
+                    ) : (
+                        <div className='h-full w-full'>
+                            <Whiteboard />
+                        </div>
+                    )}
                 </div>
 
-                {/* --- Colonne de Droite : Outils Interactifs --- */}
-                <div className="w-72 flex flex-col gap-4 min-h-0">
-                    <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
-                    <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
-                    <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
+                 {/* Ligne 2: Espace vide pour utilisation future */}
+                <div className="flex flex-col min-h-0">
+                    <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
                 </div>
             </div>
 
-            {/* --- Ligne du bas : Caméras des Participants --- */}
-             <div className="relative px-12">
-                <Carousel opts={{ align: 'start', slidesToScroll: 1, dragFree: true }} className="w-full">
-                    <CarouselContent className="-ml-4">
-                        {gridParticipants.map(({ user, stream, isOnline, isLocal }) => {
-                            if (isOnline) {
-                                return (
-                                    <CarouselItem key={user.id} className="basis-1/3 md:basis-1/4 lg:basis-1/5 pl-4">
-                                        <Participant
-                                            stream={stream || null}
-                                            isLocal={isLocal}
-                                            isSpotlighted={user.id === spotlightedUser?.id}
-                                            isTeacher={true}
-                                            participantUserId={user.id}
-                                            onSpotlightParticipant={handleSpotlightParticipant}
-                                            displayName={user.name ?? ''}
-                                            isHandRaised={raisedHands.has(user.id)}
-                                        />
-                                    </CarouselItem>
-                                );
-                            }
-                            
-                            if (user.role === 'ELEVE') {
-                                return (
-                                    <CarouselItem key={user.id} className="basis-1/3 md:basis-1/4 lg:basis-1/5 pl-4">
-                                        <StudentPlaceholder
-                                            student={user as StudentWithCareer}
-                                            isOnline={false}
-                                            onSpotlightParticipant={handleSpotlightParticipant}
-                                            isHandRaised={raisedHands.has(user.id)}
-                                        />
-                                    </CarouselItem>
-                                )
-                            }
-                            
-                            return null;
-                        })}
-                    </CarouselContent>
-                    <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2" />
-                    <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2" />
-                </Carousel>
+            {/* --- Colonne de Droite : Outils Interactifs --- */}
+            <div className="w-72 flex flex-col gap-4 min-h-0">
+                 <ParticipantList allSessionUsers={allSessionUsers} onlineUserIds={onlineUserIds} currentUserId={localUserId} />
+                 <UnderstandingTracker students={students} understandingStatus={understandingStatus} />
+                 <HandRaiseController sessionId={sessionId} raisedHands={studentsWithRaisedHands} />
             </div>
         </div>
     );

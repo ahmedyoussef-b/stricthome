@@ -1,5 +1,7 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['embla-carousel-react'],
   images: {
     remotePatterns: [
       {

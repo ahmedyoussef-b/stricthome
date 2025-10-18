@@ -13,7 +13,6 @@ import { Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Whiteboard } from '../Whiteboard';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
 
@@ -26,7 +25,6 @@ interface StudentSessionViewProps {
     onToggleHandRaise: () => void;
     onUnderstandingChange: (status: UnderstandingStatus) => void;
     currentUnderstanding: UnderstandingStatus;
-    screenStream: MediaStream | null; // Stream for screen sharing
 }
 
 export function StudentSessionView({
@@ -38,17 +36,12 @@ export function StudentSessionView({
     onToggleHandRaise,
     onUnderstandingChange,
     currentUnderstanding,
-    screenStream
 }: StudentSessionViewProps) {
     const { data: session } = useSession();
     const localUserId = session?.user.id;
 
-    // The main video feed will be the screen share if it exists, otherwise the spotlighted user.
-    const mainStream = screenStream || spotlightedStream;
-    const mainStreamUser = screenStream ? { id: 'screen-share', name: "Partage d'écran" } : spotlightedUser;
-
     const renderMainContent = () => {
-        if (!mainStreamUser || !mainStream) {
+        if (!spotlightedUser || !spotlightedStream) {
             return (
                 <Card className="aspect-video w-full h-full flex items-center justify-center bg-muted rounded-lg">
                     <div className="text-center text-muted-foreground">
@@ -60,31 +53,28 @@ export function StudentSessionView({
         }
         
         return (
-            <Participant 
-                stream={mainStream}
-                isLocal={false} // Student view is never "local" for the main stream
-                isSpotlighted={true}
-                isTeacher={false}
-                participantUserId={mainStreamUser?.id ?? ''}
-                displayName={mainStreamUser?.name ?? undefined}
-            />
+            <div className="w-full h-full">
+                <Participant 
+                    stream={spotlightedStream}
+                    isLocal={false} 
+                    isSpotlighted={true}
+                    isTeacher={false}
+                    participantUserId={spotlightedUser?.id ?? ''}
+                    displayName={spotlightedUser?.name ?? undefined}
+                />
+            </div>
         );
     };
     
     return (
         <div className="flex flex-1 min-h-0 py-6 gap-6">
-            {/* Colonne principale : Grille pour la vidéo et le tableau blanc */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
-                <div className="flex flex-col min-h-0">
-                    {renderMainContent()}
-                </div>
-                <div className="h-full w-full">
-                    <Whiteboard />
-                </div>
+            {/* Colonne principale : Vidéo en vedette */}
+            <div className="flex-1 flex flex-col min-h-0">
+                {renderMainContent()}
             </div>
             
-            {/* Barre latérale droite : contrôles de l'élève */}
-            <div className="w-1/5 flex flex-col gap-6">
+            {/* Barre latérale droite : contrôles */}
+            <div className="w-1/5 flex flex-col gap-6 min-h-0">
                  <Card>
                     <CardHeader className="p-3">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -123,7 +113,7 @@ export function StudentSessionView({
                     </CardContent>
                 </Card>
                 <Button 
-                    onClick={onToggleHandRaise}
+                    onClick={onToggleHandRaise} 
                     className={cn("w-full", isHandRaised && "bg-blue-600 hover:bg-blue-700 animate-pulse")}
                 >
                    <Hand className="mr-2 h-5 w-5" />
