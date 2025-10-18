@@ -11,9 +11,9 @@ import { UnderstandingStatus } from '@/app/session/[id]/page';
 import { useSession } from 'next-auth/react';
 import { UnderstandingTracker } from '../UnderstandingTracker';
 import { Whiteboard } from '../Whiteboard';
-import { Card } from '../ui/card';
+import { Card, CardContent, CardHeader } from '../ui/card';
 import { ParticipantList } from './ParticipantList';
-import { Brush } from 'lucide-react';
+import { Brush, Star } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 
 type SessionParticipant = (StudentWithCareer | (any & { role: Role })) & { role: Role };
@@ -54,6 +54,42 @@ export function TeacherSessionView({
     
     const allParticipantsForCarousel = [teacher, ...students];
 
+    const spotlightedStream = spotlightedUser ? (spotlightedUser.id === localUserId ? localStream : remoteStreamsMap.get(spotlightedUser.id)) : null;
+
+    const renderSpotlightContent = () => {
+        if (spotlightedUser) {
+            if (spotlightedStream) {
+                 return (
+                    <Participant
+                        stream={spotlightedStream}
+                        isLocal={spotlightedUser.id === localUserId}
+                        isSpotlighted={true}
+                        isTeacher={true}
+                        participantUserId={spotlightedUser.id}
+                        displayName={spotlightedUser.name ?? ''}
+                        isHandRaised={raisedHands.has(spotlightedUser.id)}
+                    />
+                 )
+            }
+            return (
+                 <StudentPlaceholder
+                    student={spotlightedUser as StudentWithCareer}
+                    isOnline={onlineUserIds.includes(spotlightedUser.id)}
+                    onSpotlightParticipant={() => {}} // Pas d'action ici
+                    isHandRaised={raisedHands.has(spotlightedUser.id)}
+                />
+            )
+        }
+        return (
+            <Card className="w-full h-full bg-muted/50 border-dashed flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                    <Star className="mx-auto h-8 w-8 mb-2" />
+                    <p>Mettez un participant en vedette</p>
+                </div>
+            </Card>
+        )
+    }
+
 
     return (
         <div className="flex-1 flex flex-col min-h-0 py-6 gap-4">
@@ -80,9 +116,17 @@ export function TeacherSessionView({
                         )}
                     </div>
 
-                    {/* Ligne 2: Espace vide pour utilisation future */}
+                    {/* Ligne 2: Espace pour le participant en vedette */}
                     <div className="flex flex-col min-h-0">
-                        <Card className="w-full h-full bg-muted/50 border-dashed"></Card>
+                        <Card className="w-full h-full p-2 bg-muted/30">
+                            <CardHeader className="absolute top-0 left-2 z-10 p-2">
+                                <h3 className="text-xs font-semibold bg-background/50 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
+                                    <Star className="h-3 w-3 text-amber-500"/>
+                                    En Vedette
+                                </h3>
+                            </CardHeader>
+                            {renderSpotlightContent()}
+                        </Card>
                     </div>
                 </div>
 
