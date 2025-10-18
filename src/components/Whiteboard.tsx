@@ -1,6 +1,6 @@
 // src/components/Whiteboard.tsx
 'use client'
-import { Tldraw, TldrawEditor, defaultShapes } from '@tldraw/tldraw'
+import { Tldraw, TldrawEditor } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -93,8 +93,6 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 	return (
 		<div style={{ position: 'fixed', inset: 0 }}>
 			<Tldraw
-				// Passez les formes par défaut à l'éditeur
-				shapes={defaultShapes}
 				onMount={setEditorCB}
 				// Force le mode sombre pour une meilleure visibilité dans le thème actuel
 				forceMobile
