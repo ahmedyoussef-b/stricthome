@@ -1,9 +1,10 @@
 // src/components/Whiteboard.tsx
 'use client'
-import { Tldraw, makeReactCtor, TldrawEditor, defaultShapes } from '@tldraw/tldraw'
+import { Tldraw, TldrawEditor, defaultShapes } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { pusherClient } from '@/lib/pusher/client'
 
 // Interface pour les événements du tableau blanc que nous enverrons via Pusher
 interface BroadcastMessage {
@@ -26,10 +27,11 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 	}, [authSession])
 
 	useEffect(() => {
-		if (!editor || !sessionId) return
+		if (!editor || !sessionId || !authSession?.user?.id) return
 
 		// S'abonner au canal Pusher pour cette session de tableau blanc
-		const channel = pusherClient.subscribe(`tldraw-${sessionId}`)
+		const channelName = `presence-session-${sessionId}`
+		const channel = pusherClient.subscribe(channelName)
 		const instanceId = editor.store.id
 
 		// Écouter les événements des autres utilisateurs
@@ -54,7 +56,7 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 
 			const toRemove = Object.keys(change.changes.removed)
 			const toPut = Object.values(change.changes.added).concat(
-				Object.values(change.changes.updated).map(([from, to]) => to)
+				Object.values(change.changes.updated).map(([, to]) => to)
 			)
 
 			// Ne rien envoyer s'il n'y a pas de modifications
@@ -65,14 +67,16 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					sessionId,
-					userId: authSession?.user.id,
-					instanceId,
-					changes: {
-						added: toPut.filter(r => r.typeName === 'shape'),
-						updated: [], // Pas nécessaire de gérer 'updated' séparément ici
-						removed: toRemove,
-					},
+					channelName: channelName,
+					eventName: 'tldraw-changes',
+					data: {
+						instanceId,
+						changes: {
+							added: toPut,
+							updated: [], // Pas nécessaire de gérer 'updated' séparément ici
+							removed: toRemove,
+						},
+					}
 				}),
 			})
 		}
@@ -82,7 +86,7 @@ export function Whiteboard({ sessionId }: { sessionId: string }) {
 		return () => {
 			cleanup()
 			channel.unbind('tldraw-changes', handleReceive)
-			pusherClient.unsubscribe(`tldraw-${sessionId}`)
+			pusherClient.unsubscribe(channelName)
 		}
 	}, [editor, sessionId, authSession])
 
