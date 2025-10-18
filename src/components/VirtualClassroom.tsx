@@ -66,7 +66,7 @@ export function VirtualClassroom() {
     setActiveScenario(scenarioId);
     // Intégration avec WebXR API
     if (navigator.xr) {
-      navigator.xr.requestSession('immersive-vr').then((session) => {
+      navigator.xr.requestSession('immersive-vr').then((session: XRSession) => {
         console.log('Session VR démarrée:', session);
         // Logique de démarrage de l'expérience VR
       });
