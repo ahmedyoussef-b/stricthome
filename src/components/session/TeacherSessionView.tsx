@@ -57,51 +57,15 @@ export function TeacherSessionView({
     
     const allParticipantsForCarousel = [teacher, ...students];
 
-    const spotlightedStream = spotlightedUser ? (spotlightedUser.id === localUserId ? localStream : remoteStreamsMap.get(spotlightedUser.id)) : null;
-
-    const renderSpotlightContent = () => {
-        if (spotlightedUser) {
-            if (spotlightedStream) {
-                 return (
-                    <Participant
-                        stream={spotlightedStream}
-                        isLocal={spotlightedUser.id === localUserId}
-                        isSpotlighted={true}
-                        isTeacher={true}
-                        participantUserId={spotlightedUser.id}
-                        displayName={spotlightedUser.name ?? ''}
-                        isHandRaised={raisedHands.has(spotlightedUser.id)}
-                    />
-                 )
-            }
-            return (
-                 <StudentPlaceholder
-                    student={spotlightedUser as StudentWithCareer}
-                    isOnline={onlineUserIds.includes(spotlightedUser.id)}
-                    onSpotlightParticipant={() => {}} // Pas d'action ici
-                    isHandRaised={raisedHands.has(spotlightedUser.id)}
-                />
-            )
-        }
-        return (
-            <Card className="w-full h-full bg-muted/50 border-dashed flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                    <Star className="mx-auto h-8 w-8 mb-2" />
-                    <p>Mettez un participant en vedette</p>
-                </div>
-            </Card>
-        )
-    }
-
 
     return (
         <div className="flex-1 flex flex-col min-h-0 py-6 gap-4">
             {/* --- Zone Principale : Espace de travail et Outils --- */}
             <div className="flex-1 flex min-h-0 gap-4">
                 {/* --- Colonne Centrale : Espace de travail --- */}
-                <div className="flex-1 grid grid-rows-2 gap-4 min-h-0">
-                    {/* Ligne 1: Tableau blanc ou partage d'écran */}
-                    <div className="flex flex-col min-h-0">
+                <div className="flex-1 flex flex-col min-h-0">
+                    {/* Un seul grand espace pour le tableau blanc ou le partage d'écran */}
+                    <div className="flex-1 flex flex-col min-h-0">
                         {screenStream ? (
                             <Card className="w-full h-full p-2 bg-black">
                                 <Participant
@@ -117,19 +81,6 @@ export function TeacherSessionView({
                                 <Whiteboard />
                             </div>
                         )}
-                    </div>
-
-                    {/* Ligne 2: Espace pour le participant en vedette */}
-                    <div className="flex flex-col min-h-0">
-                        <Card className="w-full h-full p-2 bg-muted/30">
-                            <CardHeader className="absolute top-0 left-2 z-10 p-2">
-                                <h3 className="text-xs font-semibold bg-background/50 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
-                                    <Star className="h-3 w-3 text-amber-500"/>
-                                    En Vedette
-                                </h3>
-                            </CardHeader>
-                            {renderSpotlightContent()}
-                        </Card>
                     </div>
                 </div>
 
